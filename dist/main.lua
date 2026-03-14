@@ -19,7 +19,6 @@ local defaultIcons = load("src/elements/icon/basic.lua")
 local lucideIcons  = load("src/elements/icon/lucide.lua")
 local solarIcons   = load("src/elements/icon/solar.lua")
 
--- Merge all icons
 local Icons = {}
 for name, id in pairs(defaultIcons) do
     Icons[name] = id
@@ -31,7 +30,6 @@ for name, id in pairs(solarIcons) do
     Icons["solar:" .. name] = id
 end
 
--- Function to get icon ID
 local function getIconId(iconName)
     if not iconName or iconName == "" then
         return ""
@@ -48,7 +46,6 @@ local function getIconId(iconName)
     return ""
 end
 
--- Function to get color from name or direct Color3
 local function getColor(colorInput)
     if typeof(colorInput) == "Color3" then
         return colorInput
@@ -64,7 +61,6 @@ local function getColor(colorInput)
     return ColorModule["Default"] or Color3.fromRGB(0, 208, 255)
 end
 
--- Variables
 local ConfigFolder = "Velaris UI"
 local ConfigFile = ""
 local ConfigData = {}
@@ -278,8 +274,6 @@ function CircleClick(Button, X, Y)
     end)
 end
 
--- ==================== NOTIFY (LexsHub Style) ====================
-
 local Chloex = {}
 
 function Chloex:MakeNotify(NotifyConfig)
@@ -483,8 +477,6 @@ function Chloex:MakeNotify(NotifyConfig)
     return NotifyFunction
 end
 
--- ==================== SHORTCUT NOTIFY ====================
-
 function Nt(msg, delay, color, title, desc)
     return Chloex:MakeNotify({
         Title       = title or ConfigFolder,
@@ -497,13 +489,9 @@ end
 
 Notify = Nt
 
--- ==================== DIALOG (loaded from external module) ====================
-
 function Chloex:Dialog(DialogConfig)
     return DialogModule(DialogConfig)
 end
-
--- ==================== AKHIR DIALOG ====================
 
 function Chloex:Window(GuiConfig)
     GuiConfig               = GuiConfig or {}
@@ -543,7 +531,6 @@ function Chloex:Window(GuiConfig)
 
     ElementsModule:Initialize(GuiConfig, SaveConfig, ConfigData, Icons)
 
-    -- ==================== KEY SYSTEM ====================
     local ks = GuiConfig.KeySystem
     if ks then
         local keyResolved = false
@@ -881,7 +868,6 @@ function Chloex:Window(GuiConfig)
             return nil
         end
     end
-    -- ==================== END KEY SYSTEM ====================
 
     local GuiFunc = {}
 
@@ -1055,7 +1041,6 @@ function Chloex:Window(GuiConfig)
     TextLabel1.Position = UDim2.new(0, 25 + TextLabel.TextBounds.X + 10, 0, 0)
     TextLabel1.Parent = Top
 
-    -- ==================== TAG CONTAINER ====================
     local TagContainer = Instance.new("Frame")
     TagContainer.Name = "TagContainer"
     TagContainer.BackgroundTransparency = 1
@@ -1090,7 +1075,6 @@ function Chloex:Window(GuiConfig)
     TextLabel1:GetPropertyChangedSignal("TextBounds"):Connect(UpdateTagPosition)
     Top:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateTagPosition)
     UpdateTagPosition()
-    -- ==================== END TAG CONTAINER ====================
 
     local function UpdateFooterPosition()
         local titleWidth = TextLabel.TextBounds.X
@@ -1229,14 +1213,12 @@ function Chloex:Window(GuiConfig)
     ScrollTab.BorderSizePixel = 0
     ScrollTab.Name = "ScrollTab"
 
-    -- ==================== SEARCH BAR ====================
     local searchOffset = 0
 
     if GuiConfig.Search then
         searchOffset = 34
         SearchModule(GuiConfig, LayersTab, LayersFolder, LayersPageLayout, TweenService, searchOffset)
     end
-    -- ==================== END SEARCH BAR ====================
 
     if GuiConfig.ShowUser then
         ScrollTab.Position = UDim2.new(0, 0, 0, searchOffset)
@@ -1386,7 +1368,6 @@ function Chloex:Window(GuiConfig)
         GuiConfig.Keybind = keyCode
     end
 
-    -- ==================== TAG FUNCTION ====================
     function GuiFunc:Tag(TagConfig)
         TagConfig = TagConfig or {}
         TagConfig.Title = TagConfig.Title or "Tag"
@@ -1473,7 +1454,6 @@ function Chloex:Window(GuiConfig)
 
         return TagFrame
     end
-    -- ==================== END TAG FUNCTION ====================
 
     Min.Activated:Connect(function()
         CircleClick(Min, Mouse.X, Mouse.Y)
@@ -1701,7 +1681,6 @@ function Chloex:Window(GuiConfig)
     DropPageLayout.Name = "DropPageLayout"
     DropPageLayout.Parent = DropdownFolder
 
-    -- ==================== LOAD TABS FROM EXTERNAL ====================
     local Tabs = TabsModule(
         GuiConfig,
         LayersFolder,
@@ -1726,7 +1705,6 @@ function Chloex:Window(GuiConfig)
     for k, v in pairs(Tabs) do
         GuiFunc[k] = v
     end
-    -- ==================== END LOAD TABS ====================
 
     return GuiFunc
 end
