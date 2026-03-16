@@ -1,4 +1,4 @@
--- // Version : 0.1.7 | Tag + KeySystem Feature | Main.lua
+-- // Version : 0.1.9 | Tag + KeySystem + ColorPicker Floating | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -12,8 +12,9 @@ local ColorModule    = load("src/elements/color.lua")
 local ElementsModule = load("src/elements/Elements.lua")
 local KeybindModule  = load("src/elements/keybind.lua")
 local DialogModule   = load("src/elements/dialog.lua")
-local TabsModule     = loadUrl("https://fitri324.pythonanywhere.com/Tabs.lua/raw")
-local SearchModule   = loadUrl("https://fitri324.pythonanywhere.com/Search.lua/raw")
+local TabsModule          = loadUrl("https://fitri324.pythonanywhere.com/Tabs.lua/raw")
+local SearchModule        = loadUrl("https://fitri324.pythonanywhere.com/Search.lua/raw")
+local _ColorpickerSetup   = loadUrl("https://fitri324.pythonanywhere.com/Colorpicker.lua/raw")
 
 local defaultIcons = load("src/elements/icon/basic.lua")
 local lucideIcons  = load("src/elements/icon/lucide.lua")
@@ -272,6 +273,38 @@ function CircleClick(Button, X, Y)
         end
         Circle:Destroy()
     end)
+end
+
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║   FLOATING COLOR PICKER — ditambah di v0.1.9                    ║
+-- ║   Panel di ScreenGui sendiri (VelarisCP), independent           ║
+-- ║   dari window utama sehingga tidak ikut gerak saat drag         ║
+-- ╚══════════════════════════════════════════════════════════════════╝
+
+
+-- ── Colorpicker — delegasi ke module external ────────────────────────
+local _CPGui          = nil
+local _CPPanel        = nil
+local _CPPanelButtons = nil
+local _CPPanelRefs    = nil
+local _CPActive       = nil
+
+local _ColorpickerModule = nil
+local function _InitColorpicker(AccentColor, MainDropShadow)
+    if _ColorpickerModule then return end
+    _ColorpickerModule = _ColorpickerSetup(
+        TweenService, UserInputService, CoreGui,
+        getIconId, ConfigData, AUTO_SAVE, SaveConfig, ElementsModule
+    )
+end
+
+local function _MakeColorPicker(Config, SectionAdd, CountItem, AccentColor, MainDropShadow)
+    _InitColorpicker(AccentColor, MainDropShadow)
+    if not _ColorpickerModule then
+        warn("[VelarisUI] Colorpicker.lua gagal dimuat dari server")
+        return {}
+    end
+    return _ColorpickerModule.MakeColorPicker(Config, SectionAdd, CountItem, AccentColor, MainDropShadow)
 end
 
 local Chloex = {}
@@ -1705,6 +1738,100 @@ function Chloex:Window(GuiConfig)
     for k, v in pairs(Tabs) do
         GuiFunc[k] = v
     end
+
+    -- ══════════════════════════════════════════════════════════════
+    -- Inject AddColorpicker — deteksi parent section otomatis
+    -- Tidak membutuhkan perubahan Tabs.lua
+    -- ══════════════════════════════════════════════════════════════
+    local origAddTab = GuiFunc.AddTab
+    GuiFunc.AddTab = function(self, TabConfig)
+        local Sections = origAddTab(self, TabConfig)
+        local origAddSection = Sections.AddSection
+        Sections.AddSection = function(self2, SectionConfig)
+            local Items = origAddSection(self2, SectionConfig)
+
+            -- Deteksi parent frame section dengan cara probe:
+            -- Buat elemen dummy via AddButton, ambil parent-nya, lalu hapus
+            local _detectedParent = nil
+            local _itemCount = 0
+
+            local function _detectParent()
+                if _detectedParent then return _detectedParent end
+                -- Coba akses _sectionAdd jika Tabs.lua sudah expose
+                if Items._sectionAdd then
+                    _detectedParent = Items._sectionAdd
+                    return _detectedParent
+                end
+                -- Fallback: buat frame dummy kecil via AddButton atau probe
+                -- Gunakan AddButton untuk mendapat frame, ambil Parent-nya
+                local probeOk = pcall(function()
+                    local probe = Instance.new("Frame")
+                    probe.Name = "__CPProbe"
+                    probe.Size = UDim2.new(0,1,0,1)
+                    probe.BackgroundTransparency = 1
+                    probe.Visible = false
+                    -- Coba tempelkan via AddButton callback trick
+                    -- Tidak bisa langsung — gunakan ElementsModule
+                end)
+                return nil
+            end
+
+            function Items:AddColorpicker(Config)
+                -- Cara 1: Tabs.lua expose _sectionAdd
+                local sa = rawget(self, "_sectionAdd") or (type(self) == "table" and self._sectionAdd)
+                local ci = (type(self) == "table" and rawget(self, "_getCountItem") and self._getCountItem()) or _itemCount
+
+                -- Cara 2: fallback — coba ambil dari ElementsModule via AddToggle probe
+                if not sa then
+                    -- Probe: tambah toggle dummy, ambil parent, hapus
+                    local probeFrame = nil
+                    local origToggle = Items.AddToggle
+                    if origToggle then
+                        -- Override sementara untuk menangkap parent
+                        local origCreate = ElementsModule.CreateToggle
+                        ElementsModule.CreateToggle = function(self_em, parent, cfg, ci2, ...)
+                            probeFrame = parent
+                            ElementsModule.CreateToggle = origCreate
+                            return { Set = function() end, GetValue = function() return false end,
+                                     Value = false, IgnoreConfig = false, Class = "Toggle" }
+                        end
+                        pcall(function()
+                            Items:AddToggle({ Title = "__probe__", Default = false, Callback = function() end })
+                        end)
+                        ElementsModule.CreateToggle = origCreate
+                        sa = probeFrame
+                        -- Hapus probe element jika berhasil ditambahkan
+                        if sa then
+                            for _, child in ipairs(sa:GetChildren()) do
+                                if child:IsA("Frame") and child:FindFirstChild("ToggleTitle") then
+                                    local tt = child:FindFirstChild("ToggleTitle")
+                                    if tt and tt.Text == "__probe__" then
+                                        child:Destroy()
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if not sa then
+                    warn("[VelarisUI] AddColorpicker: tidak bisa deteksi parent section.")
+                    return {}
+                end
+
+                _detectedParent = sa
+                local api = _MakeColorPicker(Config, sa, ci, GuiConfig.Color, DropShadowHolder)
+                _itemCount = _itemCount + 1
+                return api
+            end
+
+            Items.AddColorPicker = Items.AddColorpicker
+            return Items
+        end
+        return Sections
+    end
+    -- ══════════════════════════════════════════════════════════════
 
     return GuiFunc
 end
