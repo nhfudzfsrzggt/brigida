@@ -1,4 +1,4 @@
-local VelarisUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/dist/main.lua", true))()
+local VelarisUI = loadstring(game:HttpGet("https://fitri324.pythonanywhere.com/VilarisUi.lua/raw"))()
 
 local Window = VelarisUI:Window({
     Title = "Velaris UI", -- Main title displayed at the top of the window
@@ -21,7 +21,7 @@ local Window = VelarisUI:Window({
         Icon = "lucide:bird",
         Note = "Example Key System. Key: mykey123",   
         Placeholder = "Enter Key",     
-        Default = "",  
+        Default = "mykey123",  
         Buttons = {
             {
                 Name = "Exit",
@@ -53,7 +53,12 @@ Window:Tag({
 })
 
 local Tabs = {
-    -- Default icon 
+
+    Section = Window:AddTab({
+        Name = "Section",
+        Icon = "lucide:table-of-contents",
+    }),
+    
     Badge = Window:AddTab({
         Name = "Badge",
         Icon = "lucide:badge-check",
@@ -99,6 +104,11 @@ local Tabs = {
         Icon = "lucide:rows-2",
     }),
 
+    Colorpicker = Window:AddTab({
+        Name = "Colorpicker",
+        Icon = "lucide:palette",
+    }),
+
     Config = Window:AddTab({
         Name = "Config",
         Icon = "lucide:folder",
@@ -106,6 +116,56 @@ local Tabs = {
 }
 
 local Sec = {}
+
+Sec.Section = Tabs.Section:AddSection({
+    Title = "Normal Section",
+})
+
+Sec.Section:AddToggle({
+    Title    = "Auto Farm Event",
+    Default  = false,
+    Callback = function(value)
+        if value then
+        else
+        end
+    end
+})
+
+Sec.SectionLeft = Tabs.Section:AddSection({
+    Title = "Left Section",
+    Tabbox   = "Left",
+})
+
+Sec.SectionLeft:AddToggle({
+    Title    = "Auto Farm",
+    Default  = false,
+    Callback = function(value)
+        if value then
+        else
+        end
+    end
+})
+
+Sec.SectionRight = Tabs.Section:AddSection({
+    Title = "Right Section",
+    Tabbox   = "Right",
+})
+
+Sec.SectionRight:AddDropdown({
+    Title    = "Example",
+    Options  = { "Option A", "Option B", "Option C" },
+    Multi    = false,
+    Default  = "Option A",
+    Callback = function(value) print("Selected:", value) end
+})
+
+Sec.SectionRight:AddButton({
+    Title    = "Button Test",
+    Version  = "V2",
+    Icon     = "lucide:bird",
+    Callback = function() end
+})
+
 
 Sec.Badge = Tabs.Badge:AddSection({
     Title = "Badge Section",
@@ -522,4 +582,19 @@ Sec.Paragraph:AddParagraph({
     SubButtonCallback = function()
         print("SubButton clicked! Add your logic here.")
     end,
+})
+
+Sec.Colorpicker = Tabs.Colorpicker:AddSection({
+    Title = "Colorpicker Section",
+    Open = true
+})
+
+Sec.Colorpicker:AddColorpicker({
+    Title    = "Select Color",
+    Content  = "",                              -- opsional
+    Default  = Color3.fromRGB(255, 100, 100),  -- opsional
+    Flag     = "custom_color",                  -- opsional
+    Callback = function(color)
+        print("Warna dipilih:", color)
+    end
 })
