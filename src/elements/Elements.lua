@@ -21,7 +21,6 @@ function Elements:GetIconId(iconName)
     return GetIconId(iconName)
 end
 
--- Helper: resolve configKey from Flag or fallback to "Prefix_Title"
 local function ResolveKey(prefix, cfg)
     if cfg.Flag and cfg.Flag ~= "" then
         return cfg.Flag
@@ -677,7 +676,6 @@ function Elements:CreateEditableParagraph(parent, config, countItem)
     cfg.Default     = cfg.Default     or ""
     cfg.Badge       = cfg.Badge       or nil
     cfg.Locked      = cfg.Locked      or false
-    -- Flag support: Flag takes priority over Title for config key
     local configKey = ResolveKey("EditableParagraph", cfg)
     if ConfigData[configKey] ~= nil then
         cfg.Default = ConfigData[configKey]
@@ -825,7 +823,6 @@ function Elements:CreatePanel(parent, config, countItem)
     cfg.SubButtonCallback = cfg.SubCallback    or cfg.SubButtonCallback or function() end
     cfg.Badge             = cfg.Badge          or nil
     cfg.Locked            = cfg.Locked         or false
-    -- Flag support: Flag takes priority over Title for config key
     local configKey = ResolveKey("Panel", cfg)
     if ConfigData[configKey] ~= nil then
         cfg.Default = ConfigData[configKey]
@@ -1233,7 +1230,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     cfg.Badge    = cfg.Badge    or nil
     cfg.Locked   = cfg.Locked   or false
     cfg.Type     = cfg.Type     or "Toggle"
-    -- Flag support: Flag takes priority over Title for config key
     local configKey = ResolveKey("Toggle", cfg)
     if ConfigData[configKey] ~= nil then
         cfg.Default = ConfigData[configKey]
@@ -1443,7 +1439,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     cfg.Locked    = cfg.Locked    or false
     if cfg.Min >= cfg.Max then cfg.Max = cfg.Min + 1 end
     if cfg.Increment <= 0 then cfg.Increment = 1 end
-    -- Flag support: Flag takes priority over Title for config key
     local configKey = ResolveKey("Slider", cfg)
     if ConfigData[configKey] ~= nil then
         cfg.Default = ConfigData[configKey]
@@ -1667,7 +1662,6 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
     cfg.Type        = cfg.Type        or "Input"
     cfg.Placeholder = cfg.Placeholder or (cfg.Type == "Textarea" and "Type here..." or "Input Here")
     cfg.TextHeight  = cfg.TextHeight  or 60
-    -- Flag support: Flag takes priority over Title for config key
     local configKey = ResolveKey("Input", cfg)
     if ConfigData[configKey] ~= nil then
         cfg.Default = ConfigData[configKey]
@@ -1878,15 +1872,15 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
 end
 function Elements:CreateDropdown(parent, config, countItem, countDropdown, DropdownFolder, MoreBlur, DropdownSelect, DropPageLayout, Elements_Table)
     local cfg = config or {}
-    cfg.Title    = cfg.Title    or "Title"
-    cfg.Content  = cfg.Content  or ""
-    cfg.Multi    = cfg.Multi    or false
-    cfg.Options  = cfg.Options  or {}
-    cfg.Default  = cfg.Default  or (cfg.Multi and {} or nil)
-    cfg.Callback = cfg.Callback or function() end
-    cfg.Badge    = cfg.Badge    or nil
-    cfg.Locked   = cfg.Locked   or false
-    -- Flag support: Flag takes priority over Title for config key
+    cfg.Title          = cfg.Title    or "Title"
+    cfg.Content        = cfg.Content  or ""
+    cfg.Multi          = cfg.Multi    or false
+    cfg.Options        = cfg.Options  or {}
+    cfg.Default        = cfg.Default  or (cfg.Multi and {} or nil)
+    cfg.Callback       = cfg.Callback or function() end
+    cfg.Badge          = cfg.Badge    or nil
+    cfg.Locked         = cfg.Locked   or false
+    cfg.DisabledValues = cfg.DisabledValues or {}
     local configKey = ResolveKey("Dropdown", cfg)
     if ConfigData[configKey] ~= nil then
         cfg.Default = ConfigData[configKey]
@@ -2166,6 +2160,13 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         OptionText.Name = "OptionText"
         OptionText.Parent = Option
         Option:SetAttribute("RealValue", value)
+
+        -- Terapkan visual disabled sejak awal jika value ada di DisabledValues
+        local isDisabledOnCreate = table.find(cfg.DisabledValues, value) ~= nil
+        if isDisabledOnCreate then
+            OptionText.TextTransparency = 0.7
+        end
+
         local ChooseFrame = Instance.new("Frame")
         ChooseFrame.AnchorPoint = Vector2.new(0, 0.5)
         ChooseFrame.BackgroundColor3 = GuiConfig.Color
@@ -2181,6 +2182,9 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         UIStroke.Name = "UIStroke"
         UIStroke.Parent = ChooseFrame
         OptionButton.Activated:Connect(function()
+            -- Cek disabled, jika iya langsung return
+            local isDisabled = table.find(cfg.DisabledValues, value) ~= nil
+            if isDisabled then return end
             if cfg.Multi then
                 local idx = table.find(DropdownFunc.Value, value)
                 if not idx then
@@ -2220,20 +2224,29 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         for _, Drop in ScrollSelect:GetChildren() do
             if Drop.Name == "Option" and Drop:FindFirstChild("OptionText") then
                 local v = Drop:GetAttribute("RealValue")
+                local isDisabled = table.find(cfg.DisabledValues, v) ~= nil
                 local selected = cfg.Multi
                     and (type(DropdownFunc.Value) == "table" and table.find(DropdownFunc.Value, v) ~= nil)
                     or (DropdownFunc.Value == v)
                 local cf = Drop:FindFirstChild("ChooseFrame")
                 local st = cf and cf:FindFirstChild("UIStroke")
-                if selected then
+                local optText = Drop:FindFirstChild("OptionText")
+                if isDisabled then
+                    if cf then TweenService:Create(cf, TweenInfo.new(0.1), { Size = UDim2.new(0, 0, 0, 0) }):Play() end
+                    if st then TweenService:Create(st, TweenInfo.new(0.1), { Transparency = 0.999 }):Play() end
+                    TweenService:Create(Drop, TweenInfo.new(0.1), { BackgroundTransparency = 0.999 }):Play()
+                    if optText then TweenService:Create(optText, TweenInfo.new(0.1), { TextTransparency = 0.7 }):Play() end
+                elseif selected then
                     if cf then TweenService:Create(cf, TweenInfo.new(0.2), { Size = UDim2.new(0, 1, 0, 12) }):Play() end
                     if st then TweenService:Create(st, TweenInfo.new(0.2), { Transparency = 0 }):Play() end
                     TweenService:Create(Drop, TweenInfo.new(0.2), { BackgroundTransparency = 0.935 }):Play()
+                    if optText then TweenService:Create(optText, TweenInfo.new(0.2), { TextTransparency = 0.05 }):Play() end
                     table.insert(texts, Drop.OptionText.Text)
                 else
                     if cf then TweenService:Create(cf, TweenInfo.new(0.1), { Size = UDim2.new(0, 0, 0, 0) }):Play() end
                     if st then TweenService:Create(st, TweenInfo.new(0.1), { Transparency = 0.999 }):Play() end
                     TweenService:Create(Drop, TweenInfo.new(0.1), { BackgroundTransparency = 0.999 }):Play()
+                    if optText then TweenService:Create(optText, TweenInfo.new(0.2), { TextTransparency = 0.4 }):Play() end
                 end
             end
         end
@@ -2287,6 +2300,10 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             DropdownFunc:AddOption(v)
         end
         DropdownFunc:Set(selecting)
+    end
+    function DropdownFunc:SetDisabledValues(disabledList)
+        cfg.DisabledValues = disabledList or {}
+        DropdownFunc:Set(DropdownFunc.Value)
     end
     local LockFunc = ApplyLock(Dropdown, cfg.Locked)
     function DropdownFunc:SetLocked(state)
