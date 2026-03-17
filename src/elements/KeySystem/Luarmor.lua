@@ -1,31 +1,11 @@
--- // Velaris UI — Luarmor Key System Module
--- // URL: https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/src/elements/KeySystem/Luarmor
--- // Diload oleh Main.lua saat KeySystem.Luarmor = true
-
--- ╔══════════════════════════════════════════════════════════════════╗
--- ║  Parameter yang diterima dari Main.lua:                         ║
--- ║    ks            — GuiConfig.KeySystem table                    ║
--- ║    GuiConfig     — config window utama (untuk Color, dll)       ║
--- ║    CoreGui       — game:GetService("CoreGui")                   ║
--- ║    TweenService  — game:GetService("TweenService")              ║
--- ║    getIconId     — fungsi helper icon dari Main.lua             ║
--- ║    ConfigFolder  — nama folder config, misal "Velaris UI"       ║
--- ║                                                                  ║
--- ║  Return:                                                         ║
--- ║    true   — key valid, lanjut buka window                       ║
--- ║    false  — user tutup / key salah, batalkan window             ║
--- ╚══════════════════════════════════════════════════════════════════╝
+-- // Luarmot.lua | Support
 
 local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId, ConfigFolder)
 
-    -- ── Resolve warna accent ─────────────────────────────────────────────
     local accentColor = (typeof(GuiConfig.Color) == "Color3")
         and GuiConfig.Color
         or Color3.fromRGB(0, 208, 255)
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  1. Helper — ambil Luarmor object                               ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
     local function getLuarmorObj()
         if type(_G.luarmor) == "table" then return _G.luarmor end
         if type(_G.Luarmor) == "table" then return _G.Luarmor end
@@ -37,9 +17,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         return nil
     end
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  2. Helper — validasi key via Luarmor API                       ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
     local function luarmorCheckKey(key)
         local lm = getLuarmorObj()
         if not lm then
@@ -59,9 +36,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         return result == true
     end
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  3. Helper — file key                                           ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
     local ksKeyFileName = (type(ks.KeyFile) == "string" and ks.KeyFile ~= "")
         and ks.KeyFile or "CHX_key"
     local ksKeyFile = ConfigFolder .. "/Config/" .. ksKeyFileName .. ".txt"
@@ -80,19 +54,13 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         return nil
     end
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  4. Coba saved key dulu — jika valid skip UI sepenuhnya         ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
     if ks.SaveKey then
         local saved = loadKeyFromFile()
         if saved and luarmorCheckKey(saved) then
-            return true  -- langsung resolved, UI tidak dibuat
+            return true
         end
     end
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  5. Bangun UI Key System                                        ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
     local resolved = false
     local thread   = coroutine.running()
 
@@ -102,7 +70,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     KsGui.ResetOnSpawn = false
     KsGui.Parent = CoreGui
 
-    -- Card
     local Card = Instance.new("Frame")
     Card.AnchorPoint = Vector2.new(0.5, 0.5)
     Card.Position = UDim2.new(0.5, 0, 0.45, 0)
@@ -123,7 +90,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     CardStroke.Parent = Card
 
-    -- Icon box kiri atas
     local IconBox = Instance.new("Frame")
     IconBox.Size = UDim2.new(0, 24, 0, 24)
     IconBox.Position = UDim2.new(0, 14, 0, 16)
@@ -152,7 +118,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     KsIconImg.ZIndex = 103
     KsIconImg.Parent = IconBox
 
-    -- Badge LUARMOR pojok kanan atas
     local LuarmorBadge = Instance.new("Frame")
     LuarmorBadge.AnchorPoint = Vector2.new(1, 0)
     LuarmorBadge.Position = UDim2.new(1, -10, 0, 10)
@@ -181,7 +146,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     LBL2.ZIndex = 105
     LBL2.Parent = LuarmorBadge
 
-    -- Title
     local KsTitle = Instance.new("TextLabel")
     KsTitle.Font = Enum.Font.GothamBold
     KsTitle.Text = ks.Title or GuiConfig.Title or "Key System"
@@ -196,7 +160,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     KsTitle.ZIndex = 102
     KsTitle.Parent = Card
 
-    -- Divider atas
     local HDivider = Instance.new("Frame")
     HDivider.Size = UDim2.new(1, 0, 0, 1)
     HDivider.Position = UDim2.new(0, 0, 0, 50)
@@ -205,7 +168,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     HDivider.ZIndex = 102
     HDivider.Parent = Card
 
-    -- Note
     local KsNote = Instance.new("TextLabel")
     KsNote.Font = Enum.Font.Gotham
     KsNote.Text = ks.Note or ""
@@ -219,7 +181,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     KsNote.ZIndex = 102
     KsNote.Parent = Card
 
-    -- Input background
     local InputBg = Instance.new("Frame")
     InputBg.Position = UDim2.new(0, 14, 0, 84)
     InputBg.Size = UDim2.new(1, -28, 0, 32)
@@ -273,7 +234,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         }):Play()
     end)
 
-    -- Status label (Checking... / valid / invalid)
     local StatusLabel = Instance.new("TextLabel")
     StatusLabel.Font = Enum.Font.Gotham
     StatusLabel.Text = ""
@@ -287,7 +247,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     StatusLabel.ZIndex = 103
     StatusLabel.Parent = Card
 
-    -- Divider bawah
     local BDivider = Instance.new("Frame")
     BDivider.Size = UDim2.new(1, 0, 0, 1)
     BDivider.Position = UDim2.new(0, 0, 0, 134)
@@ -296,7 +255,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     BDivider.ZIndex = 102
     BDivider.Parent = Card
 
-    -- Button row
     local BtnRow = Instance.new("Frame")
     BtnRow.BackgroundTransparency = 1
     BtnRow.BorderSizePixel = 0
@@ -313,7 +271,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
     BtnList.SortOrder = Enum.SortOrder.LayoutOrder
     BtnList.Parent = BtnRow
 
-    -- ── Animasi shake card saat key salah ────────────────────────────────
     local function shakeCard()
         local orig = Card.Position
         for _, ox in ipairs({7, -7, 5, -5, 3, -3, 0}) do
@@ -323,7 +280,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         Card.Position = orig
     end
 
-    -- ── Tutup & resolve ──────────────────────────────────────────────────
     local closing = false
     local function closeUI(success)
         if closing then return end
@@ -335,14 +291,12 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         }):Play()
         task.delay(0.25, function()
             pcall(function() KsGui:Destroy() end)
-            -- Bangunkan coroutine yang sedang yield
             if coroutine.status(thread) == "suspended" then
                 coroutine.resume(thread)
             end
         end)
     end
 
-    -- ── Submit key ───────────────────────────────────────────────────────
     local checking = false
     local function submitKey(key)
         if checking or closing then return end
@@ -386,12 +340,10 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         end)
     end
 
-    -- Enter di textbox = submit
     KsInput.FocusLost:Connect(function(enterPressed)
         if enterPressed then submitKey(KsInput.Text) end
     end)
 
-    -- ── Buat tombol ──────────────────────────────────────────────────────
     local buttons = (type(ks.Buttons) == "table" and #ks.Buttons > 0)
         and ks.Buttons
         or {
@@ -479,7 +431,6 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         end)
 
         Btn.MouseButton1Click:Connect(function()
-            -- Panggil callback custom jika ada
             if type(btnCfg.Callback) == "function" then
                 pcall(btnCfg.Callback, KsInput.Text)
             end
@@ -499,15 +450,11 @@ local function LuarmorKeySystem(ks, GuiConfig, CoreGui, TweenService, getIconId,
         end)
     end
 
-    -- ── Animasi masuk ────────────────────────────────────────────────────
     TweenService:Create(Card, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, 0, 0.5, 0),
         BackgroundTransparency = 0,
     }):Play()
 
-    -- ── Tunggu hingga closeUI dipanggil ──────────────────────────────────
-    -- Main.lua memanggil modul ini di dalam coroutine/task,
-    -- jadi kita yield sampai closeUI meresume
     coroutine.yield()
 
     return resolved
