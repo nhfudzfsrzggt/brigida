@@ -1401,24 +1401,31 @@ function Chloex:Window(GuiConfig)
         GuiConfig.Keybind = keyCode
     end
 
+    -- ╔══════════════════════════════════════════════════════════════════╗
+    -- ║   GuiFunc:Tag  — dengan API :SetTitle / :SetIcon / :SetColor    ║
+    -- ╚══════════════════════════════════════════════════════════════════╝
     function GuiFunc:Tag(TagConfig)
         TagConfig = TagConfig or {}
         TagConfig.Title = TagConfig.Title or "Tag"
         TagConfig.Icon  = TagConfig.Icon or ""
 
-        local tagColor
-        if typeof(TagConfig.Color) == "Color3" then
-            tagColor = TagConfig.Color
-        elseif type(TagConfig.Color) == "string" then
-            if TagConfig.Color:sub(1,1) == "#" then
-                tagColor = Color3.fromHex(TagConfig.Color)
-            else
-                tagColor = getColor(TagConfig.Color)
+        -- Resolve warna awal
+        local function resolveColor(c)
+            if typeof(c) == "Color3" then
+                return c
+            elseif type(c) == "string" then
+                if c:sub(1,1) == "#" then
+                    return Color3.fromHex(c)
+                else
+                    return getColor(c)
+                end
             end
-        else
-            tagColor = GuiConfig.Color
+            return GuiConfig.Color
         end
 
+        local tagColor = resolveColor(TagConfig.Color)
+
+        -- ── Frame utama tag ──────────────────────────────────────────────
         local TagFrame = Instance.new("Frame")
         TagFrame.BackgroundColor3 = tagColor
         TagFrame.BackgroundTransparency = 0
@@ -1458,19 +1465,24 @@ function Chloex:Window(GuiConfig)
         TagInnerList.Padding = UDim.new(0, 4)
         TagInnerList.Parent = TagInner
 
-        local iconId = getIconId(TagConfig.Icon)
-        if iconId and iconId ~= "" then
-            local TagIcon = Instance.new("ImageLabel")
-            TagIcon.BackgroundTransparency = 1
-            TagIcon.BorderSizePixel = 0
-            TagIcon.Size = UDim2.new(0, 12, 0, 12)
-            TagIcon.Image = iconId
-            TagIcon.ImageColor3 = Color3.fromRGB(15, 15, 15)
-            TagIcon.ScaleType = Enum.ScaleType.Fit
-            TagIcon.LayoutOrder = 0
-            TagIcon.Parent = TagInner
-        end
+        -- ── Icon ─────────────────────────────────────────────────────────
+        local TagIcon = Instance.new("ImageLabel")
+        TagIcon.BackgroundTransparency = 1
+        TagIcon.BorderSizePixel = 0
+        TagIcon.Size = UDim2.new(0, 12, 0, 12)
+        TagIcon.ImageColor3 = Color3.fromRGB(15, 15, 15)
+        TagIcon.ScaleType = Enum.ScaleType.Fit
+        TagIcon.LayoutOrder = 0
+        TagIcon.Parent = TagInner
 
+        local function applyIcon(iconName)
+            local id = getIconId(iconName or "")
+            TagIcon.Image = id
+            TagIcon.Visible = (id ~= "")
+        end
+        applyIcon(TagConfig.Icon)
+
+        -- ── Label ────────────────────────────────────────────────────────
         local TagLabel = Instance.new("TextLabel")
         TagLabel.Font = Enum.Font.GothamBold
         TagLabel.Text = TagConfig.Title
@@ -1485,7 +1497,59 @@ function Chloex:Window(GuiConfig)
 
         task.defer(UpdateTagPosition)
 
-        return TagFrame
+        -- ╔══════════════════════════════════════════════════════════════╗
+        -- ║   Tag API object                                             ║
+        -- ╚══════════════════════════════════════════════════════════════╝
+        local TagApi = {}
+
+        --[[
+            TagApi:SetTitle(newTitle: string)
+            Mengubah teks label tag secara langsung.
+        ]]
+        function TagApi:SetTitle(newTitle)
+            TagLabel.Text = tostring(newTitle or "")
+            task.defer(UpdateTagPosition)
+        end
+
+        --[[
+            TagApi:SetIcon(iconName: string)
+            Mengubah icon tag. Terima nama icon (basic/lucide/solar),
+            asset id numerik, atau URL https://.
+            Kirim "" atau nil untuk menyembunyikan icon.
+        ]]
+        function TagApi:SetIcon(iconName)
+            applyIcon(iconName)
+            task.defer(UpdateTagPosition)
+        end
+
+        --[[
+            TagApi:SetColor(colorInput: Color3 | string)
+            Mengubah warna latar & stroke tag sekaligus.
+            Terima Color3, nama warna dari ColorModule, atau hex string "#RRGGBB".
+        ]]
+        function TagApi:SetColor(colorInput)
+            local newColor = resolveColor(colorInput)
+            TweenService:Create(TagFrame, TweenInfo.new(0.2), {
+                BackgroundColor3 = newColor
+            }):Play()
+            TweenService:Create(TagStroke, TweenInfo.new(0.2), {
+                Color = newColor
+            }):Play()
+        end
+
+        --[[
+            TagApi:Destroy()
+            Hapus tag dari title bar.
+        ]]
+        function TagApi:Destroy()
+            TagFrame:Destroy()
+            task.defer(UpdateTagPosition)
+        end
+
+        -- Expose frame mentah jika dibutuhkan
+        TagApi.Frame = TagFrame
+
+        return TagApi
     end
 
     Min.Activated:Connect(function()
