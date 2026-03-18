@@ -1,4 +1,4 @@
--- // Vilaris Ui | Keybind.lua |
+-- // Vilaris Ui | Keybind.lua 
 
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -142,7 +142,7 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
     KBTitle.TextYAlignment     = Enum.TextYAlignment.Top
     KBTitle.BackgroundTransparency = 1
     KBTitle.Position           = UDim2.new(0, 10, 0, 10)
-    KBTitle.Size               = UDim2.new(1, -150, 0, 13)
+    KBTitle.Size               = UDim2.new(1, -100, 0, 13)
     KBTitle.Parent             = KeybindFrame
 
     local KBContent = Instance.new("TextLabel")
@@ -156,13 +156,13 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
     KBContent.BackgroundTransparency = 1
     KBContent.TextWrapped        = true
     KBContent.Position           = UDim2.new(0, 10, 0, 25)
-    KBContent.Size               = UDim2.new(1, -150, 0, 12)
+    KBContent.Size               = UDim2.new(1, -100, 0, 12)
     KBContent.Parent             = KeybindFrame
 
     KBContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
         KBContent.TextWrapped = false
         local lines = math.max(1, KBContent.TextBounds.X // math.max(1, KBContent.AbsoluteSize.X))
-        KBContent.Size = UDim2.new(1, -150, 0, 12 + 12 * lines)
+        KBContent.Size = UDim2.new(1, -100, 0, 12 + 12 * lines)
         KeybindFrame.Size = UDim2.new(1, 0, 0, KBContent.AbsoluteSize.Y + 40)
         KBContent.TextWrapped = true
     end)
