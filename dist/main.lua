@@ -609,7 +609,7 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         currentAutoload = ""
     end
 
-    local Sections = Tab:AddSection({ Name = sectionName, Icon = sectionIcon })
+    local Sections = Tab:AddSection({ Title = sectionName, Icon = sectionIcon, Open = true })
 
     local selectedConfig = nil
     local dropdownRef    = nil
@@ -778,8 +778,8 @@ end
 
 function Chloex:Window(GuiConfig)
     GuiConfig               = GuiConfig or {}
-    GuiConfig.Title         = GuiConfig.Title or "Chloe X"
-    GuiConfig.Footer        = GuiConfig.Footer or "Chloee :3"
+    GuiConfig.Title         = GuiConfig.Title or ""
+    GuiConfig.Footer        = GuiConfig.Footer or ""
     GuiConfig.Content       = GuiConfig.Content or ""
     GuiConfig.ShowUser      = GuiConfig.ShowUser or false
     GuiConfig.Color         = getColor(GuiConfig.Color or "Default")
@@ -791,6 +791,7 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Configname    = GuiConfig.Configname or "Velaris UI"
     GuiConfig.Size          = GuiConfig.Size or UDim2.fromOffset(640, 400)
     GuiConfig.Search        = GuiConfig.Search ~= nil and GuiConfig.Search or false
+    GuiConfig.BackgroundVideo = GuiConfig.BackgroundVideo or ""
 
     GuiConfig.Config = GuiConfig.Config or {}
     GuiConfig.Config.AutoSave = GuiConfig.Config.AutoSave ~= nil and GuiConfig.Config.AutoSave or true
@@ -1279,6 +1280,37 @@ function Chloex:Window(GuiConfig)
     })
     ThemeGradient.Parent = ThemeImage
 
+    if GuiConfig.BackgroundVideo ~= "" then
+        local VideoFrame = Instance.new("VideoFrame")
+        VideoFrame.Name = "BackgroundVideo"
+        VideoFrame.Parent = ImageWrapper
+        VideoFrame.BackgroundTransparency = 1
+        VideoFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+        VideoFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        VideoFrame.Size = UDim2.new(1, 0, 1, 0)
+        VideoFrame.ZIndex = 0
+        VideoFrame.Video = "rbxassetid://" .. GuiConfig.BackgroundVideo
+        VideoFrame.Volume = 0
+        VideoFrame.Looped = true
+        VideoFrame.Playing = true
+        local VideoCorner = Instance.new("UICorner")
+        VideoCorner.CornerRadius = UDim.new(0, 8)
+        VideoCorner.Parent = VideoFrame
+        local VideoGradient = Instance.new("UIGradient")
+        VideoGradient.Rotation = 135
+        VideoGradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.4),
+            NumberSequenceKeypoint.new(0.5, 0.15),
+            NumberSequenceKeypoint.new(1, 0)
+        })
+        VideoGradient.Parent = VideoFrame
+        VideoFrame:GetPropertyChangedSignal("IsLoaded"):Connect(function()
+            if VideoFrame.IsLoaded then
+                VideoFrame.Playing = true
+            end
+        end)
+    end
+
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Top.BackgroundTransparency = 0.999
     Top.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -1297,7 +1329,7 @@ function Chloex:Window(GuiConfig)
     TitleIcon.Image = "rbxassetid://" .. GuiConfig.Image
 
     TextLabel.Font = Enum.Font.GothamBold
-    TextLabel.Text = GuiConfig.Title
+    TextLabel.Text = ""
     TextLabel.TextColor3 = GuiConfig.Color
     TextLabel.TextSize = 14
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1312,7 +1344,7 @@ function Chloex:Window(GuiConfig)
     UICorner1.Parent = Top
 
     TextLabel1.Font = Enum.Font.GothamBold
-    TextLabel1.Text = GuiConfig.Footer
+    TextLabel1.Text = ""
     TextLabel1.TextColor3 = GuiConfig.Color
     TextLabel1.TextSize = 14
     TextLabel1.TextXAlignment = Enum.TextXAlignment.Left
@@ -1368,6 +1400,47 @@ function Chloex:Window(GuiConfig)
 
     TextLabel:GetPropertyChangedSignal("TextBounds"):Connect(UpdateFooterPosition)
     UpdateFooterPosition()
+
+    if GuiConfig.Animation then
+        TextLabel1.Visible = false
+        task.spawn(function()
+            local function typeOut(text, charDelay)
+                TextLabel.Text = ""
+                for i = 1, #text do
+                    TextLabel.Text = string.sub(text, 1, i)
+                    task.wait(charDelay)
+                end
+            end
+
+            local function typeErase(charDelay)
+                local current = TextLabel.Text
+                for i = #current, 1, -1 do
+                    TextLabel.Text = string.sub(current, 1, i - 1)
+                    task.wait(charDelay)
+                end
+                TextLabel.Text = ""
+            end
+
+            local titleText = GuiConfig.Title
+            local footerText = GuiConfig.Footer
+            local charDelay = GuiConfig.TypeDelay or 0.07
+            local pauseTime = GuiConfig.TypePause or 2.5
+
+            while true do
+                typeOut(titleText, charDelay)
+                task.wait(pauseTime)
+                typeErase(charDelay)
+                task.wait(0.15)
+                typeOut(footerText, charDelay)
+                task.wait(pauseTime)
+                typeErase(charDelay)
+                task.wait(0.15)
+            end
+        end)
+    else
+        TextLabel.Text  = GuiConfig.Title
+        TextLabel1.Text = GuiConfig.Footer
+    end
 
     Close.Font = Enum.Font.SourceSans
     Close.Text = ""
