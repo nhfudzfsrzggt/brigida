@@ -1,4 +1,4 @@
-local VelarisUI = loadstring(game:HttpGet("https://fitri324.pythonanywhere.com/VilarisUi.lua/raw"))()
+local VelarisUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/dist/main.lua", true))()
 
 local Window = VelarisUI:Window({
     Title = "Velaris UI", -- Main title displayed at the top of the window
