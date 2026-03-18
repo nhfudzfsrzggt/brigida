@@ -1,4 +1,4 @@
--- // vilarisUi | Elements.lua
+-- // vilarisUi | Elements.lua | Fixed Locked Text
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -103,12 +103,11 @@ local function ApplyLock(frame, isLocked, lockMessage)
         LockOverlay.Parent = frame
         Instance.new("UICorner", LockOverlay).CornerRadius = UDim.new(0, 6)
 
-        -- Kontainer tengah: ikon + teks
         local Inner = Instance.new("Frame")
         Inner.Name = "LockInner"
         Inner.AnchorPoint = Vector2.new(0.5, 0.5)
         Inner.Position = UDim2.new(0.5, 0, 0.5, 0)
-        Inner.Size = UDim2.new(0, 10, 0, 20)
+        Inner.Size = UDim2.new(0, 120, 0, 20)
         Inner.BackgroundTransparency = 1
         Inner.ZIndex = 11
         Inner.Parent = LockOverlay
@@ -121,7 +120,6 @@ local function ApplyLock(frame, isLocked, lockMessage)
         UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
         UIListLayout.Parent = Inner
 
-        -- Ikon gembok
         local LockIcon = Instance.new("ImageLabel")
         LockIcon.Name = "LockIcon"
         LockIcon.Size = UDim2.new(0, 15, 0, 15)
@@ -134,10 +132,9 @@ local function ApplyLock(frame, isLocked, lockMessage)
         LockIcon.ZIndex = 12
         LockIcon.Parent = Inner
 
-        -- Label teks
         local LockLabel = Instance.new("TextLabel")
         LockLabel.Name = "LockLabel"
-        LockLabel.Size = UDim2.new(0, 0, 0, 20)
+        LockLabel.Size = UDim2.new(0, 80, 0, 20)
         LockLabel.BackgroundTransparency = 1
         LockLabel.Font = Enum.Font.GothamBold
         LockLabel.Text = msg
@@ -151,18 +148,17 @@ local function ApplyLock(frame, isLocked, lockMessage)
         LockLabel.ZIndex = 12
         LockLabel.Parent = Inner
 
-        -- Resize Inner sesuai konten
         local function UpdateInnerSize()
-            task.wait()
-            if not LockLabel.Parent then return end
-            local textW = math.max(1, LockLabel.TextBounds.X)
-            LockLabel.Size = UDim2.new(0, textW, 0, 20)
-            Inner.Size = UDim2.new(0, 15 + 7 + textW, 0, 20)
+            task.defer(function()
+                if not LockLabel.Parent then return end
+                local textW = math.max(40, LockLabel.TextBounds.X)
+                LockLabel.Size = UDim2.new(0, textW, 0, 20)
+                Inner.Size = UDim2.new(0, 15 + 7 + textW, 0, 20)
+            end)
         end
         LockLabel:GetPropertyChangedSignal("TextBounds"):Connect(UpdateInnerSize)
-        task.defer(UpdateInnerSize)
+        UpdateInnerSize()
 
-        -- Animasi bounce kecil saat diklik
         LockOverlay.MouseButton1Click:Connect(function()
             if not Inner.Parent then return end
             local curW = Inner.Size.X.Offset
