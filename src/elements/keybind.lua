@@ -1,4 +1,4 @@
--- // Vilaris Ui | Keybind.lua
+-- // Vilaris Ui | Keybind.lua |
 
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -183,18 +183,7 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
     Picker.Parent                 = KeybindFrame
 
     -- Mode label kecil di bawah picker
-    local ModeLbl = Instance.new("TextLabel")
-    ModeLbl.Font               = Enum.Font.Gotham
-    ModeLbl.Text               = curMode
-    ModeLbl.TextColor3         = Color3.fromRGB(255, 255, 255)
-    ModeLbl.TextSize           = 10
-    ModeLbl.TextTransparency   = 0.65
-    ModeLbl.TextXAlignment     = Enum.TextXAlignment.Right
-    ModeLbl.BackgroundTransparency = 1
-    ModeLbl.AnchorPoint        = Vector2.new(1, 1)
-    ModeLbl.Position           = UDim2.new(1, -7, 1, -4)
-    ModeLbl.Size               = UDim2.new(0, 110, 0, 12)
-    ModeLbl.Parent             = KeybindFrame
+
 
     -- Mode context menu (Obsidian style: appears at ScreenGui level)
     -- We parent it to KeybindFrame with ClipsDescendants=false so it overflows
@@ -261,7 +250,7 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
             curMode = modeName
             ModeBtn.BackgroundTransparency = 0
             ModeBtn.TextTransparency       = 0
-            ModeLbl.Text                   = modeName
+
             ModeMenu.Visible               = false
         end
 
@@ -431,7 +420,7 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
 
         toggled = false
         Display()
-        ModeLbl.Text = curMode
+
         saveState()
 
         local newMods = ConvertToInputModifiers(curMods)
