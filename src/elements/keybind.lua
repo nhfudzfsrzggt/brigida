@@ -1,4 +1,5 @@
 -- // Vilaris Ui | Keybind.lua
+
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -42,20 +43,21 @@ local BADGE_COLORS = {
 }
 local BADGE_PULSE = { New=true, Warning=true, Bug=true, Hot=true }
 
-local SZ_FULL  = UDim2.new(0, 100, 0, 26)
-local SZ_SMALL = UDim2.new(0, 26,  0, 26)
+-- Ukuran pill: Full kalau ada key, Small kalau kosong
+local SZ_FULL  = UDim2.new(0, 90, 0, 24)
+local SZ_SMALL = UDim2.new(0, 28, 0, 24)
 
 local GuiConfig  = { Color = Color3.fromRGB(0, 208, 255) }
 local ConfigData = {}
 local SaveConfig = function() end
 
 local function isNone(k)
-    return not k or k == "" or k == "None"
+    return k == nil or k == "" or k == "None"
 end
 
 local function keyLabel(k)
-    if isNone(k) then return "" end
-    return KEY_LABELS[k] or k
+    if isNone(k) then return "—" end
+    return KEY_LABELS[k] or tostring(k)
 end
 
 local function cfgKey(cfg)
@@ -70,7 +72,11 @@ local function safeCall(fn, ...)
 end
 
 local function tw(inst, t, props)
-    TweenService:Create(inst, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+    TweenService:Create(
+        inst,
+        TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        props
+    ):Play()
 end
 
 local function makeBadge(parent, badgeType)
@@ -91,48 +97,46 @@ local function makeBadge(parent, badgeType)
     Instance.new("UICorner", f).CornerRadius = UDim.new(1, 0)
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color = col
-    stroke.Thickness = 1
-    stroke.Transparency = 0.5
+    stroke.Color = col; stroke.Thickness = 1; stroke.Transparency = 0.5
     stroke.Parent = f
 
     local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, 5, 0, 5)
-    dot.AnchorPoint = Vector2.new(0, 0.5)
-    dot.Position = UDim2.new(0, 6, 0.5, 0)
+    dot.Size = UDim2.new(0,5,0,5)
+    dot.AnchorPoint = Vector2.new(0,0.5)
+    dot.Position = UDim2.new(0,6,0.5,0)
     dot.BackgroundColor3 = col
-    dot.BorderSizePixel = 0
-    dot.ZIndex = 7
+    dot.BorderSizePixel = 0; dot.ZIndex = 7
     dot.Parent = f
-    Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
 
     local lbl = Instance.new("TextLabel")
     lbl.BackgroundTransparency = 1
     lbl.Font = Enum.Font.GothamBold
     lbl.Text = string.upper(badgeType)
-    lbl.TextColor3 = col
-    lbl.TextTransparency = 0.05
-    lbl.TextSize = 9
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.AnchorPoint = Vector2.new(0, 0.5)
-    lbl.Position = UDim2.new(0, 14, 0.5, 0)
-    lbl.Size = UDim2.new(1, -18, 1, 0)
-    lbl.ZIndex = 6
-    lbl.Parent = f
+    lbl.TextColor3 = col; lbl.TextTransparency = 0.05
+    lbl.TextSize = 9; lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.AnchorPoint = Vector2.new(0,0.5)
+    lbl.Position = UDim2.new(0,14,0.5,0)
+    lbl.Size = UDim2.new(1,-18,1,0)
+    lbl.ZIndex = 6; lbl.Parent = f
 
-    local function resizeBadge()
+    lbl:GetPropertyChangedSignal("TextBounds"):Connect(function()
         task.wait()
-        if not lbl.Parent then return end
-        f.Size = UDim2.new(0, math.max(30, lbl.TextBounds.X + 22), 0, 18)
-    end
-    lbl:GetPropertyChangedSignal("TextBounds"):Connect(resizeBadge)
-    task.defer(resizeBadge)
+        if lbl.Parent then
+            f.Size = UDim2.new(0, math.max(30, lbl.TextBounds.X + 22), 0, 18)
+        end
+    end)
+    task.defer(function()
+        if lbl.Parent then
+            f.Size = UDim2.new(0, math.max(30, lbl.TextBounds.X + 22), 0, 18)
+        end
+    end)
 
     if pulse then
-        local sIn  = TweenService:Create(stroke, TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency=0.1})
-        local sOut = TweenService:Create(stroke, TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Transparency=0.65})
-        local dIn  = TweenService:Create(dot,    TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency=0.55})
-        local dOut = TweenService:Create(dot,    TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency=0})
+        local sIn  = TweenService:Create(stroke, TweenInfo.new(0.85,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut), {Transparency=0.1})
+        local sOut = TweenService:Create(stroke, TweenInfo.new(0.85,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut), {Transparency=0.65})
+        local dIn  = TweenService:Create(dot,    TweenInfo.new(0.85,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut), {BackgroundTransparency=0.55})
+        local dOut = TweenService:Create(dot,    TweenInfo.new(0.85,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut), {BackgroundTransparency=0})
         sIn.Completed:Connect(function() sOut:Play() end)
         sOut.Completed:Connect(function() sIn:Play() end)
         dIn.Completed:Connect(function() dOut:Play() end)
@@ -142,7 +146,7 @@ local function makeBadge(parent, badgeType)
 end
 
 local function makeLock(frame, locked)
-    local lk   = { IsLocked = locked == true }
+    local lk = { IsLocked = locked == true }
     local ov, pillLbl
     local _dead = false
 
@@ -151,67 +155,50 @@ local function makeLock(frame, locked)
         if ov and ov.Parent then ov:Destroy() end
 
         ov = Instance.new("TextButton")
-        ov.Text = ""
-        ov.AutoButtonColor = false
-        ov.Size = UDim2.new(1, 0, 1, 0)
-        ov.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+        ov.Text = ""; ov.AutoButtonColor = false
+        ov.Size = UDim2.new(1,0,1,0)
+        ov.BackgroundColor3 = Color3.fromRGB(8,8,14)
         ov.BackgroundTransparency = 0.38
-        ov.BorderSizePixel = 0
-        ov.ZIndex = 10
-        ov.Visible = lk.IsLocked
-        ov.Parent = frame
-        Instance.new("UICorner", ov).CornerRadius = UDim.new(0, 4)
-
+        ov.BorderSizePixel = 0; ov.ZIndex = 10
+        ov.Visible = lk.IsLocked; ov.Parent = frame
+        Instance.new("UICorner", ov).CornerRadius = UDim.new(0,4)
         local st = Instance.new("UIStroke", ov)
-        st.Color = Color3.fromRGB(255,255,255)
-        st.Thickness = 1
-        st.Transparency = 0.82
+        st.Color = Color3.fromRGB(255,255,255); st.Thickness = 1; st.Transparency = 0.82
 
         local pill = Instance.new("Frame", ov)
-        pill.AnchorPoint = Vector2.new(0.5, 0.5)
-        pill.Position = UDim2.new(0.5, 0, 0.5, 0)
-        pill.Size = UDim2.new(0, 84, 0, 22)
+        pill.AnchorPoint = Vector2.new(0.5,0.5)
+        pill.Position = UDim2.new(0.5,0,0.5,0)
+        pill.Size = UDim2.new(0,84,0,22)
         pill.BackgroundColor3 = Color3.fromRGB(255,255,255)
         pill.BackgroundTransparency = 0.88
-        pill.BorderSizePixel = 0
-        pill.ZIndex = 11
-        Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
-
+        pill.BorderSizePixel = 0; pill.ZIndex = 11
+        Instance.new("UICorner", pill).CornerRadius = UDim.new(1,0)
         local ps = Instance.new("UIStroke", pill)
-        ps.Color = Color3.fromRGB(255,255,255)
-        ps.Thickness = 1
-        ps.Transparency = 0.72
+        ps.Color = Color3.fromRGB(255,255,255); ps.Thickness = 1; ps.Transparency = 0.72
 
         local ico = Instance.new("ImageLabel", pill)
-        ico.Size = UDim2.new(0,12,0,12)
-        ico.AnchorPoint = Vector2.new(0,0.5)
-        ico.Position = UDim2.new(0,8,0.5,0)
-        ico.BackgroundTransparency = 1
+        ico.Size = UDim2.new(0,12,0,12); ico.AnchorPoint = Vector2.new(0,0.5)
+        ico.Position = UDim2.new(0,8,0.5,0); ico.BackgroundTransparency = 1
         ico.Image = "rbxassetid://134724289526879"
         ico.ImageColor3 = Color3.fromRGB(210,210,210)
-        ico.ScaleType = Enum.ScaleType.Fit
-        ico.ZIndex = 12
+        ico.ScaleType = Enum.ScaleType.Fit; ico.ZIndex = 12
 
         pillLbl = Instance.new("TextLabel", pill)
-        pillLbl.Font = Enum.Font.GothamBold
-        pillLbl.Text = "Locked"
-        pillLbl.TextSize = 11
-        pillLbl.TextColor3 = Color3.fromRGB(210,210,210)
-        pillLbl.BackgroundTransparency = 1
-        pillLbl.ZIndex = 12
+        pillLbl.Font = Enum.Font.GothamBold; pillLbl.Text = "Locked"
+        pillLbl.TextSize = 11; pillLbl.TextColor3 = Color3.fromRGB(210,210,210)
+        pillLbl.BackgroundTransparency = 1; pillLbl.ZIndex = 12
         pillLbl.AnchorPoint = Vector2.new(0,0.5)
         pillLbl.Position = UDim2.new(0,24,0.5,0)
         pillLbl.Size = UDim2.new(1,-28,1,0)
         pillLbl.TextXAlignment = Enum.TextXAlignment.Left
         pillLbl.TextTruncate = Enum.TextTruncate.AtEnd
 
-        local function resizePill()
+        pillLbl:GetPropertyChangedSignal("TextBounds"):Connect(function()
             task.wait()
-            if not pillLbl.Parent then return end
-            pill.Size = UDim2.new(0, math.max(60, pillLbl.TextBounds.X + 36), 0, 22)
-        end
-        pillLbl:GetPropertyChangedSignal("TextBounds"):Connect(resizePill)
-        task.defer(resizePill)
+            if pillLbl.Parent then
+                pill.Size = UDim2.new(0, math.max(60, pillLbl.TextBounds.X + 36), 0, 22)
+            end
+        end)
 
         ov.MouseButton1Click:Connect(function()
             if not pill.Parent then return end
@@ -226,7 +213,6 @@ local function makeLock(frame, locked)
     end
 
     build()
-
     frame.DescendantRemoving:Connect(function(d)
         if d == ov and lk.IsLocked and not _dead then task.defer(build) end
     end)
@@ -243,7 +229,6 @@ local function makeLock(frame, locked)
     function lk:SetMessage(msg)
         if pillLbl then pillLbl.Text = tostring(msg or "Locked") end
     end
-
     return lk
 end
 
@@ -270,15 +255,23 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
     KeybindConfig.Locked   = KeybindConfig.Locked   or false
     KeybindConfig.LockMsg  = KeybindConfig.LockMsg  or "Locked"
 
+    -- Load nilai tersimpan
     local ck    = cfgKey(KeybindConfig)
     local saved = ConfigData[ck]
     if type(saved) == "table" then
-        if saved.Key  then KeybindConfig.Value = saved.Key end
-        if saved.Mode and table.find(KeybindConfig.Modes, saved.Mode) then
+        if type(saved.Key) == "string" and saved.Key ~= "" then
+            KeybindConfig.Value = saved.Key
+        end
+        if type(saved.Mode) == "string" and table.find(KeybindConfig.Modes, saved.Mode) then
             KeybindConfig.Mode = saved.Mode
         end
     elseif type(saved) == "string" and saved ~= "" then
         KeybindConfig.Value = saved
+    end
+
+    -- Pastikan Value adalah string yang bersih
+    if type(KeybindConfig.Value) ~= "string" then
+        KeybindConfig.Value = "None"
     end
 
     local curKey    = KeybindConfig.Value
@@ -287,153 +280,163 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
     local listening = false
     local listenC, trigC, trigEndC
 
+    -- Tentukan tampilan awal key
+    local hasKey     = not isNone(curKey)
+    local initText   = hasKey and keyLabel(curKey) or "—"
+    local initSize   = hasKey and SZ_FULL or SZ_SMALL
+
+    -- Frame utama row
     local KeybindFrame = Instance.new("Frame")
-    KeybindFrame.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+    KeybindFrame.BackgroundColor3       = Color3.fromRGB(255,255,255)
     KeybindFrame.BackgroundTransparency = 0.935
     KeybindFrame.BorderSizePixel        = 0
     KeybindFrame.LayoutOrder            = CountItem
-    KeybindFrame.Size                   = UDim2.new(1, 0, 0, 46)
+    KeybindFrame.Size                   = UDim2.new(1,0,0,46)
     KeybindFrame.Name                   = "KeybindFrame"
     KeybindFrame.ClipsDescendants       = false
     KeybindFrame.Parent                 = SectionAdd
-    Instance.new("UICorner", KeybindFrame).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", KeybindFrame).CornerRadius = UDim.new(0,4)
 
     if KeybindConfig.Badge then makeBadge(KeybindFrame, KeybindConfig.Badge) end
 
     local KBTitle = Instance.new("TextLabel")
     KBTitle.Font               = Enum.Font.GothamBold
     KBTitle.Text               = KeybindConfig.Title
-    KBTitle.TextColor3         = Color3.fromRGB(231, 231, 231)
+    KBTitle.TextColor3         = Color3.fromRGB(231,231,231)
     KBTitle.TextSize           = 13
     KBTitle.TextXAlignment     = Enum.TextXAlignment.Left
     KBTitle.TextYAlignment     = Enum.TextYAlignment.Top
     KBTitle.BackgroundTransparency = 1
-    KBTitle.Position           = UDim2.new(0, 10, 0, 10)
-    KBTitle.Size               = UDim2.new(1, -180, 0, 13)
+    KBTitle.Position           = UDim2.new(0,10,0,10)
+    KBTitle.Size               = UDim2.new(1,-150,0,13)
     KBTitle.Parent             = KeybindFrame
 
     local KBContent = Instance.new("TextLabel")
     KBContent.Font               = Enum.Font.GothamBold
     KBContent.Text               = KeybindConfig.Content
-    KBContent.TextColor3         = Color3.fromRGB(255, 255, 255)
+    KBContent.TextColor3         = Color3.fromRGB(255,255,255)
     KBContent.TextSize           = 12
     KBContent.TextTransparency   = 0.6
     KBContent.TextXAlignment     = Enum.TextXAlignment.Left
     KBContent.TextYAlignment     = Enum.TextYAlignment.Bottom
     KBContent.BackgroundTransparency = 1
     KBContent.TextWrapped        = true
-    KBContent.Position           = UDim2.new(0, 10, 0, 25)
-    KBContent.Size               = UDim2.new(1, -180, 0, 12)
+    KBContent.Position           = UDim2.new(0,10,0,25)
+    KBContent.Size               = UDim2.new(1,-150,0,12)
     KBContent.Parent             = KeybindFrame
 
     KBContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
         KBContent.TextWrapped = false
         local lines = math.max(1, KBContent.TextBounds.X // math.max(1, KBContent.AbsoluteSize.X))
-        KBContent.Size = UDim2.new(1, -180, 0, 12 + 12 * lines)
-        KeybindFrame.Size = UDim2.new(1, 0, 0, KBContent.AbsoluteSize.Y + 40)
+        KBContent.Size = UDim2.new(1,-150,0, 12 + 12*lines)
+        KeybindFrame.Size = UDim2.new(1,0,0, KBContent.AbsoluteSize.Y + 40)
         KBContent.TextWrapped = true
     end)
 
+    -- Key pill — TIDAK ClipsDescendants supaya tidak memotong text
     local InputFrame = Instance.new("Frame")
-    InputFrame.AnchorPoint            = Vector2.new(1, 0)
-    InputFrame.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
-    InputFrame.BackgroundTransparency = 0.95
+    InputFrame.AnchorPoint            = Vector2.new(1,0.5)
+    InputFrame.BackgroundColor3       = Color3.fromRGB(255,255,255)
+    InputFrame.BackgroundTransparency = 0.92
     InputFrame.BorderSizePixel        = 0
-    InputFrame.ClipsDescendants       = true
-    InputFrame.Position               = UDim2.new(1, -7, 0, 10)
-    InputFrame.Size                   = isNone(curKey) and SZ_SMALL or SZ_FULL
+    InputFrame.Position               = UDim2.new(1,-7,0.5,0)
+    InputFrame.Size                   = initSize
     InputFrame.Name                   = "InputFrame"
     InputFrame.Parent                 = KeybindFrame
-    Instance.new("UICorner", InputFrame).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", InputFrame).CornerRadius = UDim.new(0,4)
 
     local InputStroke = Instance.new("UIStroke")
-    InputStroke.Color           = Color3.fromRGB(255, 255, 255)
+    InputStroke.Color           = Color3.fromRGB(255,255,255)
     InputStroke.Thickness       = 1
-    InputStroke.Transparency    = 0.85
+    InputStroke.Transparency    = 0.82
     InputStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     InputStroke.Parent          = InputFrame
 
     local KeyLabel = Instance.new("TextLabel")
-    KeyLabel.AnchorPoint            = Vector2.new(0.5, 0.5)
+    KeyLabel.AnchorPoint            = Vector2.new(0.5,0.5)
     KeyLabel.Font                   = Enum.Font.GothamBold
-    KeyLabel.Text                   = isNone(curKey) and "" or keyLabel(curKey)
-    KeyLabel.TextColor3             = Color3.fromRGB(220, 220, 220)
+    KeyLabel.Text                   = initText
+    KeyLabel.TextColor3             = hasKey and Color3.fromRGB(220,220,220) or Color3.fromRGB(100,100,100)
     KeyLabel.TextSize               = 11
     KeyLabel.TextXAlignment         = Enum.TextXAlignment.Center
     KeyLabel.BackgroundTransparency = 1
-    KeyLabel.Position               = UDim2.new(0.5, 0, 0.5, 0)
-    KeyLabel.Size                   = UDim2.new(1, 0, 1, 0)
+    KeyLabel.Position               = UDim2.new(0.5,0,0.5,0)
+    KeyLabel.Size                   = UDim2.new(1,0,1,0)
     KeyLabel.Parent                 = InputFrame
 
+    -- Label mode di bawah pill
     local ModeLbl = Instance.new("TextLabel")
     ModeLbl.Font               = Enum.Font.Gotham
     ModeLbl.Text               = curMode
-    ModeLbl.TextColor3         = Color3.fromRGB(255, 255, 255)
+    ModeLbl.TextColor3         = Color3.fromRGB(255,255,255)
     ModeLbl.TextSize           = 10
     ModeLbl.TextTransparency   = 0.65
     ModeLbl.TextXAlignment     = Enum.TextXAlignment.Right
     ModeLbl.BackgroundTransparency = 1
-    ModeLbl.AnchorPoint        = Vector2.new(1, 1)
-    ModeLbl.Position           = UDim2.new(1, -7, 1, -4)
-    ModeLbl.Size               = UDim2.new(0, 110, 0, 12)
+    ModeLbl.AnchorPoint        = Vector2.new(1,1)
+    ModeLbl.Position           = UDim2.new(1,-7,1,-4)
+    ModeLbl.Size               = UDim2.new(0,110,0,12)
     ModeLbl.Parent             = KeybindFrame
 
+    -- Tombol transparan di atas pill untuk handle klik
     local ClickBtn = Instance.new("TextButton")
     ClickBtn.Text               = ""
     ClickBtn.BackgroundTransparency = 1
     ClickBtn.AutoButtonColor    = false
     ClickBtn.ZIndex             = 5
-    ClickBtn.Size               = UDim2.new(1, 0, 1, 0)
+    ClickBtn.Size               = UDim2.new(1,0,1,0)
     ClickBtn.Parent             = InputFrame
 
+    -- Mode dropdown menu
     local ModeMenu = Instance.new("Frame")
     ModeMenu.Name               = "ModeMenu"
-    ModeMenu.AnchorPoint        = Vector2.new(1, 0)
-    ModeMenu.BackgroundColor3   = Color3.fromRGB(16, 16, 22)
+    ModeMenu.AnchorPoint        = Vector2.new(1,0)
+    ModeMenu.BackgroundColor3   = Color3.fromRGB(16,16,22)
     ModeMenu.BackgroundTransparency = 0.04
     ModeMenu.BorderSizePixel    = 0
-    ModeMenu.Size               = UDim2.new(0, 112, 0, #KeybindConfig.Modes * 26 + 10)
-    ModeMenu.Position           = UDim2.new(1, -7, 0, 40)
+    ModeMenu.Size               = UDim2.new(0,112,0, #KeybindConfig.Modes * 26 + 10)
+    ModeMenu.Position           = UDim2.new(1,-7,0,32)
     ModeMenu.ZIndex             = 50
     ModeMenu.Visible            = false
     ModeMenu.ClipsDescendants   = false
     ModeMenu.Parent             = KeybindFrame
-    Instance.new("UICorner", ModeMenu).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", ModeMenu).CornerRadius = UDim.new(0,6)
 
     local MMStroke = Instance.new("UIStroke", ModeMenu)
     MMStroke.Color = Color3.fromRGB(255,255,255)
-    MMStroke.Thickness = 1
-    MMStroke.Transparency = 0.82
+    MMStroke.Thickness = 1; MMStroke.Transparency = 0.82
 
     local MML = Instance.new("UIListLayout", ModeMenu)
-    MML.Padding = UDim.new(0, 2)
-    MML.SortOrder = Enum.SortOrder.LayoutOrder
+    MML.Padding = UDim.new(0,2); MML.SortOrder = Enum.SortOrder.LayoutOrder
 
     local MMP = Instance.new("UIPadding", ModeMenu)
-    MMP.PaddingTop    = UDim.new(0, 4)
-    MMP.PaddingBottom = UDim.new(0, 4)
-    MMP.PaddingLeft   = UDim.new(0, 4)
-    MMP.PaddingRight  = UDim.new(0, 4)
+    MMP.PaddingTop    = UDim.new(0,4); MMP.PaddingBottom = UDim.new(0,4)
+    MMP.PaddingLeft   = UDim.new(0,4); MMP.PaddingRight  = UDim.new(0,4)
 
-    local ModeButtons  = {}
+    -- ──────────────────────────────────────────────────────────────
+    local ModeButtons = {}
     local updateLabel, updateTrigger
 
     updateLabel = function()
-        KeyLabel.Text = isNone(curKey) and "" or keyLabel(curKey)
-        tw(InputFrame, 0.2, { Size = isNone(curKey) and SZ_SMALL or SZ_FULL })
+        local has = not isNone(curKey)
+        KeyLabel.Text      = has and keyLabel(curKey) or "—"
+        KeyLabel.TextColor3 = has
+            and Color3.fromRGB(220,220,220)
+            or  Color3.fromRGB(100,100,100)
+        tw(InputFrame, 0.18, { Size = has and SZ_FULL or SZ_SMALL })
     end
 
-    local function setListening(on)
+    -- Hanya ubah visual ke listening, JANGAN panggil ini saat init
+    local function setListeningVisual(on)
         if on then
             KeyLabel.Text       = "..."
-            KeyLabel.TextColor3 = Color3.fromRGB(130, 130, 130)
-            tw(InputFrame,  0.15, {Size=SZ_FULL, BackgroundTransparency=0.88})
+            KeyLabel.TextColor3 = Color3.fromRGB(130,130,130)
+            tw(InputFrame,  0.15, {Size=SZ_FULL, BackgroundTransparency=0.85})
             tw(InputStroke, 0.15, {Color=GuiConfig.Color, Transparency=0.2})
         else
-            KeyLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
             updateLabel()
-            tw(InputFrame,  0.15, {BackgroundTransparency=0.95})
-            tw(InputStroke, 0.15, {Color=Color3.fromRGB(255,255,255), Transparency=0.85})
+            tw(InputFrame,  0.15, {BackgroundTransparency=0.92})
+            tw(InputStroke, 0.15, {Color=Color3.fromRGB(255,255,255), Transparency=0.82})
         end
     end
 
@@ -478,36 +481,33 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
         end
     end
 
+    -- Tombol per mode
     for i, modeName in ipairs(KeybindConfig.Modes) do
         local active = modeName == curMode
 
         local Btn = Instance.new("TextButton")
         Btn.Font               = Enum.Font.GothamBold
-        Btn.Text               = modeName
-        Btn.TextSize           = 12
-        Btn.TextColor3         = Color3.fromRGB(220, 220, 220)
+        Btn.Text               = modeName; Btn.TextSize = 12
+        Btn.TextColor3         = Color3.fromRGB(220,220,220)
         Btn.TextTransparency   = active and 0 or 0.45
         Btn.TextXAlignment     = Enum.TextXAlignment.Left
         Btn.BackgroundColor3   = active and GuiConfig.Color or Color3.fromRGB(255,255,255)
         Btn.BackgroundTransparency = active and 0.68 or 1
-        Btn.BorderSizePixel    = 0
-        Btn.AutoButtonColor    = false
-        Btn.Size               = UDim2.new(1, 0, 0, 24)
-        Btn.ZIndex             = 51
-        Btn.LayoutOrder        = i
+        Btn.BorderSizePixel    = 0; Btn.AutoButtonColor = false
+        Btn.Size               = UDim2.new(1,0,0,24)
+        Btn.ZIndex             = 51; Btn.LayoutOrder = i
         Btn.Parent             = ModeMenu
-        Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 4)
-        Instance.new("UIPadding", Btn).PaddingLeft = UDim.new(0, 8)
+        Instance.new("UICorner", Btn).CornerRadius = UDim.new(0,4)
+        Instance.new("UIPadding", Btn).PaddingLeft = UDim.new(0,8)
 
         local Dot = Instance.new("Frame", Btn)
-        Dot.AnchorPoint        = Vector2.new(1, 0.5)
-        Dot.Position           = UDim2.new(1, -8, 0.5, 0)
-        Dot.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
+        Dot.AnchorPoint        = Vector2.new(1,0.5)
+        Dot.Position           = UDim2.new(1,-8,0.5,0)
+        Dot.BackgroundColor3   = Color3.fromRGB(255,255,255)
         Dot.BackgroundTransparency = active and 0.2 or 1
-        Dot.BorderSizePixel    = 0
-        Dot.ZIndex             = 52
+        Dot.BorderSizePixel    = 0; Dot.ZIndex = 52
         Dot.Size               = active and UDim2.new(0,5,0,5) or UDim2.new(0,0,0,0)
-        Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
+        Instance.new("UICorner", Dot).CornerRadius = UDim.new(1,0)
 
         ModeButtons[modeName] = { Btn=Btn, Dot=Dot }
 
@@ -532,8 +532,7 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
                     BackgroundTransparency = a and 0.2 or 1,
                 })
             end
-            curMode          = modeName
-            ModeLbl.Text     = modeName
+            curMode = modeName; ModeLbl.Text = modeName
             ModeMenu.Visible = false
             saveState()
             safeCall(KeybindConfig.Changed, curKey, curMode)
@@ -541,29 +540,31 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
         end)
     end
 
+    -- Hover
     ClickBtn.MouseEnter:Connect(function()
         if listening then return end
-        tw(InputFrame,  0.15, {BackgroundTransparency=0.88})
-        tw(InputStroke, 0.15, {Transparency=0.55})
+        tw(InputFrame,  0.15, {BackgroundTransparency=0.85})
+        tw(InputStroke, 0.15, {Transparency=0.5})
     end)
     ClickBtn.MouseLeave:Connect(function()
         if listening then return end
-        tw(InputFrame,  0.15, {BackgroundTransparency=0.95})
-        tw(InputStroke, 0.15, {Transparency=0.85})
+        tw(InputFrame,  0.15, {BackgroundTransparency=0.92})
+        tw(InputStroke, 0.15, {Transparency=0.82})
     end)
 
     local function cancelListening()
         if listenC then listenC:Disconnect(); listenC = nil end
         listening = false
-        setListening(false)
+        setListeningVisual(false)
     end
 
+    -- Left click: mulai/batal listening
     ClickBtn.MouseButton1Click:Connect(function()
         if ModeMenu.Visible then ModeMenu.Visible = false return end
         if listening then cancelListening() return end
 
         listening = true
-        setListening(true)
+        setListeningVisual(true)
 
         listenC = UserInputService.InputBegan:Connect(function(input, gpe)
             if gpe then return end
@@ -572,32 +573,29 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
             if not isKb and not isMb then return end
             if isKb and MODIFIER_NAMES[input.KeyCode.Name] then return end
 
-            if isKb then
-                if input.KeyCode == Enum.KeyCode.Escape then
-                    listenC:Disconnect() listenC = nil
-                    listening = false
-                    curKey = "None"
-                    setListening(false)
-                    saveState()
-                    safeCall(KeybindConfig.Changed, curKey, curMode)
-                    updateTrigger()
-                    return
-                end
-                curKey = input.KeyCode.Name
-            else
-                curKey = MB_TO_NAME[input.UserInputType]
+            if isKb and input.KeyCode == Enum.KeyCode.Escape then
+                listenC:Disconnect(); listenC = nil
+                listening = false; curKey = "None"
+                setListeningVisual(false)
+                saveState()
+                safeCall(KeybindConfig.Changed, curKey, curMode)
+                updateTrigger()
+                return
             end
+
+            curKey = isKb and input.KeyCode.Name or MB_TO_NAME[input.UserInputType]
             if not curKey then return end
 
-            listenC:Disconnect() listenC = nil
+            listenC:Disconnect(); listenC = nil
             listening = false
-            setListening(false)
+            setListeningVisual(false)
             saveState()
             safeCall(KeybindConfig.Changed, curKey, curMode)
             updateTrigger()
         end)
     end)
 
+    -- Right click: buka mode menu
     local _menuJustOpened = false
     ClickBtn.MouseButton2Click:Connect(function()
         if #KeybindConfig.Modes <= 1 then return end
@@ -627,18 +625,19 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
 
     updateTrigger()
 
+    -- API
     local KeybindFunc = {}
 
     function KeybindFunc:Set(value, silent)
-        curKey = isNone(value) and "None" or tostring(value)
+        curKey = (isNone(value) or type(value) ~= "string") and "None" or value
         updateLabel()
         updateTrigger()
         saveState()
         if not silent then safeCall(KeybindConfig.Changed, curKey, curMode) end
     end
 
-    function KeybindFunc:Get()         return curKey  end
-    function KeybindFunc:GetMode()     return curMode end
+    function KeybindFunc:Get()     return curKey  end
+    function KeybindFunc:GetMode() return curMode end
 
     function KeybindFunc:SetMode(mode)
         if not table.find(KeybindConfig.Modes, mode) then return end
@@ -650,10 +649,8 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
             mb.Dot.Size                    = a and UDim2.new(0,5,0,5) or UDim2.new(0,0,0,0)
             mb.Dot.BackgroundTransparency  = a and 0.2 or 1
         end
-        curMode      = mode
-        ModeLbl.Text = mode
-        saveState()
-        updateTrigger()
+        curMode = mode; ModeLbl.Text = mode
+        saveState(); updateTrigger()
     end
 
     function KeybindFunc:GetState()
@@ -665,17 +662,19 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
                     and not UserInputService:GetFocusedTextBox()
             end
             local ok, kc = pcall(function() return Enum.KeyCode[curKey] end)
-            return ok and UserInputService:IsKeyDown(kc) and not UserInputService:GetFocusedTextBox() or false
+            return ok and UserInputService:IsKeyDown(kc)
+                       and not UserInputService:GetFocusedTextBox()
+                       or false
         end
         return toggled
     end
 
-    function KeybindFunc:Clear(silent)          KeybindFunc:Set("None", silent)          end
-    function KeybindFunc:SetTitle(t)            KBTitle.Text = tostring(t or "Keybind")  end
-    function KeybindFunc:SetContent(t)          KBContent.Text = tostring(t or "")       end
-    function KeybindFunc:SetLocked(s)           LockCtrl:SetLocked(s)                    end
-    function KeybindFunc:GetLocked()            return LockCtrl:GetLocked()              end
-    function KeybindFunc:SetLockMessage(m)      LockCtrl:SetMessage(m)                   end
+    function KeybindFunc:Clear(silent)      KeybindFunc:Set("None", silent)         end
+    function KeybindFunc:SetTitle(t)        KBTitle.Text = tostring(t or "Keybind") end
+    function KeybindFunc:SetContent(t)      KBContent.Text = tostring(t or "")      end
+    function KeybindFunc:SetLocked(s)       LockCtrl:SetLocked(s)                   end
+    function KeybindFunc:GetLocked()        return LockCtrl:GetLocked()             end
+    function KeybindFunc:SetLockMessage(m)  LockCtrl:SetMessage(m)                  end
 
     function KeybindFunc:Destroy()
         if listenC     then listenC:Disconnect()     end
