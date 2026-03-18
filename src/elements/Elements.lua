@@ -5,10 +5,8 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local Elements = {}
 
--- ── FIX: Registry global untuk semua element ──────────────────────────
 local _registeredElements = {}
 Elements.Elements = _registeredElements
--- ──────────────────────────────────────────────────────────────────────
 
 local SaveConfig, ConfigData, GuiConfig, Icons
 function Elements:Initialize(config, saveFunc, configData, icons)
@@ -80,10 +78,10 @@ local BADGE_CONFIG = {
         Dot   = false,
     },
 }
+
 local function ApplyLock(frame, isLocked, lockMessage)
     local LockFunc = { IsLocked = isLocked == true }
     local msg = lockMessage or "Locked"
-    local _pillBaseW = 90
     local _destroyed = false
     local _rebuilding = false
     local LockOverlay
@@ -95,8 +93,8 @@ local function ApplyLock(frame, isLocked, lockMessage)
         LockOverlay.Name = "LockOverlay"
         LockOverlay.Text = ""
         LockOverlay.Size = UDim2.new(1, 0, 1, 0)
-        LockOverlay.BackgroundColor3 = Color3.fromRGB(8, 8, 12)
-        LockOverlay.BackgroundTransparency = 0.35
+        LockOverlay.BackgroundColor3 = Color3.fromRGB(10, 8, 18)
+        LockOverlay.BackgroundTransparency = 0.28
         LockOverlay.BorderSizePixel = 0
         LockOverlay.ZIndex = 10
         LockOverlay.AutoButtonColor = false
@@ -105,87 +103,82 @@ local function ApplyLock(frame, isLocked, lockMessage)
         LockOverlay.Parent = frame
         Instance.new("UICorner", LockOverlay).CornerRadius = UDim.new(0, 6)
 
-        local Stroke = Instance.new("UIStroke")
-        Stroke.Color = Color3.fromRGB(255, 255, 255)
-        Stroke.Thickness = 1
-        Stroke.Transparency = 0.82
-        Stroke.Parent = LockOverlay
+        -- Kontainer tengah: ikon + teks
+        local Inner = Instance.new("Frame")
+        Inner.Name = "LockInner"
+        Inner.AnchorPoint = Vector2.new(0.5, 0.5)
+        Inner.Position = UDim2.new(0.5, 0, 0.5, 0)
+        Inner.Size = UDim2.new(0, 10, 0, 20)
+        Inner.BackgroundTransparency = 1
+        Inner.ZIndex = 11
+        Inner.Parent = LockOverlay
 
-        local Pill = Instance.new("Frame")
-        Pill.Name = "LockPill"
-        Pill.AnchorPoint = Vector2.new(0.5, 0.5)
-        Pill.Position = UDim2.new(0.5, 0, 0.5, 0)
-        Pill.Size = UDim2.new(0, _pillBaseW, 0, 22)
-        Pill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Pill.BackgroundTransparency = 0.88
-        Pill.BorderSizePixel = 0
-        Pill.ZIndex = 11
-        Pill.Parent = LockOverlay
-        Instance.new("UICorner", Pill).CornerRadius = UDim.new(1, 0)
+        local UIListLayout = Instance.new("UIListLayout")
+        UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+        UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        UIListLayout.Padding = UDim.new(0, 7)
+        UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        UIListLayout.Parent = Inner
 
-        local PillStroke = Instance.new("UIStroke")
-        PillStroke.Color = Color3.fromRGB(255, 255, 255)
-        PillStroke.Thickness = 1
-        PillStroke.Transparency = 0.7
-        PillStroke.Parent = Pill
-
+        -- Ikon gembok
         local LockIcon = Instance.new("ImageLabel")
         LockIcon.Name = "LockIcon"
-        LockIcon.Size = UDim2.new(0, 12, 0, 12)
-        LockIcon.AnchorPoint = Vector2.new(0, 0.5)
-        LockIcon.Position = UDim2.new(0, 8, 0.5, 0)
+        LockIcon.Size = UDim2.new(0, 15, 0, 15)
         LockIcon.BackgroundTransparency = 1
         LockIcon.ScaleType = Enum.ScaleType.Fit
         LockIcon.Image = "rbxassetid://134724289526879"
-        LockIcon.ImageColor3 = Color3.fromRGB(220, 220, 220)
-        LockIcon.ImageTransparency = 0.1
+        LockIcon.ImageColor3 = Color3.fromRGB(235, 235, 235)
+        LockIcon.ImageTransparency = 0.05
+        LockIcon.LayoutOrder = 1
         LockIcon.ZIndex = 12
-        LockIcon.Parent = Pill
+        LockIcon.Parent = Inner
 
+        -- Label teks
         local LockLabel = Instance.new("TextLabel")
         LockLabel.Name = "LockLabel"
-        LockLabel.AnchorPoint = Vector2.new(0, 0.5)
-        LockLabel.Position = UDim2.new(0, 24, 0.5, 0)
-        LockLabel.Size = UDim2.new(1, -28, 1, 0)
+        LockLabel.Size = UDim2.new(0, 0, 0, 20)
         LockLabel.BackgroundTransparency = 1
         LockLabel.Font = Enum.Font.GothamBold
         LockLabel.Text = msg
-        LockLabel.TextSize = 11
-        LockLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-        LockLabel.TextTransparency = 0.1
+        LockLabel.TextSize = 13
+        LockLabel.TextColor3 = Color3.fromRGB(235, 235, 235)
+        LockLabel.TextTransparency = 0.05
         LockLabel.TextXAlignment = Enum.TextXAlignment.Left
+        LockLabel.TextYAlignment = Enum.TextYAlignment.Center
         LockLabel.TextTruncate = Enum.TextTruncate.AtEnd
+        LockLabel.LayoutOrder = 2
         LockLabel.ZIndex = 12
-        LockLabel.Parent = Pill
+        LockLabel.Parent = Inner
 
-        local function UpdatePillWidth()
+        -- Resize Inner sesuai konten
+        local function UpdateInnerSize()
             task.wait()
             if not LockLabel.Parent then return end
-            local textW = LockLabel.TextBounds.X
-            local newW = math.max(60, textW + 38)
-            Pill.Size = UDim2.new(0, newW, 0, 22)
-            _pillBaseW = newW
+            local textW = math.max(1, LockLabel.TextBounds.X)
+            LockLabel.Size = UDim2.new(0, textW, 0, 20)
+            Inner.Size = UDim2.new(0, 15 + 7 + textW, 0, 20)
         end
-        LockLabel:GetPropertyChangedSignal("TextBounds"):Connect(UpdatePillWidth)
-        task.defer(UpdatePillWidth)
+        LockLabel:GetPropertyChangedSignal("TextBounds"):Connect(UpdateInnerSize)
+        task.defer(UpdateInnerSize)
 
+        -- Animasi bounce kecil saat diklik
         LockOverlay.MouseButton1Click:Connect(function()
-            if not Pill.Parent then return end
-            TweenService:Create(Pill, TweenInfo.new(0.08, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, _pillBaseW + 6, 0, 26)
-            }):Play()
-            task.delay(0.2, function()
-                if not Pill.Parent then return end
-                TweenService:Create(Pill, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Size = UDim2.new(0, _pillBaseW, 0, 22)
-                }):Play()
+            if not Inner.Parent then return end
+            local curW = Inner.Size.X.Offset
+            TweenService:Create(Inner, TweenInfo.new(0.07, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                { Size = UDim2.new(0, curW + 8, 0, 24) }):Play()
+            task.delay(0.18, function()
+                if not Inner.Parent then return end
+                TweenService:Create(Inner, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    { Size = UDim2.new(0, curW, 0, 20) }):Play()
             end)
         end)
 
         function LockFunc:SetMessage(text)
             msg = tostring(text or "Locked")
             LockLabel.Text = msg
-            UpdatePillWidth()
+            UpdateInnerSize()
         end
     end
 
@@ -229,6 +222,7 @@ local function ApplyLock(frame, isLocked, lockMessage)
 
     return LockFunc
 end
+
 local function CreateBadge(parent, badgeType)
     local preset = BADGE_CONFIG[badgeType]
     if not preset then
@@ -318,6 +312,7 @@ end
 function Elements:CreateBadge(parent, badgeType)
     return CreateBadge(parent, badgeType)
 end
+
 local _activeTweens = {}
 local function AnimateButtonClick(button, color)
     color = color or GuiConfig.Color
@@ -360,15 +355,18 @@ local function AnimateButtonClick(button, color)
     end)
     tweenIn:Play()
 end
+
 local function SafeCall(fn, ...)
     if typeof(fn) ~= "function" then return end
     local ok, err = pcall(fn, ...)
     if not ok then warn("[Elements] Callback error:", err) end
 end
+
 local function RoundToFactor(value, factor)
     if factor == 0 then return value end
     return math.floor(value / factor + 0.5) * factor
 end
+
 function Elements:CreateParagraph(parent, config, countItem)
     local cfg = config or {}
     cfg.Title      = cfg.Title      or "Title"
@@ -675,6 +673,7 @@ function Elements:CreateParagraph(parent, config, countItem)
     end
     return ParagraphFunc
 end
+
 function Elements:CreateEditableParagraph(parent, config, countItem)
     local cfg = config or {}
     cfg.Title       = cfg.Title       or "Title"
@@ -819,6 +818,7 @@ function Elements:CreateEditableParagraph(parent, config, countItem)
     end
     return ParagraphFunc
 end
+
 function Elements:CreatePanel(parent, config, countItem)
     local cfg = config or {}
     cfg.Title             = cfg.Title          or "Title"
@@ -981,6 +981,7 @@ function Elements:CreatePanel(parent, config, countItem)
     end
     return PanelFunc
 end
+
 function Elements:CreateButton(parent, config, countItem)
     local cfg = config or {}
     cfg.Title       = cfg.Title       or "Confirm"
@@ -1228,6 +1229,7 @@ function Elements:CreateButton(parent, config, countItem)
     end
     return ButtonFunc
 end
+
 function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
     cfg.Title    = cfg.Title    or "Title"
@@ -1414,7 +1416,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             else
                 TweenService:Create(ToggleTitle,  TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
                 TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0) }):Play()
-                TweenService:Create(UIStroke8,    TweenService and TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
+                TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
                 TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
             end
         end
@@ -1434,10 +1436,10 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     end
     ToggleFunc:Set(ToggleFunc.Value, true)
     Elements_Table[configKey] = ToggleFunc
-    -- ── FIX: Daftarkan ke _registeredElements ──
     _registeredElements[configKey] = ToggleFunc
     return ToggleFunc
 end
+
 function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
     cfg.Title     = cfg.Title     or "Slider"
@@ -1663,10 +1665,10 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     end
     SliderFunc:Set(cfg.Default, true)
     Elements_Table[configKey] = SliderFunc
-    -- ── FIX: Daftarkan ke _registeredElements ──
     _registeredElements[configKey] = SliderFunc
     return SliderFunc
 end
+
 function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
     cfg.Title       = cfg.Title       or "Title"
@@ -1886,10 +1888,10 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
     end
     InputFunc:Set(InputFunc.Value, true)
     Elements_Table[configKey] = InputFunc
-    -- ── FIX: Daftarkan ke _registeredElements ──
     _registeredElements[configKey] = InputFunc
     return InputFunc
 end
+
 function Elements:CreateDropdown(parent, config, countItem, countDropdown, DropdownFolder, MoreBlur, DropdownSelect, DropPageLayout, Elements_Table)
     local cfg = config or {}
     cfg.Title          = cfg.Title    or "Title"
@@ -2337,10 +2339,10 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
     end
     DropdownFunc:SetValues(cfg.Options, cfg.Default)
     Elements_Table[configKey] = DropdownFunc
-    -- ── FIX: Daftarkan ke _registeredElements ──
     _registeredElements[configKey] = DropdownFunc
     return DropdownFunc
 end
+
 function Elements:CreateDivider(parent, countItem)
     local Divider = Instance.new("Frame")
     Divider.Name = "Divider"
@@ -2362,6 +2364,7 @@ function Elements:CreateDivider(parent, countItem)
     Instance.new("UICorner", Divider).CornerRadius = UDim.new(0, 2)
     return Divider
 end
+
 function Elements:CreateSubSection(parent, title, countItem)
     title = title or "Sub Section"
     local SubSection = Instance.new("Frame")
@@ -2390,4 +2393,5 @@ function Elements:CreateSubSection(parent, title, countItem)
     Label.Parent = SubSection
     return SubSection
 end
+
 return Elements
