@@ -1,4 +1,4 @@
--- // Version : 0.1.9 | Tag + KeySystem + ColorPicker Floating | Main.lua
+-- // Version : 0.2.0 | ConfigSection | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -275,14 +275,6 @@ function CircleClick(Button, X, Y)
     end)
 end
 
--- ╔══════════════════════════════════════════════════════════════════╗
--- ║   FLOATING COLOR PICKER — ditambah di v0.1.9                    ║
--- ║   Panel di ScreenGui sendiri (VelarisCP), independent           ║
--- ║   dari window utama sehingga tidak ikut gerak saat drag         ║
--- ╚══════════════════════════════════════════════════════════════════╝
-
-
--- ── Colorpicker — delegasi ke module external ────────────────────────
 local _CPGui          = nil
 local _CPPanel        = nil
 local _CPPanelButtons = nil
@@ -524,6 +516,264 @@ Notify = Nt
 
 function Chloex:Dialog(DialogConfig)
     return DialogModule(DialogConfig)
+end
+
+function Chloex:AddConfigSection(Tab, SectionConfig)
+    local sectionName, sectionIcon
+    if type(SectionConfig) == "string" then
+        sectionName = SectionConfig
+        sectionIcon = ""
+    elseif type(SectionConfig) == "table" then
+        sectionName = SectionConfig.Name or "Configuration"
+        sectionIcon = SectionConfig.Icon or ""
+    else
+        sectionName = "Configuration"
+        sectionIcon = ""
+    end
+
+    local cfgFolder = ConfigFolder .. "/Config"
+
+    if isfolder and makefolder then
+        if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
+        if not isfolder(cfgFolder)    then makefolder(cfgFolder)    end
+    end
+
+    local AUTOLOAD_FILE   = ConfigFolder .. "/autoload.txt"
+    local currentAutoload = ""
+    if isfile and isfile(AUTOLOAD_FILE) then
+        pcall(function() currentAutoload = readfile(AUTOLOAD_FILE) end)
+    end
+
+    local function toPath(name)
+        return cfgFolder .. "/" .. name .. ".json"
+    end
+
+    local function getList()
+        local list = {}
+        if not (listfiles and isfolder) then return list end
+        local ok, files = pcall(listfiles, cfgFolder)
+        if not ok then return list end
+        for _, path in ipairs(files) do
+            local n = path:match("([^/\\]+)%.json$")
+            if n then table.insert(list, n) end
+        end
+        table.sort(list)
+        return list
+    end
+
+    local function saveConfig(name)
+        if not writefile then return false end
+        ConfigData._version = CURRENT_VERSION
+        local ok = pcall(writefile, toPath(name), HttpService:JSONEncode(ConfigData))
+        return ok
+    end
+
+    local function loadConfig(name)
+        local path = toPath(name)
+        if not (isfile and isfile(path)) then return false end
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(readfile(path))
+        end)
+        if ok and type(data) == "table" then
+            if data._version == CURRENT_VERSION then
+                ConfigData = data
+                LoadConfigElements()
+                return true
+            else
+                Nt("Version mismatch on '" .. name .. "'!", 3, Color3.fromRGB(255, 165, 0))
+            end
+        end
+        return false
+    end
+
+    local function deleteConfig(name)
+        local path = toPath(name)
+        if isfile and isfile(path) then
+            pcall(delfile, path)
+            return true
+        end
+        return false
+    end
+
+    local function setAutoload(name)
+        if writefile then
+            pcall(writefile, AUTOLOAD_FILE, name)
+            currentAutoload = name
+        end
+    end
+
+    local function clearAutoload()
+        if isfile and isfile(AUTOLOAD_FILE) then
+            pcall(delfile, AUTOLOAD_FILE)
+        end
+        currentAutoload = ""
+    end
+
+    local Sections = Tab:AddSection({ Name = sectionName, Icon = sectionIcon })
+
+    local selectedConfig = nil
+    local dropdownRef    = nil
+    local autoloadLabel  = nil
+
+    local nameInput = Sections:AddInput({
+        Title       = "Config name",
+        Placeholder = "Enter config name...",
+        Default     = "",
+        Flag        = "CHX_ConfigNameInput",
+        Callback    = function() end,
+    })
+
+    Sections:AddButton({
+        Title    = "Create config",
+        Version  = "V2",
+        Icon     = "lucide:file-plus",
+        Callback = function()
+            local raw  = nameInput and nameInput.Value or ""
+            local name = raw:match("^%s*(.-)%s*$"):gsub("[^%w_%-]", "_")
+            if name == "" then
+                Nt("Config name cannot be empty!", 3, Color3.fromRGB(255, 80, 80))
+                return
+            end
+            if saveConfig(name) then
+                Nt("Config '" .. name .. "' created!", 3, Color3.fromRGB(80, 220, 100))
+                if dropdownRef then
+                    dropdownRef:SetValues(getList(), selectedConfig)
+                end
+            else
+                Nt("Failed to create config!", 3, Color3.fromRGB(255, 80, 80))
+            end
+        end,
+    })
+
+    dropdownRef = Sections:AddDropdown({
+        Title    = "Config list",
+        Options  = getList(),
+        Default  = nil,
+        Flag     = "CHX_ConfigListDropdown",
+        Callback = function(val)
+            selectedConfig = val
+        end,
+    })
+
+    Sections:AddButton({
+        Title    = "Load config",
+        Version  = "V2",
+        Icon     = "lucide:folder-open",
+        Callback = function()
+            if not selectedConfig then
+                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                return
+            end
+            if loadConfig(selectedConfig) then
+                Nt("Loaded '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+            else
+                Nt("Failed to load config!", 3, Color3.fromRGB(255, 80, 80))
+            end
+        end,
+    })
+
+    Sections:AddButton({
+        Title    = "Overwrite config",
+        Version  = "V2",
+        Icon     = "lucide:save",
+        Callback = function()
+            if not selectedConfig then
+                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                return
+            end
+            if saveConfig(selectedConfig) then
+                Nt("Overwritten '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+            else
+                Nt("Failed to overwrite config!", 3, Color3.fromRGB(255, 80, 80))
+            end
+        end,
+    })
+
+    Sections:AddButton({
+        Title    = "Delete config",
+        Version  = "V2",
+        Icon     = "lucide:trash-2",
+        Callback = function()
+            if not selectedConfig then
+                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                return
+            end
+            local name = selectedConfig
+            if deleteConfig(name) then
+                if currentAutoload == name then
+                    clearAutoload()
+                    if autoloadLabel then
+                        autoloadLabel:SetContent("none")
+                    end
+                end
+                selectedConfig = nil
+                if dropdownRef then
+                    dropdownRef:SetValues(getList(), nil)
+                end
+                Nt("Deleted '" .. name .. "'!", 3, Color3.fromRGB(80, 220, 100))
+            else
+                Nt("Failed to delete config!", 3, Color3.fromRGB(255, 80, 80))
+            end
+        end,
+    })
+
+    Sections:AddButton({
+        Title    = "Refresh list",
+        Version  = "V2",
+        Icon     = "lucide:refresh-cw",
+        Callback = function()
+            if dropdownRef then
+                dropdownRef:SetValues(getList(), selectedConfig)
+            end
+            Nt("List refreshed!", 2, Color3.fromRGB(80, 180, 255))
+        end,
+    })
+
+    Sections:AddButton({
+        Title    = "Set as autoload",
+        Version  = "V2",
+        Icon     = "lucide:star",
+        Callback = function()
+            if not selectedConfig then
+                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                return
+            end
+            setAutoload(selectedConfig)
+            if autoloadLabel then
+                autoloadLabel:SetContent(selectedConfig)
+            end
+            Nt("Autoload set to '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+        end,
+    })
+
+    Sections:AddButton({
+        Title    = "Reset autoload",
+        Version  = "V2",
+        Icon     = "lucide:star-off",
+        Callback = function()
+            clearAutoload()
+            if autoloadLabel then
+                autoloadLabel:SetContent("none")
+            end
+            Nt("Autoload cleared!", 2, Color3.fromRGB(255, 165, 0))
+        end,
+    })
+
+    autoloadLabel = Sections:AddParagraph({
+        Title   = "Current autoload config",
+        Content = currentAutoload ~= "" and currentAutoload or "none",
+    })
+
+    if currentAutoload ~= "" then
+        task.defer(function()
+            task.wait(0.5)
+            if loadConfig(currentAutoload) then
+                Nt("Auto-loaded: " .. currentAutoload, 3, Color3.fromRGB(80, 220, 100))
+            end
+        end)
+    end
+
+    return Sections
 end
 
 function Chloex:Window(GuiConfig)
@@ -1401,15 +1651,11 @@ function Chloex:Window(GuiConfig)
         GuiConfig.Keybind = keyCode
     end
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║   GuiFunc:Tag  — dengan API :SetTitle / :SetIcon / :SetColor    ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
     function GuiFunc:Tag(TagConfig)
         TagConfig = TagConfig or {}
         TagConfig.Title = TagConfig.Title or "Tag"
         TagConfig.Icon  = TagConfig.Icon or ""
 
-        -- Resolve warna awal
         local function resolveColor(c)
             if typeof(c) == "Color3" then
                 return c
@@ -1425,7 +1671,6 @@ function Chloex:Window(GuiConfig)
 
         local tagColor = resolveColor(TagConfig.Color)
 
-        -- ── Frame utama tag ──────────────────────────────────────────────
         local TagFrame = Instance.new("Frame")
         TagFrame.BackgroundColor3 = tagColor
         TagFrame.BackgroundTransparency = 0
@@ -1465,7 +1710,6 @@ function Chloex:Window(GuiConfig)
         TagInnerList.Padding = UDim.new(0, 4)
         TagInnerList.Parent = TagInner
 
-        -- ── Icon ─────────────────────────────────────────────────────────
         local TagIcon = Instance.new("ImageLabel")
         TagIcon.BackgroundTransparency = 1
         TagIcon.BorderSizePixel = 0
@@ -1482,7 +1726,6 @@ function Chloex:Window(GuiConfig)
         end
         applyIcon(TagConfig.Icon)
 
-        -- ── Label ────────────────────────────────────────────────────────
         local TagLabel = Instance.new("TextLabel")
         TagLabel.Font = Enum.Font.GothamBold
         TagLabel.Text = TagConfig.Title
@@ -1497,58 +1740,30 @@ function Chloex:Window(GuiConfig)
 
         task.defer(UpdateTagPosition)
 
-        -- ╔══════════════════════════════════════════════════════════════╗
-        -- ║   Tag API object                                             ║
-        -- ╚══════════════════════════════════════════════════════════════╝
         local TagApi = {}
 
-        --[[
-            TagApi:SetTitle(newTitle: string)
-            Mengubah teks label tag secara langsung.
-        ]]
         function TagApi:SetTitle(newTitle)
             TagLabel.Text = tostring(newTitle or "")
             task.defer(UpdateTagPosition)
         end
 
-        --[[
-            TagApi:SetIcon(iconName: string)
-            Mengubah icon tag. Terima nama icon (basic/lucide/solar),
-            asset id numerik, atau URL https://.
-            Kirim "" atau nil untuk menyembunyikan icon.
-        ]]
         function TagApi:SetIcon(iconName)
             applyIcon(iconName)
             task.defer(UpdateTagPosition)
         end
 
-        --[[
-            TagApi:SetColor(colorInput: Color3 | string)
-            Mengubah warna latar & stroke tag sekaligus.
-            Terima Color3, nama warna dari ColorModule, atau hex string "#RRGGBB".
-        ]]
         function TagApi:SetColor(colorInput)
             local newColor = resolveColor(colorInput)
-            TweenService:Create(TagFrame, TweenInfo.new(0.2), {
-                BackgroundColor3 = newColor
-            }):Play()
-            TweenService:Create(TagStroke, TweenInfo.new(0.2), {
-                Color = newColor
-            }):Play()
+            TweenService:Create(TagFrame, TweenInfo.new(0.2), { BackgroundColor3 = newColor }):Play()
+            TweenService:Create(TagStroke, TweenInfo.new(0.2), { Color = newColor }):Play()
         end
 
-        --[[
-            TagApi:Destroy()
-            Hapus tag dari title bar.
-        ]]
         function TagApi:Destroy()
             TagFrame:Destroy()
             task.defer(UpdateTagPosition)
         end
 
-        -- Expose frame mentah jika dibutuhkan
         TagApi.Frame = TagFrame
-
         return TagApi
     end
 
@@ -1803,10 +2018,6 @@ function Chloex:Window(GuiConfig)
         GuiFunc[k] = v
     end
 
-    -- ══════════════════════════════════════════════════════════════
-    -- Inject AddColorpicker — deteksi parent section otomatis
-    -- Tidak membutuhkan perubahan Tabs.lua
-    -- ══════════════════════════════════════════════════════════════
     local origAddTab = GuiFunc.AddTab
     GuiFunc.AddTab = function(self, TabConfig)
         local Sections = origAddTab(self, TabConfig)
@@ -1814,45 +2025,17 @@ function Chloex:Window(GuiConfig)
         Sections.AddSection = function(self2, SectionConfig)
             local Items = origAddSection(self2, SectionConfig)
 
-            -- Deteksi parent frame section dengan cara probe:
-            -- Buat elemen dummy via AddButton, ambil parent-nya, lalu hapus
-            local _detectedParent = nil
             local _itemCount = 0
 
-            local function _detectParent()
-                if _detectedParent then return _detectedParent end
-                -- Coba akses _sectionAdd jika Tabs.lua sudah expose
-                if Items._sectionAdd then
-                    _detectedParent = Items._sectionAdd
-                    return _detectedParent
-                end
-                -- Fallback: buat frame dummy kecil via AddButton atau probe
-                -- Gunakan AddButton untuk mendapat frame, ambil Parent-nya
-                local probeOk = pcall(function()
-                    local probe = Instance.new("Frame")
-                    probe.Name = "__CPProbe"
-                    probe.Size = UDim2.new(0,1,0,1)
-                    probe.BackgroundTransparency = 1
-                    probe.Visible = false
-                    -- Coba tempelkan via AddButton callback trick
-                    -- Tidak bisa langsung — gunakan ElementsModule
-                end)
-                return nil
-            end
-
             function Items:AddColorpicker(Config)
-                -- Cara 1: Tabs.lua expose _sectionAdd
                 local sa = rawget(self, "_sectionAdd") or (type(self) == "table" and self._sectionAdd)
                 local ci = (type(self) == "table" and rawget(self, "_getCountItem") and self._getCountItem()) or _itemCount
 
-                -- Cara 2: fallback — coba ambil dari ElementsModule via AddToggle probe
                 if not sa then
-                    -- Probe: tambah toggle dummy, ambil parent, hapus
-                    local probeFrame = nil
                     local origToggle = Items.AddToggle
                     if origToggle then
-                        -- Override sementara untuk menangkap parent
                         local origCreate = ElementsModule.CreateToggle
+                        local probeFrame = nil
                         ElementsModule.CreateToggle = function(self_em, parent, cfg, ci2, ...)
                             probeFrame = parent
                             ElementsModule.CreateToggle = origCreate
@@ -1864,7 +2047,6 @@ function Chloex:Window(GuiConfig)
                         end)
                         ElementsModule.CreateToggle = origCreate
                         sa = probeFrame
-                        -- Hapus probe element jika berhasil ditambahkan
                         if sa then
                             for _, child in ipairs(sa:GetChildren()) do
                                 if child:IsA("Frame") and child:FindFirstChild("ToggleTitle") then
@@ -1884,7 +2066,6 @@ function Chloex:Window(GuiConfig)
                     return {}
                 end
 
-                _detectedParent = sa
                 local api = _MakeColorPicker(Config, sa, ci, GuiConfig.Color, DropShadowHolder)
                 _itemCount = _itemCount + 1
                 return api
@@ -1895,7 +2076,6 @@ function Chloex:Window(GuiConfig)
         end
         return Sections
     end
-    -- ══════════════════════════════════════════════════════════════
 
     return GuiFunc
 end
