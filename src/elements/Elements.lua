@@ -4,6 +4,12 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local Elements = {}
+
+-- ── FIX: Registry global untuk semua element ──────────────────────────
+local _registeredElements = {}
+Elements.Elements = _registeredElements
+-- ──────────────────────────────────────────────────────────────────────
+
 local SaveConfig, ConfigData, GuiConfig, Icons
 function Elements:Initialize(config, saveFunc, configData, icons)
     GuiConfig = config
@@ -1378,12 +1384,14 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleButton.Activated:Connect(function()
         ToggleFunc:Set(not ToggleFunc.Value)
     end)
-    function ToggleFunc:Set(Value)
+    function ToggleFunc:Set(Value, SkipCallback)
         Value = Value and true or false
         ToggleFunc.Value = Value
         ConfigData[configKey] = Value
-        SaveConfig()
-        SafeCall(cfg.Callback, Value)
+        if not SkipCallback then
+            SaveConfig()
+            SafeCall(cfg.Callback, Value)
+        end
         if cfg.Type == "Checkbox" then
             local cbStroke = CheckboxFrame:FindFirstChild("CBStroke")
             if Value then
@@ -1406,7 +1414,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             else
                 TweenService:Create(ToggleTitle,  TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
                 TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0) }):Play()
-                TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
+                TweenService:Create(UIStroke8,    TweenService and TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
                 TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
             end
         end
@@ -1424,8 +1432,10 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     function ToggleFunc:SetLockMessage(text)
         LockFunc:SetMessage(text)
     end
-    ToggleFunc:Set(ToggleFunc.Value)
+    ToggleFunc:Set(ToggleFunc.Value, true)
     Elements_Table[configKey] = ToggleFunc
+    -- ── FIX: Daftarkan ke _registeredElements ──
+    _registeredElements[configKey] = ToggleFunc
     return ToggleFunc
 end
 function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Elements_Table)
@@ -1569,7 +1579,7 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
             0, 1
         )
     end
-    function SliderFunc:Set(Value)
+    function SliderFunc:Set(Value, SkipCallback)
         Value = math.clamp(RoundToFactor(tonumber(Value) or cfg.Min, cfg.Increment), cfg.Min, cfg.Max)
         SliderFunc.Value = Value
         _settingFromCode = true
@@ -1581,9 +1591,11 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
             TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
             { Size = UDim2.fromScale(scale, 1) }
         ):Play()
-        SafeCall(cfg.Callback, Value)
-        ConfigData[configKey] = Value
-        SaveConfig()
+        if not SkipCallback then
+            SafeCall(cfg.Callback, Value)
+            ConfigData[configKey] = Value
+            SaveConfig()
+        end
     end
     function SliderFunc:GetValue()
         return SliderFunc.Value
@@ -1649,8 +1661,10 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     function SliderFunc:SetLockMessage(text)
         LockFunc:SetMessage(text)
     end
-    SliderFunc:Set(cfg.Default)
+    SliderFunc:Set(cfg.Default, true)
     Elements_Table[configKey] = SliderFunc
+    -- ── FIX: Daftarkan ke _registeredElements ──
+    _registeredElements[configKey] = SliderFunc
     return SliderFunc
 end
 function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elements_Table)
@@ -1838,13 +1852,15 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
         InputTextBox:GetPropertyChangedSignal("TextBounds"):Connect(UpdateTextareaSize)
         Input.Size = UDim2.new(1, 0, 0, titleBottom + cfg.TextHeight + 10)
     end
-    function InputFunc:Set(Value)
+    function InputFunc:Set(Value, SkipCallback)
         Value = tostring(Value or "")
         InputFunc.Value = Value
         InputTextBox.Text = Value
-        ConfigData[configKey] = Value
-        SaveConfig()
-        SafeCall(cfg.Callback, Value)
+        if not SkipCallback then
+            ConfigData[configKey] = Value
+            SaveConfig()
+            SafeCall(cfg.Callback, Value)
+        end
     end
     function InputFunc:GetValue()
         return InputFunc.Value
@@ -1868,8 +1884,10 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
     function InputFunc:SetLockMessage(text)
         LockFunc:SetMessage(text)
     end
-    InputFunc:Set(InputFunc.Value)
+    InputFunc:Set(InputFunc.Value, true)
     Elements_Table[configKey] = InputFunc
+    -- ── FIX: Daftarkan ke _registeredElements ──
+    _registeredElements[configKey] = InputFunc
     return InputFunc
 end
 function Elements:CreateDropdown(parent, config, countItem, countDropdown, DropdownFolder, MoreBlur, DropdownSelect, DropPageLayout, Elements_Table)
@@ -2162,13 +2180,10 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         OptionText.Name = "OptionText"
         OptionText.Parent = Option
         Option:SetAttribute("RealValue", value)
-
-        -- Terapkan visual disabled sejak awal jika value ada di DisabledValues
         local isDisabledOnCreate = table.find(cfg.DisabledValues, value) ~= nil
         if isDisabledOnCreate then
             OptionText.TextTransparency = 0.7
         end
-
         local ChooseFrame = Instance.new("Frame")
         ChooseFrame.AnchorPoint = Vector2.new(0, 0.5)
         ChooseFrame.BackgroundColor3 = GuiConfig.Color
@@ -2184,7 +2199,6 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         UIStroke.Name = "UIStroke"
         UIStroke.Parent = ChooseFrame
         OptionButton.Activated:Connect(function()
-            -- Cek disabled, jika iya langsung return
             local isDisabled = table.find(cfg.DisabledValues, value) ~= nil
             if isDisabled then return end
             if cfg.Multi then
@@ -2204,7 +2218,7 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             end
         end)
     end
-    function DropdownFunc:Set(Value)
+    function DropdownFunc:Set(Value, SkipCallback)
         if cfg.Multi then
             if type(Value) == "table" then
                 DropdownFunc.Value = Value
@@ -2220,8 +2234,10 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
                 DropdownFunc.Value = Value
             end
         end
-        ConfigData[configKey] = DropdownFunc.Value
-        SaveConfig()
+        if not SkipCallback then
+            ConfigData[configKey] = DropdownFunc.Value
+            SaveConfig()
+        end
         local texts = {}
         for _, Drop in ScrollSelect:GetChildren() do
             if Drop.Name == "Option" and Drop:FindFirstChild("OptionText") then
@@ -2286,10 +2302,12 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
                 if af then TweenService:Create(af, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.93 }):Play() end
             end
         end
-        if cfg.Multi then
-            SafeCall(cfg.Callback, DropdownFunc.Value)
-        else
-            SafeCall(cfg.Callback, DropdownFunc.Value ~= nil and tostring(DropdownFunc.Value) or nil)
+        if not SkipCallback then
+            if cfg.Multi then
+                SafeCall(cfg.Callback, DropdownFunc.Value)
+            else
+                SafeCall(cfg.Callback, DropdownFunc.Value ~= nil and tostring(DropdownFunc.Value) or nil)
+            end
         end
     end
     function DropdownFunc:SetValue(val) self:Set(val) end
@@ -2319,6 +2337,8 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
     end
     DropdownFunc:SetValues(cfg.Options, cfg.Default)
     Elements_Table[configKey] = DropdownFunc
+    -- ── FIX: Daftarkan ke _registeredElements ──
+    _registeredElements[configKey] = DropdownFunc
     return DropdownFunc
 end
 function Elements:CreateDivider(parent, countItem)
