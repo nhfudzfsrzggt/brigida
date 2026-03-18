@@ -155,15 +155,16 @@ function KeybindModule:CreateKeybind(SectionAdd, KeybindConfig, CountItem, Eleme
     KBContent.TextYAlignment     = Enum.TextYAlignment.Bottom
     KBContent.BackgroundTransparency = 1
     KBContent.TextWrapped        = true
-    KBContent.Position           = UDim2.new(0, 10, 0, 25)
-    KBContent.Size               = UDim2.new(1, -100, 0, 12)
+    KBContent.Position           = UDim2.new(0, 10, 0, 23)
+    KBContent.Size               = UDim2.new(1, -100, 0, 12 + (12 * (KBContent.TextBounds.X // math.max(1, KBContent.AbsoluteSize.X))))
+    KBContent.TextWrapped        = true
+    KeybindFrame.Size            = UDim2.new(1, 0, 0, KBContent.AbsoluteSize.Y + 33)
     KBContent.Parent             = KeybindFrame
 
     KBContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
         KBContent.TextWrapped = false
-        local lines = math.max(1, KBContent.TextBounds.X // math.max(1, KBContent.AbsoluteSize.X))
-        KBContent.Size = UDim2.new(1, -100, 0, 12 + 12 * lines)
-        KeybindFrame.Size = UDim2.new(1, 0, 0, KBContent.AbsoluteSize.Y + 40)
+        KBContent.Size = UDim2.new(1, -100, 0, 12 + (12 * (KBContent.TextBounds.X // math.max(1, KBContent.AbsoluteSize.X))))
+        KeybindFrame.Size = UDim2.new(1, 0, 0, KBContent.AbsoluteSize.Y + 33)
         KBContent.TextWrapped = true
     end)
 
