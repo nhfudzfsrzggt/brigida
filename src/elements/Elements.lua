@@ -1,4 +1,4 @@
--- // vilarisUi | Elements.lua | Fixed Locked Text
+-- // vilarisUi | Elements.lua
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -98,7 +98,7 @@ local function ApplyLock(frame, isLocked, lockMessage)
         LockOverlay.BorderSizePixel = 0
         LockOverlay.ZIndex = 10
         LockOverlay.AutoButtonColor = false
-        LockOverlay.ClipsDescendants = true
+        LockOverlay.ClipsDescendants = false
         LockOverlay.Visible = LockFunc.IsLocked
         LockOverlay.Parent = frame
         Instance.new("UICorner", LockOverlay).CornerRadius = UDim.new(0, 6)
@@ -109,6 +109,7 @@ local function ApplyLock(frame, isLocked, lockMessage)
         Inner.Position = UDim2.new(0.5, 0, 0.5, 0)
         Inner.Size = UDim2.new(0, 120, 0, 20)
         Inner.BackgroundTransparency = 1
+        Inner.ClipsDescendants = false
         Inner.ZIndex = 11
         Inner.Parent = LockOverlay
 
@@ -134,7 +135,7 @@ local function ApplyLock(frame, isLocked, lockMessage)
 
         local LockLabel = Instance.new("TextLabel")
         LockLabel.Name = "LockLabel"
-        LockLabel.Size = UDim2.new(0, 80, 0, 20)
+        LockLabel.Size = UDim2.new(0, 200, 0, 20)
         LockLabel.BackgroundTransparency = 1
         LockLabel.Font = Enum.Font.GothamBold
         LockLabel.Text = msg
@@ -143,7 +144,8 @@ local function ApplyLock(frame, isLocked, lockMessage)
         LockLabel.TextTransparency = 0.05
         LockLabel.TextXAlignment = Enum.TextXAlignment.Left
         LockLabel.TextYAlignment = Enum.TextYAlignment.Center
-        LockLabel.TextTruncate = Enum.TextTruncate.AtEnd
+        LockLabel.TextTruncate = Enum.TextTruncate.None
+        LockLabel.TextWrapped = false
         LockLabel.LayoutOrder = 2
         LockLabel.ZIndex = 12
         LockLabel.Parent = Inner
@@ -599,10 +601,7 @@ function Elements:CreateParagraph(parent, config, countItem)
     Paragraph:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateSize)
     local LockFunc = ApplyLock(Paragraph, cfg.Locked)
     function ParagraphFunc:StartVideo()
-        if not VideoObject then
-            warn("[Elements] StartVideo: bukan tipe Video atau VideoId tidak diset.")
-            return
-        end
+        if not VideoObject then return end
         if IsPlaying then return end
         IsPlaying = true
         if ThumbnailImg then ThumbnailImg.Visible = false end
@@ -626,22 +625,15 @@ function Elements:CreateParagraph(parent, config, countItem)
         end
     end
     function ParagraphFunc:SetMedia(mediaType, mediaId, videoId)
-        if not ThumbnailImg then
-            warn("[Elements] SetMedia: Paragraph tidak dibuat dengan MediaType.")
-            return
-        end
+        if not ThumbnailImg then return end
         if IsPlaying then ParagraphFunc:StopVideo() end
         ThumbnailImg.Image = mediaId or ""
-        if VideoObject then
-            VideoObject.Video = videoId or ""
-        end
+        if VideoObject then VideoObject.Video = videoId or "" end
         cfg.MediaType = mediaType
         cfg.MediaId   = mediaId
         cfg.VideoId   = videoId
     end
-    function ParagraphFunc:IsVideoPlaying()
-        return IsPlaying
-    end
+    function ParagraphFunc:IsVideoPlaying() return IsPlaying end
     function ParagraphFunc:SetContent(content)
         ParagraphContent.Text = tostring(content or "Content")
         UpdateSize()
@@ -649,21 +641,11 @@ function Elements:CreateParagraph(parent, config, countItem)
     function ParagraphFunc:SetTitle(title)
         ParagraphTitle.Text = tostring(title or "Title")
     end
-    function ParagraphFunc:GetContent()
-        return ParagraphContent.Text
-    end
-    function ParagraphFunc:GetTitle()
-        return ParagraphTitle.Text
-    end
-    function ParagraphFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function ParagraphFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function ParagraphFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function ParagraphFunc:GetContent() return ParagraphContent.Text end
+    function ParagraphFunc:GetTitle() return ParagraphTitle.Text end
+    function ParagraphFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function ParagraphFunc:GetLocked() return LockFunc:GetLocked() end
+    function ParagraphFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     if cfg.AutoPlay and cfg.MediaType == "Video" then
         task.defer(function() ParagraphFunc:StartVideo() end)
     end
@@ -680,9 +662,7 @@ function Elements:CreateEditableParagraph(parent, config, countItem)
     cfg.Badge       = cfg.Badge       or nil
     cfg.Locked      = cfg.Locked      or false
     local configKey = ResolveKey("EditableParagraph", cfg)
-    if ConfigData[configKey] ~= nil then
-        cfg.Default = ConfigData[configKey]
-    end
+    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
     local ParagraphFunc = { Value = cfg.Default }
     local Paragraph        = Instance.new("Frame")
     local UICorner         = Instance.new("UICorner")
@@ -794,24 +774,12 @@ function Elements:CreateEditableParagraph(parent, config, countItem)
         ParagraphFunc.Value = ParagraphTextBox.Text
         UpdateSize()
     end
-    function ParagraphFunc:GetContent()
-        return ParagraphTextBox.Text
-    end
-    function ParagraphFunc:SetTitle(title)
-        ParagraphTitle.Text = tostring(title or "Title")
-    end
-    function ParagraphFunc:GetTitle()
-        return ParagraphTitle.Text
-    end
-    function ParagraphFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function ParagraphFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function ParagraphFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function ParagraphFunc:GetContent() return ParagraphTextBox.Text end
+    function ParagraphFunc:SetTitle(title) ParagraphTitle.Text = tostring(title or "Title") end
+    function ParagraphFunc:GetTitle() return ParagraphTitle.Text end
+    function ParagraphFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function ParagraphFunc:GetLocked() return LockFunc:GetLocked() end
+    function ParagraphFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     return ParagraphFunc
 end
 
@@ -828,9 +796,7 @@ function Elements:CreatePanel(parent, config, countItem)
     cfg.Badge             = cfg.Badge          or nil
     cfg.Locked            = cfg.Locked         or false
     local configKey = ResolveKey("Panel", cfg)
-    if ConfigData[configKey] ~= nil then
-        cfg.Default = ConfigData[configKey]
-    end
+    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
     local PanelFunc = { Value = cfg.Default }
     local baseHeight = 50
     if cfg.Placeholder then baseHeight = baseHeight + 40 end
@@ -932,9 +898,7 @@ function Elements:CreatePanel(parent, config, countItem)
             afterContent = afterContent + 30 + 6
         end
         ButtonMain.Position = UDim2.new(0, 10, 0, afterContent)
-        if SubButton then
-            SubButton.Position = UDim2.new(0.5, 2, 0, afterContent)
-        end
+        if SubButton then SubButton.Position = UDim2.new(0.5, 2, 0, afterContent) end
         Panel.Size = UDim2.new(1, 0, 0, afterContent + 30 + 8)
     end
     UpdatePanelLayout()
@@ -954,27 +918,13 @@ function Elements:CreatePanel(parent, config, countItem)
         end)
     end
     local LockFunc = ApplyLock(Panel, cfg.Locked)
-    function PanelFunc:GetInput()
-        return InputBox and InputBox.Text or ""
-    end
-    function PanelFunc:GetValue()
-        return PanelFunc.Value
-    end
-    function PanelFunc:SetContent(text)
-        Content.Text = tostring(text or "")
-    end
-    function PanelFunc:SetTitle(text)
-        Title.Text = tostring(text or "Title")
-    end
-    function PanelFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function PanelFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function PanelFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function PanelFunc:GetInput() return InputBox and InputBox.Text or "" end
+    function PanelFunc:GetValue() return PanelFunc.Value end
+    function PanelFunc:SetContent(text) Content.Text = tostring(text or "") end
+    function PanelFunc:SetTitle(text) Title.Text = tostring(text or "Title") end
+    function PanelFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function PanelFunc:GetLocked() return LockFunc:GetLocked() end
+    function PanelFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     return PanelFunc
 end
 
@@ -1118,28 +1068,12 @@ function Elements:CreateButton(parent, config, countItem)
             end
         end)
         local LockFunc = ApplyLock(Button, cfg.Locked)
-        function ButtonFunc:Fire()
-            SafeCall(cfg.Callback)
-        end
-        function ButtonFunc:SetTitle(text)
-            TitleLabel.Text = tostring(text or "")
-            cfg.Title = TitleLabel.Text
-        end
-        function ButtonFunc:SetContent(text)
-            if ContentLabel then
-                ContentLabel.Text = tostring(text or "")
-            end
-            cfg.Content = tostring(text or "")
-        end
-        function ButtonFunc:SetCallback(fn)
-            cfg.Callback = typeof(fn) == "function" and fn or function() end
-        end
-        function ButtonFunc:SetLocked(state)
-            LockFunc:SetLocked(state)
-        end
-        function ButtonFunc:GetLocked()
-            return LockFunc:GetLocked()
-        end
+        function ButtonFunc:Fire() SafeCall(cfg.Callback) end
+        function ButtonFunc:SetTitle(text) TitleLabel.Text = tostring(text or "") cfg.Title = TitleLabel.Text end
+        function ButtonFunc:SetContent(text) if ContentLabel then ContentLabel.Text = tostring(text or "") end cfg.Content = tostring(text or "") end
+        function ButtonFunc:SetCallback(fn) cfg.Callback = typeof(fn) == "function" and fn or function() end end
+        function ButtonFunc:SetLocked(state) LockFunc:SetLocked(state) end
+        function ButtonFunc:GetLocked() return LockFunc:GetLocked() end
         return ButtonFunc
     end
     local Button = Instance.new("Frame")
@@ -1188,41 +1122,15 @@ function Elements:CreateButton(parent, config, countItem)
         end)
     end
     local LockFunc = ApplyLock(Button, cfg.Locked)
-    function ButtonFunc:Fire()
-        AnimateButtonClick(MainButton)
-        SafeCall(cfg.Callback)
-    end
-    function ButtonFunc:FireSub()
-        if SubButtonRef then
-            AnimateButtonClick(SubButtonRef)
-            SafeCall(cfg.SubCallback)
-        end
-    end
-    function ButtonFunc:SetTitle(text)
-        MainButton.Text = tostring(text or "Confirm")
-        cfg.Title = MainButton.Text
-    end
-    function ButtonFunc:SetSubTitle(text)
-        if SubButtonRef then
-            SubButtonRef.Text = tostring(text or "")
-            cfg.SubTitle = SubButtonRef.Text
-        end
-    end
-    function ButtonFunc:SetCallback(fn)
-        cfg.Callback = typeof(fn) == "function" and fn or function() end
-    end
-    function ButtonFunc:SetSubCallback(fn)
-        cfg.SubCallback = typeof(fn) == "function" and fn or function() end
-    end
-    function ButtonFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function ButtonFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function ButtonFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function ButtonFunc:Fire() AnimateButtonClick(MainButton) SafeCall(cfg.Callback) end
+    function ButtonFunc:FireSub() if SubButtonRef then AnimateButtonClick(SubButtonRef) SafeCall(cfg.SubCallback) end end
+    function ButtonFunc:SetTitle(text) MainButton.Text = tostring(text or "Confirm") cfg.Title = MainButton.Text end
+    function ButtonFunc:SetSubTitle(text) if SubButtonRef then SubButtonRef.Text = tostring(text or "") cfg.SubTitle = SubButtonRef.Text end end
+    function ButtonFunc:SetCallback(fn) cfg.Callback = typeof(fn) == "function" and fn or function() end end
+    function ButtonFunc:SetSubCallback(fn) cfg.SubCallback = typeof(fn) == "function" and fn or function() end end
+    function ButtonFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function ButtonFunc:GetLocked() return LockFunc:GetLocked() end
+    function ButtonFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     return ButtonFunc
 end
 
@@ -1237,12 +1145,8 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     cfg.Locked   = cfg.Locked   or false
     cfg.Type     = cfg.Type     or "Toggle"
     local configKey = ResolveKey("Toggle", cfg)
-    if ConfigData[configKey] ~= nil then
-        cfg.Default = ConfigData[configKey]
-    end
-    if typeof(cfg.Default) ~= "boolean" then
-        cfg.Default = cfg.Default and true or false
-    end
+    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
+    if typeof(cfg.Default) ~= "boolean" then cfg.Default = cfg.Default and true or false end
     local ToggleFunc = { Value = cfg.Default }
     local Toggle        = Instance.new("Frame")
     local UICorner20    = Instance.new("UICorner")
@@ -1396,12 +1300,12 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 TweenService:Create(ToggleTitle,   TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
                 TweenService:Create(CheckboxFrame, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
                 if cbStroke then TweenService:Create(cbStroke, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play() end
-                TweenService:Create(CheckMark,     TweenInfo.new(0.15), { ImageTransparency = 0 }):Play()
+                TweenService:Create(CheckMark, TweenInfo.new(0.15), { ImageTransparency = 0 }):Play()
             else
                 TweenService:Create(ToggleTitle,   TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
                 TweenService:Create(CheckboxFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
                 if cbStroke then TweenService:Create(cbStroke, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.7 }):Play() end
-                TweenService:Create(CheckMark,     TweenInfo.new(0.1), { ImageTransparency = 1 }):Play()
+                TweenService:Create(CheckMark, TweenInfo.new(0.1), { ImageTransparency = 1 }):Play()
             end
         else
             if Value then
@@ -1417,19 +1321,11 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             end
         end
     end
-    function ToggleFunc:GetValue()
-        return ToggleFunc.Value
-    end
+    function ToggleFunc:GetValue() return ToggleFunc.Value end
     local LockFunc = ApplyLock(Toggle, cfg.Locked)
-    function ToggleFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function ToggleFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function ToggleFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function ToggleFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function ToggleFunc:GetLocked() return LockFunc:GetLocked() end
+    function ToggleFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     ToggleFunc:Set(ToggleFunc.Value, true)
     Elements_Table[configKey] = ToggleFunc
     _registeredElements[configKey] = ToggleFunc
@@ -1450,9 +1346,7 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     if cfg.Min >= cfg.Max then cfg.Max = cfg.Min + 1 end
     if cfg.Increment <= 0 then cfg.Increment = 1 end
     local configKey = ResolveKey("Slider", cfg)
-    if ConfigData[configKey] ~= nil then
-        cfg.Default = ConfigData[configKey]
-    end
+    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
     local SliderFunc = { Value = cfg.Default }
     local Slider          = Instance.new("Frame")
     local UICorner15      = Instance.new("UICorner")
@@ -1584,20 +1478,14 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TextBox.Text = tostring(Value)
         _settingFromCode = false
         local scale = (Value - cfg.Min) / (cfg.Max - cfg.Min)
-        TweenService:Create(
-            SliderDraggable,
-            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            { Size = UDim2.fromScale(scale, 1) }
-        ):Play()
+        TweenService:Create(SliderDraggable, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromScale(scale, 1) }):Play()
         if not SkipCallback then
             SafeCall(cfg.Callback, Value)
             ConfigData[configKey] = Value
             SaveConfig()
         end
     end
-    function SliderFunc:GetValue()
-        return SliderFunc.Value
-    end
+    function SliderFunc:GetValue() return SliderFunc.Value end
     function SliderFunc:SetMin(min)
         cfg.Min = tonumber(min) or cfg.Min
         if cfg.Min >= cfg.Max then cfg.Max = cfg.Min + 1 end
@@ -1609,31 +1497,20 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         SliderFunc:Set(SliderFunc.Value)
     end
     SliderHitbox.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1
-        or Input.UserInputType == Enum.UserInputType.Touch then
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
             Dragging = true
-            TweenService:Create(SliderCircle,
-                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                { Size = UDim2.new(0, 14, 0, 14) }
-            ):Play()
+            TweenService:Create(SliderCircle, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 14, 0, 14) }):Play()
             SliderFunc:Set(cfg.Min + ((cfg.Max - cfg.Min) * GetScaleFromInput(Input.Position.X)))
         end
     end)
     UserInputService.InputEnded:Connect(function(Input)
-        if Dragging
-        and (Input.UserInputType == Enum.UserInputType.MouseButton1
-          or Input.UserInputType == Enum.UserInputType.Touch) then
+        if Dragging and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
             Dragging = false
-            TweenService:Create(SliderCircle,
-                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                { Size = UDim2.new(0, 8, 0, 8) }
-            ):Play()
+            TweenService:Create(SliderCircle, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 8, 0, 8) }):Play()
         end
     end)
     UserInputService.InputChanged:Connect(function(Input)
-        if Dragging
-        and (Input.UserInputType == Enum.UserInputType.MouseMovement
-          or Input.UserInputType == Enum.UserInputType.Touch) then
+        if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
             SliderFunc:Set(cfg.Min + ((cfg.Max - cfg.Min) * GetScaleFromInput(Input.Position.X)))
         end
     end)
@@ -1650,15 +1527,9 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         end
     end)
     local LockFunc = ApplyLock(Slider, cfg.Locked)
-    function SliderFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function SliderFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function SliderFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function SliderFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function SliderFunc:GetLocked() return LockFunc:GetLocked() end
+    function SliderFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     SliderFunc:Set(cfg.Default, true)
     Elements_Table[configKey] = SliderFunc
     _registeredElements[configKey] = SliderFunc
@@ -1677,9 +1548,7 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
     cfg.Placeholder = cfg.Placeholder or (cfg.Type == "Textarea" and "Type here..." or "Input Here")
     cfg.TextHeight  = cfg.TextHeight  or 60
     local configKey = ResolveKey("Input", cfg)
-    if ConfigData[configKey] ~= nil then
-        cfg.Default = ConfigData[configKey]
-    end
+    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
     local InputFunc = { Value = cfg.Default }
     local Input      = Instance.new("Frame")
     local InputTitle = Instance.new("TextLabel")
@@ -1828,14 +1697,10 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
         InputTextBox.Name = "InputTextBox"
         InputTextBox.Parent = TextareaFrame
         InputTextBox.Focused:Connect(function()
-            TweenService:Create(TAStroke, TweenInfo.new(0.2), {
-                Color = GuiConfig.Color, Transparency = 0.4
-            }):Play()
+            TweenService:Create(TAStroke, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0.4 }):Play()
         end)
         InputTextBox.FocusLost:Connect(function()
-            TweenService:Create(TAStroke, TweenInfo.new(0.2), {
-                Color = Color3.fromRGB(255, 255, 255), Transparency = 0.88
-            }):Play()
+            TweenService:Create(TAStroke, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.88 }):Play()
             InputFunc:Set(InputTextBox.Text)
         end)
         local MIN_H = cfg.TextHeight
@@ -1860,28 +1725,14 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
             SafeCall(cfg.Callback, Value)
         end
     end
-    function InputFunc:GetValue()
-        return InputFunc.Value
-    end
-    function InputFunc:Clear()
-        InputFunc:Set("")
-    end
-    function InputFunc:SetTitle(text)
-        InputTitle.Text = tostring(text or "Title")
-    end
-    function InputFunc:GetTitle()
-        return InputTitle.Text
-    end
+    function InputFunc:GetValue() return InputFunc.Value end
+    function InputFunc:Clear() InputFunc:Set("") end
+    function InputFunc:SetTitle(text) InputTitle.Text = tostring(text or "Title") end
+    function InputFunc:GetTitle() return InputTitle.Text end
     local LockFunc = ApplyLock(Input, cfg.Locked)
-    function InputFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function InputFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function InputFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function InputFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function InputFunc:GetLocked() return LockFunc:GetLocked() end
+    function InputFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     InputFunc:Set(InputFunc.Value, true)
     Elements_Table[configKey] = InputFunc
     _registeredElements[configKey] = InputFunc
@@ -1900,9 +1751,7 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
     cfg.Locked         = cfg.Locked   or false
     cfg.DisabledValues = cfg.DisabledValues or {}
     local configKey = ResolveKey("Dropdown", cfg)
-    if ConfigData[configKey] ~= nil then
-        cfg.Default = ConfigData[configKey]
-    end
+    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
     local DropdownFunc = { Value = cfg.Default, Options = {} }
     local Dropdown           = Instance.new("Frame")
     local DropdownButton     = Instance.new("TextButton")
@@ -2112,16 +1961,9 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             end
             local allSelected = #allValues > 0
             for _, v in ipairs(allValues) do
-                if not table.find(DropdownFunc.Value, v) then
-                    allSelected = false
-                    break
-                end
+                if not table.find(DropdownFunc.Value, v) then allSelected = false break end
             end
-            if allSelected then
-                DropdownFunc:Set({})
-            else
-                DropdownFunc:Set(allValues)
-            end
+            if allSelected then DropdownFunc:Set({}) else DropdownFunc:Set(allValues) end
         end)
     end
     function DropdownFunc:Clear()
@@ -2179,9 +2021,7 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         OptionText.Parent = Option
         Option:SetAttribute("RealValue", value)
         local isDisabledOnCreate = table.find(cfg.DisabledValues, value) ~= nil
-        if isDisabledOnCreate then
-            OptionText.TextTransparency = 0.7
-        end
+        if isDisabledOnCreate then OptionText.TextTransparency = 0.7 end
         local ChooseFrame = Instance.new("Frame")
         ChooseFrame.AnchorPoint = Vector2.new(0, 0.5)
         ChooseFrame.BackgroundColor3 = GuiConfig.Color
@@ -2201,36 +2041,21 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             if isDisabled then return end
             if cfg.Multi then
                 local idx = table.find(DropdownFunc.Value, value)
-                if not idx then
-                    table.insert(DropdownFunc.Value, value)
-                else
-                    table.remove(DropdownFunc.Value, idx)
-                end
+                if not idx then table.insert(DropdownFunc.Value, value) else table.remove(DropdownFunc.Value, idx) end
                 DropdownFunc:Set(DropdownFunc.Value)
             else
-                if DropdownFunc.Value == value then
-                    DropdownFunc:Set(nil)
-                else
-                    DropdownFunc:Set(value)
-                end
+                if DropdownFunc.Value == value then DropdownFunc:Set(nil) else DropdownFunc:Set(value) end
             end
         end)
     end
     function DropdownFunc:Set(Value, SkipCallback)
         if cfg.Multi then
-            if type(Value) == "table" then
-                DropdownFunc.Value = Value
-            elseif Value == nil then
-                DropdownFunc.Value = {}
-            else
-                DropdownFunc.Value = { Value }
-            end
+            if type(Value) == "table" then DropdownFunc.Value = Value
+            elseif Value == nil then DropdownFunc.Value = {}
+            else DropdownFunc.Value = { Value } end
         else
-            if type(Value) == "table" then
-                DropdownFunc.Value = Value[1]
-            else
-                DropdownFunc.Value = Value
-            end
+            if type(Value) == "table" then DropdownFunc.Value = Value[1]
+            else DropdownFunc.Value = Value end
         end
         if not SkipCallback then
             ConfigData[configKey] = DropdownFunc.Value
@@ -2277,10 +2102,7 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             end
             local allSelected = #allValues > 0
             for _, v in ipairs(allValues) do
-                if not table.find(DropdownFunc.Value, v) then
-                    allSelected = false
-                    break
-                end
+                if not table.find(DropdownFunc.Value, v) then allSelected = false break end
             end
             local af = AllButton:FindFirstChild("AllFeatureFrame")
             local st = af and af:FindFirstChild("AllStroke")
@@ -2301,11 +2123,8 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             end
         end
         if not SkipCallback then
-            if cfg.Multi then
-                SafeCall(cfg.Callback, DropdownFunc.Value)
-            else
-                SafeCall(cfg.Callback, DropdownFunc.Value ~= nil and tostring(DropdownFunc.Value) or nil)
-            end
+            if cfg.Multi then SafeCall(cfg.Callback, DropdownFunc.Value)
+            else SafeCall(cfg.Callback, DropdownFunc.Value ~= nil and tostring(DropdownFunc.Value) or nil) end
         end
     end
     function DropdownFunc:SetValue(val) self:Set(val) end
@@ -2314,9 +2133,7 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         newList   = newList   or {}
         selecting = selecting or (cfg.Multi and {} or nil)
         DropdownFunc:Clear()
-        for _, v in ipairs(newList) do
-            DropdownFunc:AddOption(v)
-        end
+        for _, v in ipairs(newList) do DropdownFunc:AddOption(v) end
         DropdownFunc:Set(selecting)
     end
     function DropdownFunc:SetDisabledValues(disabledList)
@@ -2324,15 +2141,9 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
         DropdownFunc:Set(DropdownFunc.Value)
     end
     local LockFunc = ApplyLock(Dropdown, cfg.Locked)
-    function DropdownFunc:SetLocked(state)
-        LockFunc:SetLocked(state)
-    end
-    function DropdownFunc:GetLocked()
-        return LockFunc:GetLocked()
-    end
-    function DropdownFunc:SetLockMessage(text)
-        LockFunc:SetMessage(text)
-    end
+    function DropdownFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function DropdownFunc:GetLocked() return LockFunc:GetLocked() end
+    function DropdownFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     DropdownFunc:SetValues(cfg.Options, cfg.Default)
     Elements_Table[configKey] = DropdownFunc
     _registeredElements[configKey] = DropdownFunc
