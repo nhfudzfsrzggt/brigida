@@ -1281,6 +1281,105 @@ function Chloex:Window(GuiConfig)
     })
     ThemeGradient.Parent = ThemeImage
 
+    -- ── Background Video ──────────────────────────────────────────────
+    if GuiConfig.BackgroundVideo and GuiConfig.BackgroundVideo ~= "" then
+        task.spawn(function()
+            local videoInput = GuiConfig.BackgroundVideo
+            local videoId    = nil
+
+            -- ── Deteksi tipe input ────────────────────────────────────
+            local isAssetId = videoInput:match("^%d+$")
+                or videoInput:match("^rbxassetid://")
+
+            if isAssetId then
+                -- Pakai langsung sebagai asset ID
+                if videoInput:match("^%d+$") then
+                    videoId = "rbxassetid://" .. videoInput
+                else
+                    videoId = videoInput
+                end
+            else
+                -- Pakai URL — download & cache
+                local fileName = "VelarisUI_bgvideo.webm"
+
+                if writefile and getcustomasset and isfile then
+                    if not isfile(fileName) then
+                        local ok, err = pcall(function()
+                            writefile(fileName, game:HttpGet(videoInput))
+                        end)
+                        if not ok then
+                            warn("[VelarisUI] BackgroundVideo download failed:", err)
+                            return
+                        end
+                    end
+                    local ok2, id = pcall(getcustomasset, fileName)
+                    if ok2 and id then
+                        videoId = id
+                    else
+                        warn("[VelarisUI] getcustomasset failed:", id)
+                        return
+                    end
+                else
+                    warn("[VelarisUI] BackgroundVideo: writefile/getcustomasset tidak tersedia")
+                    return
+                end
+            end
+
+            -- VideoFrame wrapper (ClipsDescendants agar tidak overflow)
+            local VideoWrapper = Instance.new("Frame")
+            VideoWrapper.Name = "VideoWrapper"
+            VideoWrapper.BackgroundTransparency = 1
+            VideoWrapper.BorderSizePixel = 0
+            VideoWrapper.Size = UDim2.fromScale(1, 1)
+            VideoWrapper.Position = UDim2.fromScale(0, 0)
+            VideoWrapper.ZIndex = 0
+            VideoWrapper.ClipsDescendants = true
+            VideoWrapper.Parent = Main
+            Instance.new("UICorner", VideoWrapper).CornerRadius = UDim.new(0, 10)
+
+            local BgVideo = Instance.new("VideoFrame")
+            BgVideo.Name = "BackgroundVideo"
+            BgVideo.Video = videoId
+            BgVideo.Looped = true
+            BgVideo.Volume = 0
+            BgVideo.BackgroundTransparency = 1
+            BgVideo.BorderSizePixel = 0
+            BgVideo.Size = UDim2.fromScale(1, 1)
+            BgVideo.Position = UDim2.fromScale(0, 0)
+            BgVideo.ZIndex = 0
+            BgVideo.Parent = VideoWrapper
+
+            -- Overlay gelap supaya UI tetap terbaca
+            local VideoOverlay = Instance.new("Frame")
+            VideoOverlay.Name = "VideoOverlay"
+            VideoOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            VideoOverlay.BackgroundTransparency = GuiConfig.BackgroundVideoOverlay or 0.4
+            VideoOverlay.BorderSizePixel = 0
+            VideoOverlay.Size = UDim2.fromScale(1, 1)
+            VideoOverlay.ZIndex = 0
+            VideoOverlay.Parent = VideoWrapper
+
+            BgVideo.Loaded:Connect(function()
+                BgVideo:Play()
+            end)
+
+            -- Expose ke GuiFunc
+            function GuiFunc:SetBackgroundVideoVolume(Vol)
+                BgVideo.Volume = math.clamp(Vol, 0, 10)
+            end
+            function GuiFunc:PauseBackgroundVideo()
+                BgVideo:Pause()
+            end
+            function GuiFunc:PlayBackgroundVideo()
+                BgVideo:Play()
+            end
+            function GuiFunc:SetBackgroundVideoOverlay(Trans)
+                VideoOverlay.BackgroundTransparency = math.clamp(Trans, 0, 1)
+            end
+        end)
+    end
+    -- ─────────────────────────────────────────────────────────────────
+
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Top.BackgroundTransparency = 0.999
     Top.BorderColor3 = Color3.fromRGB(0, 0, 0)
