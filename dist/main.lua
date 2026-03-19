@@ -1,4 +1,4 @@
--- // Version : 0.1.9 | Tag + KeySystem + ColorPicker Floating | Main.lua
+-- // Version : 0.1.9 | Video Support Webm| Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -1328,14 +1328,16 @@ function Chloex:Window(GuiConfig)
             -- VideoFrame wrapper (ClipsDescendants agar tidak overflow)
             local VideoWrapper = Instance.new("Frame")
             VideoWrapper.Name = "VideoWrapper"
-            VideoWrapper.BackgroundTransparency = 1
+            VideoWrapper.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            VideoWrapper.BackgroundTransparency = 0
             VideoWrapper.BorderSizePixel = 0
             VideoWrapper.Size = UDim2.fromScale(1, 1)
             VideoWrapper.Position = UDim2.fromScale(0, 0)
             VideoWrapper.ZIndex = 0
             VideoWrapper.ClipsDescendants = true
             VideoWrapper.Parent = Main
-            Instance.new("UICorner", VideoWrapper).CornerRadius = UDim.new(0, 10)
+            -- Samakan corner radius dengan Main frame
+            Instance.new("UICorner", VideoWrapper).CornerRadius = UDim.new(0, 8)
 
             local BgVideo = Instance.new("VideoFrame")
             BgVideo.Name = "BackgroundVideo"
