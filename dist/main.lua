@@ -1,4 +1,4 @@
--- // Version : 0.2.0 | ConfigSection | Main.lua
+-- // Version : 0.1.9 | Tag + KeySystem + ColorPicker Floating | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -275,6 +275,10 @@ function CircleClick(Button, X, Y)
     end)
 end
 
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║   FLOATING COLOR PICKER                                         ║
+-- ╚══════════════════════════════════════════════════════════════════╝
+
 local _CPGui          = nil
 local _CPPanel        = nil
 local _CPPanelButtons = nil
@@ -518,21 +522,16 @@ function Chloex:Dialog(DialogConfig)
     return DialogModule(DialogConfig)
 end
 
-function Chloex:AddConfigSection(Tab, SectionConfig)
-    local sectionName, sectionIcon
-    if type(SectionConfig) == "string" then
-        sectionName = SectionConfig
-        sectionIcon = ""
-    elseif type(SectionConfig) == "table" then
-        sectionName = SectionConfig.Name or "Configuration"
-        sectionIcon = SectionConfig.Icon or ""
-    else
-        sectionName = "Configuration"
-        sectionIcon = ""
-    end
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║   AddConfigSection — Config seperti Obsidian                    ║
+-- ║   Dipanggil: VelarisUI:AddConfigSection(Tab, "Configuration")   ║
+-- ╚══════════════════════════════════════════════════════════════════╝
+function Chloex:AddConfigSection(Tab, SectionName)
+    SectionName = SectionName or "Configuration"
 
     local cfgFolder = ConfigFolder .. "/Config"
 
+    -- Pastikan folder ada
     if isfolder and makefolder then
         if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
         if not isfolder(cfgFolder)    then makefolder(cfgFolder)    end
@@ -544,6 +543,7 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         pcall(function() currentAutoload = readfile(AUTOLOAD_FILE) end)
     end
 
+    -- ── Helpers ───────────────────────────────────────────────────────
     local function toPath(name)
         return cfgFolder .. "/" .. name .. ".json"
     end
@@ -609,12 +609,14 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         currentAutoload = ""
     end
 
-    local Sections = Tab:AddSection({ Title = sectionName, Icon = sectionIcon, Open = true })
+    -- ── Build Section ─────────────────────────────────────────────────
+    local Sections = Tab:AddSection({ Name = SectionName })
 
     local selectedConfig = nil
     local dropdownRef    = nil
     local autoloadLabel  = nil
 
+    -- ── Config Name Input ─────────────────────────────────────────────
     local nameInput = Sections:AddInput({
         Title       = "Config name",
         Placeholder = "Enter config name...",
@@ -623,15 +625,18 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         Callback    = function() end,
     })
 
+    -- ── Create Config ─────────────────────────────────────────────────
     Sections:AddButton({
         Title    = "Create config",
-        Version  = "V2",
-        Icon     = "lucide:file-plus",
         Callback = function()
             local raw  = nameInput and nameInput.Value or ""
             local name = raw:match("^%s*(.-)%s*$"):gsub("[^%w_%-]", "_")
             if name == "" then
                 Nt("Config name cannot be empty!", 3, Color3.fromRGB(255, 80, 80))
+                return
+            end
+            if isfile and isfile(toPath(name)) then
+                Nt("'" .. name .. "' already exists!", 3, Color3.fromRGB(255, 165, 0))
                 return
             end
             if saveConfig(name) then
@@ -645,6 +650,7 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Config List Dropdown ──────────────────────────────────────────
     dropdownRef = Sections:AddDropdown({
         Title    = "Config list",
         Options  = getList(),
@@ -655,10 +661,9 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Load Config ───────────────────────────────────────────────────
     Sections:AddButton({
         Title    = "Load config",
-        Version  = "V2",
-        Icon     = "lucide:folder-open",
         Callback = function()
             if not selectedConfig then
                 Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
@@ -672,10 +677,9 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Overwrite Config ──────────────────────────────────────────────
     Sections:AddButton({
         Title    = "Overwrite config",
-        Version  = "V2",
-        Icon     = "lucide:save",
         Callback = function()
             if not selectedConfig then
                 Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
@@ -689,10 +693,9 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Delete Config ─────────────────────────────────────────────────
     Sections:AddButton({
         Title    = "Delete config",
-        Version  = "V2",
-        Icon     = "lucide:trash-2",
         Callback = function()
             if not selectedConfig then
                 Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
@@ -717,10 +720,9 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Refresh List ──────────────────────────────────────────────────
     Sections:AddButton({
         Title    = "Refresh list",
-        Version  = "V2",
-        Icon     = "lucide:refresh-cw",
         Callback = function()
             if dropdownRef then
                 dropdownRef:SetValues(getList(), selectedConfig)
@@ -729,10 +731,9 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Set as Autoload ───────────────────────────────────────────────
     Sections:AddButton({
         Title    = "Set as autoload",
-        Version  = "V2",
-        Icon     = "lucide:star",
         Callback = function()
             if not selectedConfig then
                 Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
@@ -746,10 +747,9 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Reset Autoload ────────────────────────────────────────────────
     Sections:AddButton({
         Title    = "Reset autoload",
-        Version  = "V2",
-        Icon     = "lucide:star-off",
         Callback = function()
             clearAutoload()
             if autoloadLabel then
@@ -759,11 +759,13 @@ function Chloex:AddConfigSection(Tab, SectionConfig)
         end,
     })
 
+    -- ── Current Autoload Label (paling bawah, seperti di gambar) ──────
     autoloadLabel = Sections:AddParagraph({
         Title   = "Current autoload config",
         Content = currentAutoload ~= "" and currentAutoload or "none",
     })
 
+    -- ── Auto-load on startup ──────────────────────────────────────────
     if currentAutoload ~= "" then
         task.defer(function()
             task.wait(0.5)
@@ -791,7 +793,6 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Configname    = GuiConfig.Configname or "Velaris UI"
     GuiConfig.Size          = GuiConfig.Size or UDim2.fromOffset(640, 400)
     GuiConfig.Search        = GuiConfig.Search ~= nil and GuiConfig.Search or false
-    GuiConfig.BackgroundVideo = GuiConfig.BackgroundVideo or ""
 
     GuiConfig.Config = GuiConfig.Config or {}
     GuiConfig.Config.AutoSave = GuiConfig.Config.AutoSave ~= nil and GuiConfig.Config.AutoSave or true
@@ -1172,7 +1173,7 @@ function Chloex:Window(GuiConfig)
     local ImageLabel2       = Instance.new("ImageLabel")
 
     Chloeex.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    Chloeex.Name = "Chloeex"
+    Chloeex.Name = "VelarisUI"
     Chloeex.ResetOnSpawn = false
     Chloeex.Parent = game:GetService("CoreGui")
 
@@ -1280,37 +1281,6 @@ function Chloex:Window(GuiConfig)
     })
     ThemeGradient.Parent = ThemeImage
 
-    if GuiConfig.BackgroundVideo ~= "" then
-        local VideoFrame = Instance.new("VideoFrame")
-        VideoFrame.Name = "BackgroundVideo"
-        VideoFrame.Parent = ImageWrapper
-        VideoFrame.BackgroundTransparency = 1
-        VideoFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-        VideoFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-        VideoFrame.Size = UDim2.new(1, 0, 1, 0)
-        VideoFrame.ZIndex = 0
-        VideoFrame.Video = "rbxassetid://" .. GuiConfig.BackgroundVideo
-        VideoFrame.Volume = 0
-        VideoFrame.Looped = true
-        VideoFrame.Playing = true
-        local VideoCorner = Instance.new("UICorner")
-        VideoCorner.CornerRadius = UDim.new(0, 8)
-        VideoCorner.Parent = VideoFrame
-        local VideoGradient = Instance.new("UIGradient")
-        VideoGradient.Rotation = 135
-        VideoGradient.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.4),
-            NumberSequenceKeypoint.new(0.5, 0.15),
-            NumberSequenceKeypoint.new(1, 0)
-        })
-        VideoGradient.Parent = VideoFrame
-        VideoFrame:GetPropertyChangedSignal("IsLoaded"):Connect(function()
-            if VideoFrame.IsLoaded then
-                VideoFrame.Playing = true
-            end
-        end)
-    end
-
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Top.BackgroundTransparency = 0.999
     Top.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -1329,7 +1299,7 @@ function Chloex:Window(GuiConfig)
     TitleIcon.Image = "rbxassetid://" .. GuiConfig.Image
 
     TextLabel.Font = Enum.Font.GothamBold
-    TextLabel.Text = ""
+    TextLabel.Text = GuiConfig.Title
     TextLabel.TextColor3 = GuiConfig.Color
     TextLabel.TextSize = 14
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1344,7 +1314,7 @@ function Chloex:Window(GuiConfig)
     UICorner1.Parent = Top
 
     TextLabel1.Font = Enum.Font.GothamBold
-    TextLabel1.Text = ""
+    TextLabel1.Text = GuiConfig.Footer
     TextLabel1.TextColor3 = GuiConfig.Color
     TextLabel1.TextSize = 14
     TextLabel1.TextXAlignment = Enum.TextXAlignment.Left
@@ -1400,47 +1370,6 @@ function Chloex:Window(GuiConfig)
 
     TextLabel:GetPropertyChangedSignal("TextBounds"):Connect(UpdateFooterPosition)
     UpdateFooterPosition()
-
-    if GuiConfig.Animation then
-        TextLabel1.Visible = false
-        task.spawn(function()
-            local function typeOut(text, charDelay)
-                TextLabel.Text = ""
-                for i = 1, #text do
-                    TextLabel.Text = string.sub(text, 1, i)
-                    task.wait(charDelay)
-                end
-            end
-
-            local function typeErase(charDelay)
-                local current = TextLabel.Text
-                for i = #current, 1, -1 do
-                    TextLabel.Text = string.sub(current, 1, i - 1)
-                    task.wait(charDelay)
-                end
-                TextLabel.Text = ""
-            end
-
-            local titleText = GuiConfig.Title
-            local footerText = GuiConfig.Footer
-            local charDelay = GuiConfig.TypeDelay or 0.07
-            local pauseTime = GuiConfig.TypePause or 2.5
-
-            while true do
-                typeOut(titleText, charDelay)
-                task.wait(pauseTime)
-                typeErase(charDelay)
-                task.wait(0.15)
-                typeOut(footerText, charDelay)
-                task.wait(pauseTime)
-                typeErase(charDelay)
-                task.wait(0.15)
-            end
-        end)
-    else
-        TextLabel.Text  = GuiConfig.Title
-        TextLabel1.Text = GuiConfig.Footer
-    end
 
     Close.Font = Enum.Font.SourceSans
     Close.Text = ""
@@ -1715,7 +1644,7 @@ function Chloex:Window(GuiConfig)
     LayersPageLayout.EasingStyle = Enum.EasingStyle.Quad
 
     function GuiFunc:DestroyGui()
-        if CoreGui:FindFirstChild("Chloeex") then
+        if CoreGui:FindFirstChild("VelarisUI") then
             Chloeex:Destroy()
         end
     end
@@ -2091,6 +2020,9 @@ function Chloex:Window(GuiConfig)
         GuiFunc[k] = v
     end
 
+    -- ══════════════════════════════════════════════════════════════
+    -- Inject AddColorpicker
+    -- ══════════════════════════════════════════════════════════════
     local origAddTab = GuiFunc.AddTab
     GuiFunc.AddTab = function(self, TabConfig)
         local Sections = origAddTab(self, TabConfig)
