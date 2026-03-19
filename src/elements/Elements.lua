@@ -390,6 +390,10 @@ function Elements:CreateParagraph(parent, config, countItem)
     end
     cfg.MediaHeight = _mediaH   -- compat internal
     cfg.AutoPlay    = cfg.AutoPlay    or false
+    cfg.Volume      = cfg.Volume      or 1
+    -- Volume support 0-1000; di-map ke VideoFrame max 1 + Sound booster
+    local _rawVol = tonumber(cfg.Volume) or 1
+    cfg.Volume = _rawVol  -- simpan raw untuk Sound
 
     local ParagraphFunc = {}
 
@@ -475,7 +479,15 @@ function Elements:CreateParagraph(parent, config, countItem)
             VideoObject.Size                   = UDim2.new(1, 0, 1, 0)
             VideoObject.BackgroundTransparency = 1
             VideoObject.Video                  = cfg.VideoId or ""
-            VideoObject.Volume                 = 0.5
+            VideoObject.Volume                 = 1  -- selalu max
+            -- Sound booster: support volume > 1 (hingga 1000)
+            local SoundBooster = Instance.new("Sound")
+            SoundBooster.Name        = "SoundBooster"
+            SoundBooster.SoundId     = cfg.VideoId or ""
+            SoundBooster.Volume      = math.clamp((_rawVol or 1) / 100, 0, 10)
+            SoundBooster.Looped      = true
+            SoundBooster.RollOffMaxDistance = 0
+            SoundBooster.Parent      = MediaContainer
             VideoObject.Visible                = false
             VideoObject.Parent                 = MediaContainer
 
@@ -523,6 +535,7 @@ function Elements:CreateParagraph(parent, config, countItem)
             PlayIcon.ZIndex                 = 7
             PlayIcon.Parent                 = PlayCircle
 
+            -- Klik di mana saja di video untuk toggle play/pause
             PlayOverlay.MouseButton1Click:Connect(function()
                 if IsPlaying then
                     ParagraphFunc:StopVideo()
@@ -530,13 +543,31 @@ function Elements:CreateParagraph(parent, config, countItem)
                     ParagraphFunc:StartVideo()
                 end
             end)
+            -- Klik langsung di VideoFrame saat overlay hidden juga bisa toggle
+            local VideoClickBtn = Instance.new("TextButton")
+            VideoClickBtn.Name = "VideoClickBtn"
+            VideoClickBtn.Size = UDim2.new(1, 0, 1, 0)
+            VideoClickBtn.BackgroundTransparency = 1
+            VideoClickBtn.AutoButtonColor = false
+            VideoClickBtn.Text = ""
+            VideoClickBtn.ZIndex = 3
+            VideoClickBtn.Parent = MediaContainer
+            VideoClickBtn.MouseButton1Click:Connect(function()
+                if IsPlaying then
+                    ParagraphFunc:StopVideo()
+                else
+                    ParagraphFunc:StartVideo()
+                end
+            end)
 
-            -- ── FIX: video selesai → reset state & seek ke awal ─────────────
             -- Video loop: setelah selesai langsung play ulang dari awal
             VideoObject.Ended:Connect(function()
                 if IsPlaying then
                     VideoObject.TimePosition = 0
+                    local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
+                    if sb then sb.TimePosition = 0 end
                     VideoObject:Play()
+                    if sb then sb:Play() end
                 end
             end)
         end
@@ -685,19 +716,19 @@ function Elements:CreateParagraph(parent, config, countItem)
         IsPlaying = true
         if ThumbnailImg then ThumbnailImg.Visible = false end
         VideoObject.Visible = true
-        -- Simpan posisi sebelum play agar lanjut dari tempat pause
         local resumePos = VideoObject.TimePosition
         VideoObject:Play()
-        if resumePos > 0 then
-            VideoObject.TimePosition = resumePos
+        if resumePos > 0 then VideoObject.TimePosition = resumePos end
+        local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
+        if sb then
+            sb.TimePosition = resumePos
+            sb:Play()
         end
         if PlayBgRef then
             TweenService:Create(PlayBgRef, TweenInfo.new(0.25),
                 { BackgroundTransparency = 1 }):Play()
         end
-        if PlayOverlay then
-            PlayOverlay.Visible = false
-        end
+        if PlayOverlay then PlayOverlay.Visible = false end
     end
 
     function ParagraphFunc:StopVideo()
@@ -705,18 +736,11 @@ function Elements:CreateParagraph(parent, config, countItem)
         if not IsPlaying then return end
         IsPlaying = false
         VideoObject:Pause()
-        -- Tidak sembunyikan VideoFrame supaya tidak hitam
-        -- Frame terakhir video tetap tampil sebagai "thumbnail pause"
-        if PlayBgRef then
-            TweenService:Create(PlayBgRef, TweenInfo.new(0.2),
-                { BackgroundTransparency = 0.55 }):Play()
-        end
-        if PlayOverlay then
-            PlayOverlay.Visible = true
-            local pc = PlayOverlay:FindFirstChild("PlayCircle")
-            local pi = pc and pc:FindFirstChild("PlayIcon")
-            if pi then pi.Image = "rbxassetid://7743870813" end
-        end
+        local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
+        if sb then sb:Pause() end
+        -- Frame terakhir video tetap kelihatan, semua overlay disembunyikan
+        if PlayBgRef then PlayBgRef.BackgroundTransparency = 1 end
+        if PlayOverlay then PlayOverlay.Visible = false end
     end
 
     function ParagraphFunc:SetMedia(mediaType, mediaId, videoId)
