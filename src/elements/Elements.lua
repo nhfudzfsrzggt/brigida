@@ -1,4 +1,4 @@
--- // vilarisUi | Elements.lua ? FIxed Paragraph Video & Image
+-- // vilarisUi | Elements.lua
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -534,7 +534,7 @@ function Elements:CreateParagraph(parent, config, countItem)
             -- ── FIX: video selesai → reset state & seek ke awal ─────────────
             VideoObject.Ended:Connect(function()
                 IsPlaying = false
-                VideoObject:Stop()
+                VideoObject:Pause()
                 VideoObject.TimePosition = 0   -- reset agar tidak hitam saat play ulang
                 VideoObject.Visible = false
                 if ThumbnailImg and cfg.MediaId and cfg.MediaId ~= "" then
@@ -711,7 +711,7 @@ function Elements:CreateParagraph(parent, config, countItem)
         if not VideoObject then return end
         if not IsPlaying then return end
         IsPlaying = false
-        VideoObject:Stop()
+        VideoObject:Pause()
         VideoObject.TimePosition = 0   -- ← kunci: reset agar tidak hitam
         VideoObject.Visible = false
         if ThumbnailImg and cfg.MediaId and cfg.MediaId ~= "" then
