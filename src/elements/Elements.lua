@@ -1,4 +1,4 @@
--- // vilarisUi | Elements.lua
+-- // vilarisUi | Elements.lua | Fixed Paragraph
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -532,23 +532,11 @@ function Elements:CreateParagraph(parent, config, countItem)
             end)
 
             -- ── FIX: video selesai → reset state & seek ke awal ─────────────
+            -- Video loop: setelah selesai langsung play ulang dari awal
             VideoObject.Ended:Connect(function()
-                IsPlaying = false
-                VideoObject:Pause()
-                VideoObject.TimePosition = 0   -- reset agar tidak hitam saat play ulang
-                VideoObject.Visible = false
-                if ThumbnailImg and cfg.MediaId and cfg.MediaId ~= "" then
-                    ThumbnailImg.Visible = true
-                end
-                if PlayBgRef then
-                    TweenService:Create(PlayBgRef, TweenInfo.new(0.2),
-                        { BackgroundTransparency = 0.45 }):Play()
-                end
-                if PlayOverlay then
-                    PlayOverlay.Visible = true
-                    local pc = PlayOverlay:FindFirstChild("PlayCircle")
-                    local pi = pc and pc:FindFirstChild("PlayIcon")
-                    if pi then pi.Image = "rbxassetid://7743870813" end
+                if IsPlaying then
+                    VideoObject.TimePosition = 0
+                    VideoObject:Play()
                 end
             end)
         end
