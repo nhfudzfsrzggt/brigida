@@ -365,106 +365,155 @@ local function RoundToFactor(value, factor)
     return math.floor(value / factor + 0.5) * factor
 end
 
+-- ============================================================
+--  CreateParagraph  (DIPERBAIKI: layout media + bug video hitam)
+-- ============================================================
 function Elements:CreateParagraph(parent, config, countItem)
     local cfg = config or {}
-    cfg.Title      = cfg.Title      or "Title"
-    cfg.Content    = cfg.Content    or "Content"
-    cfg.Badge      = cfg.Badge      or nil
-    cfg.Color      = cfg.Color      or nil
-    cfg.Locked     = cfg.Locked     or false
-    cfg.MediaType  = cfg.MediaType  or nil
-    cfg.MediaId    = cfg.MediaId    or nil
-    cfg.VideoId    = cfg.VideoId    or nil
-    cfg.MediaWidth  = cfg.MediaWidth  or 80
-    cfg.MediaHeight = cfg.MediaHeight or 60
-    cfg.AutoPlay   = cfg.AutoPlay   or false
+    cfg.Title       = cfg.Title       or "Title"
+    cfg.Content     = cfg.Content     or "Content"
+    cfg.Badge       = cfg.Badge       or nil
+    cfg.Color       = cfg.Color       or nil
+    cfg.Locked      = cfg.Locked      or false
+    cfg.MediaType   = cfg.MediaType   or nil
+    cfg.MediaId     = cfg.MediaId     or nil
+    cfg.VideoId     = cfg.VideoId     or nil
+    -- MediaHeight = tinggi blok media full-width (default 140)
+    cfg.MediaHeight = cfg.MediaHeight or 140
+    cfg.AutoPlay    = cfg.AutoPlay    or false
+
     local ParagraphFunc = {}
+
+    -- ── Root frame ──────────────────────────────────────────────────────────
     local Paragraph = Instance.new("Frame")
-    Paragraph.Name = "Paragraph"
-    Paragraph.BorderSizePixel = 0
-    Paragraph.LayoutOrder = countItem
-    Paragraph.Size = UDim2.new(1, 0, 0, 56)
-    Paragraph.ClipsDescendants = true
-    Paragraph.Parent = parent
+    Paragraph.Name               = "Paragraph"
+    Paragraph.BorderSizePixel    = 0
+    Paragraph.LayoutOrder        = countItem
+    Paragraph.Size               = UDim2.new(1, 0, 0, 56)
+    Paragraph.ClipsDescendants   = true
+    Paragraph.Parent             = parent
+
     if cfg.Color then
-        Paragraph.BackgroundColor3 = cfg.Color
+        Paragraph.BackgroundColor3       = cfg.Color
         Paragraph.BackgroundTransparency = 0.88
         local AccentBar = Instance.new("Frame")
-        AccentBar.Name = "AccentBar"
-        AccentBar.Size = UDim2.new(0, 3, 1, -10)
-        AccentBar.Position = UDim2.new(0, 4, 0, 5)
-        AccentBar.BackgroundColor3 = cfg.Color
+        AccentBar.Name                   = "AccentBar"
+        AccentBar.Size                   = UDim2.new(0, 3, 1, -10)
+        AccentBar.Position               = UDim2.new(0, 4, 0, 5)
+        AccentBar.BackgroundColor3       = cfg.Color
         AccentBar.BackgroundTransparency = 0
-        AccentBar.BorderSizePixel = 0
-        AccentBar.ZIndex = 2
-        AccentBar.Parent = Paragraph
+        AccentBar.BorderSizePixel        = 0
+        AccentBar.ZIndex                 = 2
+        AccentBar.Parent                 = Paragraph
         Instance.new("UICorner", AccentBar).CornerRadius = UDim.new(1, 0)
         local AccentGlow = Instance.new("UIStroke")
-        AccentGlow.Color = cfg.Color
-        AccentGlow.Thickness = 1
+        AccentGlow.Color        = cfg.Color
+        AccentGlow.Thickness    = 1
         AccentGlow.Transparency = 0.55
-        AccentGlow.Parent = Paragraph
+        AccentGlow.Parent       = Paragraph
     else
-        Paragraph.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Paragraph.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
         Paragraph.BackgroundTransparency = 0.935
     end
     Instance.new("UICorner", Paragraph).CornerRadius = UDim.new(0, 8)
     if cfg.Badge then CreateBadge(Paragraph, cfg.Badge) end
-    local mediaW = 0
-    local mediaPadL = 0
-    local VideoObject = nil
+
+    -- ── Media (Image / Video) — full-width di ATAS teks ─────────────────────
+    local VideoObject  = nil
     local ThumbnailImg = nil
-    local PlayOverlay = nil
-    local IsPlaying = false
+    local PlayOverlay  = nil
+    local PlayBgRef    = nil
+    local IsPlaying    = false
+    local mediaBlockH  = 0
+
     if cfg.MediaType == "Image" or cfg.MediaType == "Video" then
-        mediaW   = cfg.MediaWidth
-        mediaPadL = 10
+        mediaBlockH = cfg.MediaHeight
+
         local MediaContainer = Instance.new("Frame")
-        MediaContainer.Name = "MediaContainer"
-        MediaContainer.Position = UDim2.new(0, mediaPadL, 0, 8)
-        MediaContainer.Size = UDim2.new(0, mediaW, 0, cfg.MediaHeight)
-        MediaContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        MediaContainer.BackgroundTransparency = 0.3
-        MediaContainer.BorderSizePixel = 0
-        MediaContainer.ClipsDescendants = true
-        MediaContainer.Parent = Paragraph
-        Instance.new("UICorner", MediaContainer).CornerRadius = UDim.new(0, 6)
+        MediaContainer.Name                   = "MediaContainer"
+        MediaContainer.Position               = UDim2.new(0, 0, 0, 0)
+        MediaContainer.Size                   = UDim2.new(1, 0, 0, cfg.MediaHeight)
+        MediaContainer.BackgroundColor3       = Color3.fromRGB(15, 15, 15)
+        MediaContainer.BackgroundTransparency = 0.2
+        MediaContainer.BorderSizePixel        = 0
+        MediaContainer.ClipsDescendants       = true
+        MediaContainer.ZIndex                 = 2
+        MediaContainer.Parent                 = Paragraph
+        Instance.new("UICorner", MediaContainer).CornerRadius = UDim.new(0, 8)
+
+        -- Garis pemisah tipis antara media dan teks
+        local Divider = Instance.new("Frame")
+        Divider.Name                   = "MediaDivider"
+        Divider.Position               = UDim2.new(0, 0, 0, cfg.MediaHeight)
+        Divider.Size                   = UDim2.new(1, 0, 0, 1)
+        Divider.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+        Divider.BackgroundTransparency = 0.92
+        Divider.BorderSizePixel        = 0
+        Divider.Parent                 = Paragraph
+
         ThumbnailImg = Instance.new("ImageLabel")
-        ThumbnailImg.Name = "ThumbnailImg"
-        ThumbnailImg.Size = UDim2.new(1, 0, 1, 0)
+        ThumbnailImg.Name                   = "ThumbnailImg"
+        ThumbnailImg.Size                   = UDim2.new(1, 0, 1, 0)
         ThumbnailImg.BackgroundTransparency = 1
-        ThumbnailImg.ScaleType = Enum.ScaleType.Crop
-        ThumbnailImg.Image = cfg.MediaId or ""
-        ThumbnailImg.Visible = (cfg.MediaId ~= nil and cfg.MediaId ~= "")
-        ThumbnailImg.Parent = MediaContainer
+        ThumbnailImg.ScaleType              = Enum.ScaleType.Crop
+        ThumbnailImg.Image                  = cfg.MediaId or ""
+        ThumbnailImg.Visible                = (cfg.MediaId ~= nil and cfg.MediaId ~= "")
+        ThumbnailImg.Parent                 = MediaContainer
+
         if cfg.MediaType == "Video" then
             VideoObject = Instance.new("VideoFrame")
-            VideoObject.Name = "VideoFrame"
-            VideoObject.Size = UDim2.new(1, 0, 1, 0)
+            VideoObject.Name                   = "VideoFrame"
+            VideoObject.Size                   = UDim2.new(1, 0, 1, 0)
             VideoObject.BackgroundTransparency = 1
-            VideoObject.Video = cfg.VideoId or ""
-            VideoObject.Volume = 0.5
-            VideoObject.Visible = false
-            VideoObject.Parent = MediaContainer
+            VideoObject.Video                  = cfg.VideoId or ""
+            VideoObject.Volume                 = 0.5
+            VideoObject.Visible                = false
+            VideoObject.Parent                 = MediaContainer
+
+            -- Overlay gelap saat pause agar ikon play terlihat
+            PlayBgRef = Instance.new("Frame")
+            PlayBgRef.Name                   = "PlayBg"
+            PlayBgRef.Size                   = UDim2.new(1, 0, 1, 0)
+            PlayBgRef.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
+            PlayBgRef.BackgroundTransparency = 0.45
+            PlayBgRef.BorderSizePixel        = 0
+            PlayBgRef.ZIndex                 = 4
+            PlayBgRef.Parent                 = MediaContainer
+
             PlayOverlay = Instance.new("TextButton")
-            PlayOverlay.Name = "PlayOverlay"
-            PlayOverlay.Size = UDim2.new(1, 0, 1, 0)
+            PlayOverlay.Name                   = "PlayOverlay"
+            PlayOverlay.Size                   = UDim2.new(1, 0, 1, 0)
             PlayOverlay.BackgroundTransparency = 1
-            PlayOverlay.AutoButtonColor = false
-            PlayOverlay.Text = ""
-            PlayOverlay.ZIndex = 5
-            PlayOverlay.Parent = MediaContainer
+            PlayOverlay.AutoButtonColor        = false
+            PlayOverlay.Text                   = ""
+            PlayOverlay.ZIndex                 = 5
+            PlayOverlay.Parent                 = MediaContainer
+
+            -- Lingkaran tombol play
+            local PlayCircle = Instance.new("Frame")
+            PlayCircle.Name                   = "PlayCircle"
+            PlayCircle.AnchorPoint            = Vector2.new(0.5, 0.5)
+            PlayCircle.Position               = UDim2.new(0.5, 0, 0.5, 0)
+            PlayCircle.Size                   = UDim2.new(0, 52, 0, 52)
+            PlayCircle.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+            PlayCircle.BackgroundTransparency = 0.15
+            PlayCircle.BorderSizePixel        = 0
+            PlayCircle.ZIndex                 = 6
+            PlayCircle.Parent                 = PlayOverlay
+            Instance.new("UICorner", PlayCircle).CornerRadius = UDim.new(1, 0)
+
             local PlayIcon = Instance.new("ImageLabel")
-            PlayIcon.Name = "PlayIcon"
-            PlayIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-            PlayIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
-            PlayIcon.Size = UDim2.new(0, 24, 0, 24)
+            PlayIcon.Name                   = "PlayIcon"
+            PlayIcon.AnchorPoint            = Vector2.new(0.5, 0.5)
+            PlayIcon.Position               = UDim2.new(0.5, 0, 0.5, 0)
+            PlayIcon.Size                   = UDim2.new(0, 28, 0, 28)
             PlayIcon.BackgroundTransparency = 1
-            PlayIcon.ScaleType = Enum.ScaleType.Fit
-            PlayIcon.Image = "rbxassetid://7743870813"
-            PlayIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-            PlayIcon.ZIndex = 6
-            PlayIcon.Parent = PlayOverlay
+            PlayIcon.ScaleType              = Enum.ScaleType.Fit
+            PlayIcon.Image                  = "rbxassetid://7743870813"
+            PlayIcon.ImageColor3            = Color3.fromRGB(255, 255, 255)
+            PlayIcon.ZIndex                 = 7
+            PlayIcon.Parent                 = PlayCircle
+
             PlayOverlay.MouseButton1Click:Connect(function()
                 if IsPlaying then
                     ParagraphFunc:StopVideo()
@@ -472,105 +521,135 @@ function Elements:CreateParagraph(parent, config, countItem)
                     ParagraphFunc:StartVideo()
                 end
             end)
+
+            -- ── FIX: video selesai → reset state & seek ke awal ─────────────
             VideoObject.Ended:Connect(function()
-                ParagraphFunc:StopVideo()
+                IsPlaying = false
+                VideoObject:Stop()
+                VideoObject.TimePosition = 0   -- reset agar tidak hitam saat play ulang
+                VideoObject.Visible = false
+                if ThumbnailImg and cfg.MediaId and cfg.MediaId ~= "" then
+                    ThumbnailImg.Visible = true
+                end
+                if PlayBgRef then
+                    TweenService:Create(PlayBgRef, TweenInfo.new(0.2),
+                        { BackgroundTransparency = 0.45 }):Play()
+                end
+                if PlayOverlay then
+                    PlayOverlay.Visible = true
+                    local pc = PlayOverlay:FindFirstChild("PlayCircle")
+                    local pi = pc and pc:FindFirstChild("PlayIcon")
+                    if pi then pi.Image = "rbxassetid://7743870813" end
+                end
             end)
         end
     end
+
+    -- ── Icon (hanya jika tidak ada media) ───────────────────────────────────
     local iconSize = 0
     local iconPadL = 0
     if cfg.Icon and not cfg.MediaType then
         iconSize = 36
         iconPadL = 10
         local IconContainer = Instance.new("Frame")
-        IconContainer.Name = "IconContainer"
-        IconContainer.Position = UDim2.new(0, iconPadL, 0, 10)
-        IconContainer.Size = UDim2.new(0, iconSize, 0, iconSize)
+        IconContainer.Name                   = "IconContainer"
+        IconContainer.Position               = UDim2.new(0, iconPadL, 0, mediaBlockH + 10)
+        IconContainer.Size                   = UDim2.new(0, iconSize, 0, iconSize)
         IconContainer.BackgroundTransparency = 1
-        IconContainer.Parent = Paragraph
+        IconContainer.Parent                 = Paragraph
         local IconImg = Instance.new("ImageLabel")
-        IconImg.Name = "ParagraphIcon"
-        IconImg.Size = UDim2.new(1, 0, 1, 0)
+        IconImg.Name                   = "ParagraphIcon"
+        IconImg.Size                   = UDim2.new(1, 0, 1, 0)
         IconImg.BackgroundTransparency = 1
-        IconImg.ScaleType = Enum.ScaleType.Fit
-        IconImg.Image = GetIconId(cfg.Icon)
-        IconImg.Parent = IconContainer
+        IconImg.ScaleType              = Enum.ScaleType.Fit
+        IconImg.Image                  = GetIconId(cfg.Icon)
+        IconImg.Parent                 = IconContainer
     end
+
+    -- ── Posisi teks (di bawah media jika ada) ───────────────────────────────
     local textLeft
     if cfg.MediaType then
-        textLeft = mediaPadL + mediaW + 10
+        textLeft = cfg.Color and 14 or 10
     elseif cfg.Icon then
         textLeft = iconPadL + iconSize + 10
     else
         textLeft = cfg.Color and 14 or 10
     end
+
+    local textTopBase = mediaBlockH + (mediaBlockH > 0 and 1 or 0)
+
     local ParagraphTitle = Instance.new("TextLabel")
-    ParagraphTitle.Name = "ParagraphTitle"
-    ParagraphTitle.Font = Enum.Font.GothamBold
-    ParagraphTitle.Text = cfg.Title
-    ParagraphTitle.TextColor3 = cfg.Color and cfg.Color or Color3.fromRGB(255, 255, 255)
-    ParagraphTitle.TextSize = 13
-    ParagraphTitle.TextXAlignment = Enum.TextXAlignment.Left
-    ParagraphTitle.TextYAlignment = Enum.TextYAlignment.Top
+    ParagraphTitle.Name                   = "ParagraphTitle"
+    ParagraphTitle.Font                   = Enum.Font.GothamBold
+    ParagraphTitle.Text                   = cfg.Title
+    ParagraphTitle.TextColor3             = cfg.Color and cfg.Color or Color3.fromRGB(255, 255, 255)
+    ParagraphTitle.TextSize               = 13
+    ParagraphTitle.TextXAlignment         = Enum.TextXAlignment.Left
+    ParagraphTitle.TextYAlignment         = Enum.TextYAlignment.Top
     ParagraphTitle.BackgroundTransparency = 1
-    ParagraphTitle.Position = UDim2.new(0, textLeft, 0, 10)
-    ParagraphTitle.Size = UDim2.new(1, -(textLeft + 10), 0, 15)
-    ParagraphTitle.TextWrapped = false
-    ParagraphTitle.Parent = Paragraph
+    ParagraphTitle.Position               = UDim2.new(0, textLeft, 0, textTopBase + 10)
+    ParagraphTitle.Size                   = UDim2.new(1, -(textLeft + 10), 0, 15)
+    ParagraphTitle.TextWrapped            = false
+    ParagraphTitle.Parent                 = Paragraph
+
     local ParagraphContent = Instance.new("TextLabel")
-    ParagraphContent.Name = "ParagraphContent"
-    ParagraphContent.Font = Enum.Font.GothamBold
-    ParagraphContent.Text = cfg.Content
-    ParagraphContent.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ParagraphContent.TextSize = 11
-    ParagraphContent.TextTransparency = cfg.Color and 0.25 or 0.45
-    ParagraphContent.TextXAlignment = Enum.TextXAlignment.Left
-    ParagraphContent.TextYAlignment = Enum.TextYAlignment.Top
+    ParagraphContent.Name                   = "ParagraphContent"
+    ParagraphContent.Font                   = Enum.Font.GothamBold
+    ParagraphContent.Text                   = cfg.Content
+    ParagraphContent.TextColor3             = Color3.fromRGB(255, 255, 255)
+    ParagraphContent.TextSize               = 11
+    ParagraphContent.TextTransparency       = cfg.Color and 0.25 or 0.45
+    ParagraphContent.TextXAlignment         = Enum.TextXAlignment.Left
+    ParagraphContent.TextYAlignment         = Enum.TextYAlignment.Top
     ParagraphContent.BackgroundTransparency = 1
-    ParagraphContent.Position = UDim2.new(0, textLeft, 0, 27)
-    ParagraphContent.Size = UDim2.new(1, -(textLeft + 10), 0, 12)
-    ParagraphContent.TextWrapped = true
-    ParagraphContent.RichText = true
-    ParagraphContent.Parent = Paragraph
+    ParagraphContent.Position               = UDim2.new(0, textLeft, 0, textTopBase + 27)
+    ParagraphContent.Size                   = UDim2.new(1, -(textLeft + 10), 0, 12)
+    ParagraphContent.TextWrapped            = true
+    ParagraphContent.RichText               = true
+    ParagraphContent.Parent                 = Paragraph
+
+    -- ── Tombol opsional ─────────────────────────────────────────────────────
     local btnBgColor = cfg.ButtonColor    or Color3.fromRGB(255, 255, 255)
     local subBgColor = cfg.SubButtonColor or Color3.fromRGB(255, 255, 255)
     local btnBgTrans = cfg.ButtonColor    and 0.15 or 0.85
     local subBgTrans = cfg.SubButtonColor and 0.15 or 0.85
     local ParagraphButton, ParagraphSubButton
+
     if cfg.ButtonText then
         local hasSubBtn = cfg.SubButtonText ~= nil
         ParagraphButton = Instance.new("TextButton")
-        ParagraphButton.Name = "ParagraphButton"
-        ParagraphButton.BackgroundColor3 = btnBgColor
+        ParagraphButton.Name                   = "ParagraphButton"
+        ParagraphButton.BackgroundColor3       = btnBgColor
         ParagraphButton.BackgroundTransparency = btnBgTrans
-        ParagraphButton.Font = Enum.Font.GothamBold
-        ParagraphButton.TextSize = 12
-        ParagraphButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        ParagraphButton.TextTransparency = 0
-        ParagraphButton.Text = cfg.ButtonText
-        ParagraphButton.Size = hasSubBtn and UDim2.new(0.5, -13, 0, 28) or UDim2.new(1, -16, 0, 28)
-        ParagraphButton.Position = UDim2.new(0, 8, 0, 0)
-        ParagraphButton.AutoButtonColor = false
-        ParagraphButton.Parent = Paragraph
+        ParagraphButton.Font                   = Enum.Font.GothamBold
+        ParagraphButton.TextSize               = 12
+        ParagraphButton.TextColor3             = Color3.fromRGB(255, 255, 255)
+        ParagraphButton.TextTransparency       = 0
+        ParagraphButton.Text                   = cfg.ButtonText
+        ParagraphButton.Size                   = hasSubBtn and UDim2.new(0.5, -13, 0, 28) or UDim2.new(1, -16, 0, 28)
+        ParagraphButton.Position               = UDim2.new(0, 8, 0, 0)
+        ParagraphButton.AutoButtonColor        = false
+        ParagraphButton.Parent                 = Paragraph
         Instance.new("UICorner", ParagraphButton).CornerRadius = UDim.new(0, 6)
         ParagraphButton.MouseButton1Click:Connect(function()
             AnimateButtonClick(ParagraphButton, btnBgColor)
             SafeCall(cfg.ButtonCallback)
         end)
+
         if hasSubBtn then
             ParagraphSubButton = Instance.new("TextButton")
-            ParagraphSubButton.Name = "ParagraphSubButton"
-            ParagraphSubButton.BackgroundColor3 = subBgColor
+            ParagraphSubButton.Name                   = "ParagraphSubButton"
+            ParagraphSubButton.BackgroundColor3       = subBgColor
             ParagraphSubButton.BackgroundTransparency = subBgTrans
-            ParagraphSubButton.Font = Enum.Font.GothamBold
-            ParagraphSubButton.TextSize = 12
-            ParagraphSubButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-            ParagraphSubButton.TextTransparency = 0
-            ParagraphSubButton.Text = cfg.SubButtonText
-            ParagraphSubButton.Size = UDim2.new(0.5, -13, 0, 28)
-            ParagraphSubButton.Position = UDim2.new(0.5, 5, 0, 0)
-            ParagraphSubButton.AutoButtonColor = false
-            ParagraphSubButton.Parent = Paragraph
+            ParagraphSubButton.Font                   = Enum.Font.GothamBold
+            ParagraphSubButton.TextSize               = 12
+            ParagraphSubButton.TextColor3             = Color3.fromRGB(255, 255, 255)
+            ParagraphSubButton.TextTransparency       = 0
+            ParagraphSubButton.Text                   = cfg.SubButtonText
+            ParagraphSubButton.Size                   = UDim2.new(0.5, -13, 0, 28)
+            ParagraphSubButton.Position               = UDim2.new(0.5, 5, 0, 0)
+            ParagraphSubButton.AutoButtonColor        = false
+            ParagraphSubButton.Parent                 = Paragraph
             Instance.new("UICorner", ParagraphSubButton).CornerRadius = UDim.new(0, 6)
             ParagraphSubButton.MouseButton1Click:Connect(function()
                 AnimateButtonClick(ParagraphSubButton, subBgColor)
@@ -578,20 +657,20 @@ function Elements:CreateParagraph(parent, config, countItem)
             end)
         end
     end
+
+    -- ── UpdateSize ───────────────────────────────────────────────────────────
     local function UpdateSize()
         task.wait()
         local contentH = math.max(12, ParagraphContent.TextBounds.Y)
         ParagraphContent.Size = UDim2.new(1, -(textLeft + 10), 0, contentH)
-        local textBottom = 10 + 15 + 2 + contentH + 8
-        local mediaMinH = (cfg.MediaType and cfg.MediaHeight > 0) and (cfg.MediaHeight + 16) or 0
-        local headerBottom = math.max(textBottom, mediaMinH)
-        local totalH = headerBottom
+        local textBottom = textTopBase + 10 + 15 + 2 + contentH + 8
+        local totalH = textBottom
         if ParagraphButton then
-            ParagraphButton.Position = UDim2.new(0, 8, 0, headerBottom)
+            ParagraphButton.Position = UDim2.new(0, 8, 0, textBottom)
             if ParagraphSubButton then
-                ParagraphSubButton.Position = UDim2.new(0.5, 5, 0, headerBottom)
+                ParagraphSubButton.Position = UDim2.new(0.5, 5, 0, textBottom)
             end
-            totalH = headerBottom + 28 + 8
+            totalH = textBottom + 28 + 8
         end
         Paragraph.Size = UDim2.new(1, 0, 0, totalH)
     end
@@ -599,7 +678,10 @@ function Elements:CreateParagraph(parent, config, countItem)
     ParagraphContent:GetPropertyChangedSignal("Text"):Connect(UpdateSize)
     ParagraphContent:GetPropertyChangedSignal("TextBounds"):Connect(UpdateSize)
     Paragraph:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateSize)
+
     local LockFunc = ApplyLock(Paragraph, cfg.Locked)
+
+    -- ── Video API ────────────────────────────────────────────────────────────
     function ParagraphFunc:StartVideo()
         if not VideoObject then return end
         if IsPlaying then return end
@@ -607,32 +689,48 @@ function Elements:CreateParagraph(parent, config, countItem)
         if ThumbnailImg then ThumbnailImg.Visible = false end
         VideoObject.Visible = true
         VideoObject:Play()
-        if PlayOverlay and PlayOverlay:FindFirstChild("PlayIcon") then
-            PlayOverlay.PlayIcon.Image = "rbxassetid://7743871507"
+        if PlayBgRef then
+            TweenService:Create(PlayBgRef, TweenInfo.new(0.25),
+                { BackgroundTransparency = 1 }):Play()
+        end
+        if PlayOverlay then
+            PlayOverlay.Visible = false
         end
     end
+
     function ParagraphFunc:StopVideo()
         if not VideoObject then return end
         if not IsPlaying then return end
         IsPlaying = false
-        VideoObject:Pause()
+        VideoObject:Stop()
+        VideoObject.TimePosition = 0   -- ← kunci: reset agar tidak hitam
         VideoObject.Visible = false
         if ThumbnailImg and cfg.MediaId and cfg.MediaId ~= "" then
             ThumbnailImg.Visible = true
         end
-        if PlayOverlay and PlayOverlay:FindFirstChild("PlayIcon") then
-            PlayOverlay.PlayIcon.Image = "rbxassetid://7743870813"
+        if PlayBgRef then
+            TweenService:Create(PlayBgRef, TweenInfo.new(0.2),
+                { BackgroundTransparency = 0.45 }):Play()
+        end
+        if PlayOverlay then
+            PlayOverlay.Visible = true
+            local pc = PlayOverlay:FindFirstChild("PlayCircle")
+            local pi = pc and pc:FindFirstChild("PlayIcon")
+            if pi then pi.Image = "rbxassetid://7743870813" end
         end
     end
+
     function ParagraphFunc:SetMedia(mediaType, mediaId, videoId)
         if not ThumbnailImg then return end
         if IsPlaying then ParagraphFunc:StopVideo() end
         ThumbnailImg.Image = mediaId or ""
+        ThumbnailImg.Visible = (mediaId ~= nil and mediaId ~= "")
         if VideoObject then VideoObject.Video = videoId or "" end
         cfg.MediaType = mediaType
         cfg.MediaId   = mediaId
         cfg.VideoId   = videoId
     end
+
     function ParagraphFunc:IsVideoPlaying() return IsPlaying end
     function ParagraphFunc:SetContent(content)
         ParagraphContent.Text = tostring(content or "Content")
@@ -642,13 +740,15 @@ function Elements:CreateParagraph(parent, config, countItem)
         ParagraphTitle.Text = tostring(title or "Title")
     end
     function ParagraphFunc:GetContent() return ParagraphContent.Text end
-    function ParagraphFunc:GetTitle() return ParagraphTitle.Text end
-    function ParagraphFunc:SetLocked(state) LockFunc:SetLocked(state) end
-    function ParagraphFunc:GetLocked() return LockFunc:GetLocked() end
+    function ParagraphFunc:GetTitle()   return ParagraphTitle.Text   end
+    function ParagraphFunc:SetLocked(state)     LockFunc:SetLocked(state) end
+    function ParagraphFunc:GetLocked()          return LockFunc:GetLocked() end
     function ParagraphFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
+
     if cfg.AutoPlay and cfg.MediaType == "Video" then
         task.defer(function() ParagraphFunc:StartVideo() end)
     end
+
     return ParagraphFunc
 end
 
