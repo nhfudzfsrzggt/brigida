@@ -1,4 +1,4 @@
--- // vilarisUi | Elements.lua | Fixed Paragraph
+-- // vilarisUi | Elements.lua
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -685,7 +685,12 @@ function Elements:CreateParagraph(parent, config, countItem)
         IsPlaying = true
         if ThumbnailImg then ThumbnailImg.Visible = false end
         VideoObject.Visible = true
+        -- Simpan posisi sebelum play agar lanjut dari tempat pause
+        local resumePos = VideoObject.TimePosition
         VideoObject:Play()
+        if resumePos > 0 then
+            VideoObject.TimePosition = resumePos
+        end
         if PlayBgRef then
             TweenService:Create(PlayBgRef, TweenInfo.new(0.25),
                 { BackgroundTransparency = 1 }):Play()
@@ -700,14 +705,11 @@ function Elements:CreateParagraph(parent, config, countItem)
         if not IsPlaying then return end
         IsPlaying = false
         VideoObject:Pause()
-        VideoObject.TimePosition = 0   -- ← kunci: reset agar tidak hitam
-        VideoObject.Visible = false
-        if ThumbnailImg and cfg.MediaId and cfg.MediaId ~= "" then
-            ThumbnailImg.Visible = true
-        end
+        -- Tidak sembunyikan VideoFrame supaya tidak hitam
+        -- Frame terakhir video tetap tampil sebagai "thumbnail pause"
         if PlayBgRef then
             TweenService:Create(PlayBgRef, TweenInfo.new(0.2),
-                { BackgroundTransparency = 0.45 }):Play()
+                { BackgroundTransparency = 0.55 }):Play()
         end
         if PlayOverlay then
             PlayOverlay.Visible = true
