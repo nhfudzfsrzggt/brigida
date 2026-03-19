@@ -778,8 +778,8 @@ end
 
 function Chloex:Window(GuiConfig)
     GuiConfig               = GuiConfig or {}
-    GuiConfig.Title         = GuiConfig.Title or ""
-    GuiConfig.Footer        = GuiConfig.Footer or ""
+    GuiConfig.Title         = GuiConfig.Title or "Chloe X"
+    GuiConfig.Footer        = GuiConfig.Footer or "Chloee :3"
     GuiConfig.Content       = GuiConfig.Content or ""
     GuiConfig.ShowUser      = GuiConfig.ShowUser or false
     GuiConfig.Color         = getColor(GuiConfig.Color or "Default")
