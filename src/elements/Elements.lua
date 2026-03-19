@@ -1,4 +1,4 @@
--- // vilarisUi | Elements.lua
+-- // vilarisUi | Elements.lua ? FIxed Paragraph Video & Image
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -378,8 +378,17 @@ function Elements:CreateParagraph(parent, config, countItem)
     cfg.MediaType   = cfg.MediaType   or nil
     cfg.MediaId     = cfg.MediaId     or nil
     cfg.VideoId     = cfg.VideoId     or nil
-    -- MediaHeight = tinggi blok media full-width (default 140)
-    cfg.MediaHeight = cfg.MediaHeight or 140
+    -- ImageSize / VideoSize = tinggi container media (px). MediaHeight sebagai fallback lama.
+    cfg.ImageSize   = cfg.ImageSize   or cfg.MediaHeight or 160
+    cfg.VideoSize   = cfg.VideoSize   or cfg.MediaHeight or 160
+    -- Tentukan tinggi sesuai tipe
+    local _mediaH = 0
+    if cfg.MediaType == "Image" then
+        _mediaH = cfg.ImageSize
+    elseif cfg.MediaType == "Video" then
+        _mediaH = cfg.VideoSize
+    end
+    cfg.MediaHeight = _mediaH   -- compat internal
     cfg.AutoPlay    = cfg.AutoPlay    or false
 
     local ParagraphFunc = {}
