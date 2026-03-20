@@ -1,8 +1,12 @@
--- // AddConfigSection module | VelarisUI
--- // Dipanggil dari Main.lua via loadUrl
--- // return function(Chloex, ConfigFolder, CURRENT_VERSION, ConfigData, Elements, LoadConfigElements, SaveConfig, Nt)
+-- // configsection.lua | VelarisUI AddConfigSection Module
 
 return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getElements, LoadConfigElements, SaveConfig, Nt)
+
+    local HttpService = game:GetService("HttpService")
+
+    local function notify(msg, delay, color)
+        Nt(msg, delay, color)
+    end
 
     function Chloex:AddConfigSection(Tab, SectionConfig)
         local ConfigFolder    = getConfigFolder()
@@ -44,14 +48,12 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             local ok, files = pcall(listfiles, cfgFolder)
             if not ok then return list end
             for _, path in ipairs(files) do
-                local n = path:match("([^/\\]+)\\.json$")
+                local n = path:match("([^/\\]+)\.json$")
                 if n then table.insert(list, n) end
             end
             table.sort(list)
             return list
         end
-
-        local HttpService = game:GetService("HttpService")
 
         local function saveConfig(name)
             if not writefile then return false end
@@ -72,7 +74,7 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
                     LoadConfigElements()
                     return true
                 else
-                    Nt("Version mismatch on '" .. name .. "'!", 3, Color3.fromRGB(255, 165, 0))
+                    notify("Version mismatch on '" .. name .. "'!", 3, Color3.fromRGB(255, 165, 0))
                 end
             end
             return false
@@ -101,7 +103,12 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             currentAutoload = ""
         end
 
-        local Sections = Tab:AddSection({ Title = sectionName, Icon = sectionIcon, Open = true })
+        local Sections = Tab:AddSection({
+            Title  = sectionName,
+            Name   = sectionName,
+            Icon   = sectionIcon,
+            Open   = true,
+        })
 
         local selectedConfig = nil
         local dropdownRef    = nil
@@ -123,16 +130,16 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
                 local raw  = nameInput and nameInput.Value or ""
                 local name = raw:match("^%s*(.-)%s*$"):gsub("[^%w_%-]", "_")
                 if name == "" then
-                    Nt("Config name cannot be empty!", 3, Color3.fromRGB(255, 80, 80))
+                    notify("Config name cannot be empty!", 3, Color3.fromRGB(255, 80, 80))
                     return
                 end
                 if saveConfig(name) then
-                    Nt("Config '" .. name .. "' created!", 3, Color3.fromRGB(80, 220, 100))
+                    notify("Config '" .. name .. "' created!", 3, Color3.fromRGB(80, 220, 100))
                     if dropdownRef then
                         dropdownRef:SetValues(getList(), selectedConfig)
                     end
                 else
-                    Nt("Failed to create config!", 3, Color3.fromRGB(255, 80, 80))
+                    notify("Failed to create config!", 3, Color3.fromRGB(255, 80, 80))
                 end
             end,
         })
@@ -153,13 +160,13 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             Icon     = "lucide:folder-open",
             Callback = function()
                 if not selectedConfig then
-                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    notify("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
                     return
                 end
                 if loadConfig(selectedConfig) then
-                    Nt("Loaded '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+                    notify("Loaded '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
                 else
-                    Nt("Failed to load config!", 3, Color3.fromRGB(255, 80, 80))
+                    notify("Failed to load config!", 3, Color3.fromRGB(255, 80, 80))
                 end
             end,
         })
@@ -170,13 +177,13 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             Icon     = "lucide:save",
             Callback = function()
                 if not selectedConfig then
-                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    notify("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
                     return
                 end
                 if saveConfig(selectedConfig) then
-                    Nt("Overwritten '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+                    notify("Overwritten '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
                 else
-                    Nt("Failed to overwrite config!", 3, Color3.fromRGB(255, 80, 80))
+                    notify("Failed to overwrite config!", 3, Color3.fromRGB(255, 80, 80))
                 end
             end,
         })
@@ -187,7 +194,7 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             Icon     = "lucide:trash-2",
             Callback = function()
                 if not selectedConfig then
-                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    notify("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
                     return
                 end
                 local name = selectedConfig
@@ -202,9 +209,9 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
                     if dropdownRef then
                         dropdownRef:SetValues(getList(), nil)
                     end
-                    Nt("Deleted '" .. name .. "'!", 3, Color3.fromRGB(80, 220, 100))
+                    notify("Deleted '" .. name .. "'!", 3, Color3.fromRGB(80, 220, 100))
                 else
-                    Nt("Failed to delete config!", 3, Color3.fromRGB(255, 80, 80))
+                    notify("Failed to delete config!", 3, Color3.fromRGB(255, 80, 80))
                 end
             end,
         })
@@ -217,7 +224,7 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
                 if dropdownRef then
                     dropdownRef:SetValues(getList(), selectedConfig)
                 end
-                Nt("List refreshed!", 2, Color3.fromRGB(80, 180, 255))
+                notify("List refreshed!", 2, Color3.fromRGB(80, 180, 255))
             end,
         })
 
@@ -227,14 +234,14 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             Icon     = "lucide:star",
             Callback = function()
                 if not selectedConfig then
-                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    notify("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
                     return
                 end
                 setAutoload(selectedConfig)
                 if autoloadLabel then
                     autoloadLabel:SetContent(selectedConfig)
                 end
-                Nt("Autoload set to '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+                notify("Autoload set to '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
             end,
         })
 
@@ -247,7 +254,7 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
                 if autoloadLabel then
                     autoloadLabel:SetContent("none")
                 end
-                Nt("Autoload cleared!", 2, Color3.fromRGB(255, 165, 0))
+                notify("Autoload cleared!", 2, Color3.fromRGB(255, 165, 0))
             end,
         })
 
@@ -260,7 +267,7 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             task.defer(function()
                 task.wait(0.5)
                 if loadConfig(currentAutoload) then
-                    Nt("Auto-loaded: " .. currentAutoload, 3, Color3.fromRGB(80, 220, 100))
+                    notify("Auto-loaded: " .. currentAutoload, 3, Color3.fromRGB(80, 220, 100))
                 end
             end)
         end
