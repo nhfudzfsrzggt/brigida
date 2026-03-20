@@ -646,7 +646,15 @@ _ConfigSectionSetup(
     function() return Elements end,
     LoadConfigElements,
     SaveConfig,
-    Nt
+    function(msg, delay, color, title, desc)
+        Chloex:MakeNotify({
+            Title       = title or ConfigFolder,
+            Description = desc or "Notification",
+            Content     = msg or "",
+            Color       = color or Color3.fromRGB(0, 208, 255),
+            Delay       = delay or 4,
+        })
+    end
 )
 
 
