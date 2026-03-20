@@ -1,1 +1,271 @@
+-- // AddConfigSection module | VelarisUI
+-- // Dipanggil dari Main.lua via loadUrl
+-- // return function(Chloex, ConfigFolder, CURRENT_VERSION, ConfigData, Elements, LoadConfigElements, SaveConfig, Nt)
 
+return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getElements, LoadConfigElements, SaveConfig, Nt)
+
+    function Chloex:AddConfigSection(Tab, SectionConfig)
+        local ConfigFolder    = getConfigFolder()
+        local CURRENT_VERSION = getCURRENT_VERSION()
+        local ConfigData      = getConfigData()
+
+        local sectionName, sectionIcon
+        if type(SectionConfig) == "string" then
+            sectionName = SectionConfig
+            sectionIcon = ""
+        elseif type(SectionConfig) == "table" then
+            sectionName = SectionConfig.Name or "Configuration"
+            sectionIcon = SectionConfig.Icon or ""
+        else
+            sectionName = "Configuration"
+            sectionIcon = ""
+        end
+
+        local cfgFolder = ConfigFolder .. "/Config"
+
+        if isfolder and makefolder then
+            if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
+            if not isfolder(cfgFolder)    then makefolder(cfgFolder)    end
+        end
+
+        local AUTOLOAD_FILE   = ConfigFolder .. "/autoload.txt"
+        local currentAutoload = ""
+        if isfile and isfile(AUTOLOAD_FILE) then
+            pcall(function() currentAutoload = readfile(AUTOLOAD_FILE) end)
+        end
+
+        local function toPath(name)
+            return cfgFolder .. "/" .. name .. ".json"
+        end
+
+        local function getList()
+            local list = {}
+            if not (listfiles and isfolder) then return list end
+            local ok, files = pcall(listfiles, cfgFolder)
+            if not ok then return list end
+            for _, path in ipairs(files) do
+                local n = path:match("([^/\\]+)\\.json$")
+                if n then table.insert(list, n) end
+            end
+            table.sort(list)
+            return list
+        end
+
+        local HttpService = game:GetService("HttpService")
+
+        local function saveConfig(name)
+            if not writefile then return false end
+            ConfigData._version = CURRENT_VERSION
+            local ok = pcall(writefile, toPath(name), HttpService:JSONEncode(ConfigData))
+            return ok
+        end
+
+        local function loadConfig(name)
+            local path = toPath(name)
+            if not (isfile and isfile(path)) then return false end
+            local ok, data = pcall(function()
+                return HttpService:JSONDecode(readfile(path))
+            end)
+            if ok and type(data) == "table" then
+                if data._version == CURRENT_VERSION then
+                    ConfigData = data
+                    LoadConfigElements()
+                    return true
+                else
+                    Nt("Version mismatch on '" .. name .. "'!", 3, Color3.fromRGB(255, 165, 0))
+                end
+            end
+            return false
+        end
+
+        local function deleteConfig(name)
+            local path = toPath(name)
+            if isfile and isfile(path) then
+                pcall(delfile, path)
+                return true
+            end
+            return false
+        end
+
+        local function setAutoload(name)
+            if writefile then
+                pcall(writefile, AUTOLOAD_FILE, name)
+                currentAutoload = name
+            end
+        end
+
+        local function clearAutoload()
+            if isfile and isfile(AUTOLOAD_FILE) then
+                pcall(delfile, AUTOLOAD_FILE)
+            end
+            currentAutoload = ""
+        end
+
+        local Sections = Tab:AddSection({ Title = sectionName, Icon = sectionIcon, Open = true })
+
+        local selectedConfig = nil
+        local dropdownRef    = nil
+        local autoloadLabel  = nil
+
+        local nameInput = Sections:AddInput({
+            Title       = "Config name",
+            Placeholder = "Enter config name...",
+            Default     = "",
+            Flag        = "CHX_ConfigNameInput",
+            Callback    = function() end,
+        })
+
+        Sections:AddButton({
+            Title    = "Create config",
+            Version  = "V2",
+            Icon     = "lucide:file-plus",
+            Callback = function()
+                local raw  = nameInput and nameInput.Value or ""
+                local name = raw:match("^%s*(.-)%s*$"):gsub("[^%w_%-]", "_")
+                if name == "" then
+                    Nt("Config name cannot be empty!", 3, Color3.fromRGB(255, 80, 80))
+                    return
+                end
+                if saveConfig(name) then
+                    Nt("Config '" .. name .. "' created!", 3, Color3.fromRGB(80, 220, 100))
+                    if dropdownRef then
+                        dropdownRef:SetValues(getList(), selectedConfig)
+                    end
+                else
+                    Nt("Failed to create config!", 3, Color3.fromRGB(255, 80, 80))
+                end
+            end,
+        })
+
+        dropdownRef = Sections:AddDropdown({
+            Title    = "Config list",
+            Options  = getList(),
+            Default  = nil,
+            Flag     = "CHX_ConfigListDropdown",
+            Callback = function(val)
+                selectedConfig = val
+            end,
+        })
+
+        Sections:AddButton({
+            Title    = "Load config",
+            Version  = "V2",
+            Icon     = "lucide:folder-open",
+            Callback = function()
+                if not selectedConfig then
+                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    return
+                end
+                if loadConfig(selectedConfig) then
+                    Nt("Loaded '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+                else
+                    Nt("Failed to load config!", 3, Color3.fromRGB(255, 80, 80))
+                end
+            end,
+        })
+
+        Sections:AddButton({
+            Title    = "Overwrite config",
+            Version  = "V2",
+            Icon     = "lucide:save",
+            Callback = function()
+                if not selectedConfig then
+                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    return
+                end
+                if saveConfig(selectedConfig) then
+                    Nt("Overwritten '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+                else
+                    Nt("Failed to overwrite config!", 3, Color3.fromRGB(255, 80, 80))
+                end
+            end,
+        })
+
+        Sections:AddButton({
+            Title    = "Delete config",
+            Version  = "V2",
+            Icon     = "lucide:trash-2",
+            Callback = function()
+                if not selectedConfig then
+                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    return
+                end
+                local name = selectedConfig
+                if deleteConfig(name) then
+                    if currentAutoload == name then
+                        clearAutoload()
+                        if autoloadLabel then
+                            autoloadLabel:SetContent("none")
+                        end
+                    end
+                    selectedConfig = nil
+                    if dropdownRef then
+                        dropdownRef:SetValues(getList(), nil)
+                    end
+                    Nt("Deleted '" .. name .. "'!", 3, Color3.fromRGB(80, 220, 100))
+                else
+                    Nt("Failed to delete config!", 3, Color3.fromRGB(255, 80, 80))
+                end
+            end,
+        })
+
+        Sections:AddButton({
+            Title    = "Refresh list",
+            Version  = "V2",
+            Icon     = "lucide:refresh-cw",
+            Callback = function()
+                if dropdownRef then
+                    dropdownRef:SetValues(getList(), selectedConfig)
+                end
+                Nt("List refreshed!", 2, Color3.fromRGB(80, 180, 255))
+            end,
+        })
+
+        Sections:AddButton({
+            Title    = "Set as autoload",
+            Version  = "V2",
+            Icon     = "lucide:star",
+            Callback = function()
+                if not selectedConfig then
+                    Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
+                    return
+                end
+                setAutoload(selectedConfig)
+                if autoloadLabel then
+                    autoloadLabel:SetContent(selectedConfig)
+                end
+                Nt("Autoload set to '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
+            end,
+        })
+
+        Sections:AddButton({
+            Title    = "Reset autoload",
+            Version  = "V2",
+            Icon     = "lucide:star-off",
+            Callback = function()
+                clearAutoload()
+                if autoloadLabel then
+                    autoloadLabel:SetContent("none")
+                end
+                Nt("Autoload cleared!", 2, Color3.fromRGB(255, 165, 0))
+            end,
+        })
+
+        autoloadLabel = Sections:AddParagraph({
+            Title   = "Current autoload config",
+            Content = currentAutoload ~= "" and currentAutoload or "none",
+        })
+
+        if currentAutoload ~= "" then
+            task.defer(function()
+                task.wait(0.5)
+                if loadConfig(currentAutoload) then
+                    Nt("Auto-loaded: " .. currentAutoload, 3, Color3.fromRGB(80, 220, 100))
+                end
+            end)
+        end
+
+        return Sections
+    end
+
+end
