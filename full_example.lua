@@ -1,4 +1,4 @@
-local VelarisUI = loadstring(game:HttpGet("https://fitri324.pythonanywhere.com/VilarisUi.lua/raw"))()
+local VelarisUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/dist/main.lua", true))()
 
 local Window = VelarisUI:Window({
     Title = "Velaris UI ", -- Main title displayed at the top of the window
@@ -12,7 +12,7 @@ local Window = VelarisUI:Window({
     Uitransparent = 0.15, -- UI transparency (0 = solid, 1 = fully transparent)
     ShowUser = true,
     Search = true, 
-    Animation  = true,   -- aktifkan animasi
+    Animation = true,   -- aktifkan animasi
     TypeDelay  = 0.07,   -- opsional, default 0.07
     TypePause  = 2.5,    -- opsional, default 2.5
     Config = {
