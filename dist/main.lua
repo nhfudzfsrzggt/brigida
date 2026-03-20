@@ -1,4 +1,4 @@
--- // Version : 0.2.1 | Fixed Animation Title & Footer | Main.lua
+-- // Version : 0.2.2 | Fixed Animation Title & Footer | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -636,261 +636,19 @@ function Chloex:Dialog(DialogConfig)
     return DialogModule(DialogConfig)
 end
 
--- ╔══════════════════════════════════════════════════════════════════╗
--- ║   AddConfigSection — Config seperti Obsidian                    ║
--- ║   Dipanggil: VelarisUI:AddConfigSection(Tab, "Configuration")   ║
--- ╚══════════════════════════════════════════════════════════════════╝
-function Chloex:AddConfigSection(Tab, SectionName)
-    SectionName = SectionName or "Configuration"
+-- AddConfigSection diload dari URL terpisah
+local _ConfigSectionSetup = loadUrl("https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/addons/configsection.lua")
+_ConfigSectionSetup(
+    Chloex,
+    function() return ConfigFolder end,
+    function() return CURRENT_VERSION end,
+    function() return ConfigData end,
+    function() return Elements end,
+    LoadConfigElements,
+    SaveConfig,
+    Nt
+)
 
-    local cfgFolder = ConfigFolder .. "/Config"
-
-    -- Pastikan folder ada
-    if isfolder and makefolder then
-        if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
-        if not isfolder(cfgFolder)    then makefolder(cfgFolder)    end
-    end
-
-    local AUTOLOAD_FILE   = ConfigFolder .. "/autoload.txt"
-    local currentAutoload = ""
-    if isfile and isfile(AUTOLOAD_FILE) then
-        pcall(function() currentAutoload = readfile(AUTOLOAD_FILE) end)
-    end
-
-    -- ── Helpers ───────────────────────────────────────────────────────
-    local function toPath(name)
-        return cfgFolder .. "/" .. name .. ".json"
-    end
-
-    local function getList()
-        local list = {}
-        if not (listfiles and isfolder) then return list end
-        local ok, files = pcall(listfiles, cfgFolder)
-        if not ok then return list end
-        for _, path in ipairs(files) do
-            local n = path:match("([^/\\]+)%.json$")
-            if n then table.insert(list, n) end
-        end
-        table.sort(list)
-        return list
-    end
-
-    local function saveConfig(name)
-        if not writefile then return false end
-        ConfigData._version = CURRENT_VERSION
-        local ok = pcall(writefile, toPath(name), HttpService:JSONEncode(ConfigData))
-        return ok
-    end
-
-    local function loadConfig(name)
-        local path = toPath(name)
-        if not (isfile and isfile(path)) then return false end
-        local ok, data = pcall(function()
-            return HttpService:JSONDecode(readfile(path))
-        end)
-        if ok and type(data) == "table" then
-            if data._version == CURRENT_VERSION then
-                ConfigData = data
-                LoadConfigElements()
-                return true
-            else
-                Nt("Version mismatch on '" .. name .. "'!", 3, Color3.fromRGB(255, 165, 0))
-            end
-        end
-        return false
-    end
-
-    local function deleteConfig(name)
-        local path = toPath(name)
-        if isfile and isfile(path) then
-            pcall(delfile, path)
-            return true
-        end
-        return false
-    end
-
-    local function setAutoload(name)
-        if writefile then
-            pcall(writefile, AUTOLOAD_FILE, name)
-            currentAutoload = name
-        end
-    end
-
-    local function clearAutoload()
-        if isfile and isfile(AUTOLOAD_FILE) then
-            pcall(delfile, AUTOLOAD_FILE)
-        end
-        currentAutoload = ""
-    end
-
-    -- ── Build Section ─────────────────────────────────────────────────
-    local Sections = Tab:AddSection({ Name = SectionName })
-
-    local selectedConfig = nil
-    local dropdownRef    = nil
-    local autoloadLabel  = nil
-
-    -- ── Config Name Input ─────────────────────────────────────────────
-    local nameInput = Sections:AddInput({
-        Title       = "Config name",
-        Placeholder = "Enter config name...",
-        Default     = "",
-        Flag        = "CHX_ConfigNameInput",
-        Callback    = function() end,
-    })
-
-    -- ── Create Config ─────────────────────────────────────────────────
-    Sections:AddButton({
-        Title    = "Create config",
-        Callback = function()
-            local raw  = nameInput and nameInput.Value or ""
-            local name = raw:match("^%s*(.-)%s*$"):gsub("[^%w_%-]", "_")
-            if name == "" then
-                Nt("Config name cannot be empty!", 3, Color3.fromRGB(255, 80, 80))
-                return
-            end
-            if isfile and isfile(toPath(name)) then
-                Nt("'" .. name .. "' already exists!", 3, Color3.fromRGB(255, 165, 0))
-                return
-            end
-            if saveConfig(name) then
-                Nt("Config '" .. name .. "' created!", 3, Color3.fromRGB(80, 220, 100))
-                if dropdownRef then
-                    dropdownRef:SetValues(getList(), selectedConfig)
-                end
-            else
-                Nt("Failed to create config!", 3, Color3.fromRGB(255, 80, 80))
-            end
-        end,
-    })
-
-    -- ── Config List Dropdown ──────────────────────────────────────────
-    dropdownRef = Sections:AddDropdown({
-        Title    = "Config list",
-        Options  = getList(),
-        Default  = nil,
-        Flag     = "CHX_ConfigListDropdown",
-        Callback = function(val)
-            selectedConfig = val
-        end,
-    })
-
-    -- ── Load Config ───────────────────────────────────────────────────
-    Sections:AddButton({
-        Title    = "Load config",
-        Callback = function()
-            if not selectedConfig then
-                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
-                return
-            end
-            if loadConfig(selectedConfig) then
-                Nt("Loaded '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
-            else
-                Nt("Failed to load config!", 3, Color3.fromRGB(255, 80, 80))
-            end
-        end,
-    })
-
-    -- ── Overwrite Config ──────────────────────────────────────────────
-    Sections:AddButton({
-        Title    = "Overwrite config",
-        Callback = function()
-            if not selectedConfig then
-                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
-                return
-            end
-            if saveConfig(selectedConfig) then
-                Nt("Overwritten '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
-            else
-                Nt("Failed to overwrite config!", 3, Color3.fromRGB(255, 80, 80))
-            end
-        end,
-    })
-
-    -- ── Delete Config ─────────────────────────────────────────────────
-    Sections:AddButton({
-        Title    = "Delete config",
-        Callback = function()
-            if not selectedConfig then
-                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
-                return
-            end
-            local name = selectedConfig
-            if deleteConfig(name) then
-                if currentAutoload == name then
-                    clearAutoload()
-                    if autoloadLabel then
-                        autoloadLabel:SetContent("none")
-                    end
-                end
-                selectedConfig = nil
-                if dropdownRef then
-                    dropdownRef:SetValues(getList(), nil)
-                end
-                Nt("Deleted '" .. name .. "'!", 3, Color3.fromRGB(80, 220, 100))
-            else
-                Nt("Failed to delete config!", 3, Color3.fromRGB(255, 80, 80))
-            end
-        end,
-    })
-
-    -- ── Refresh List ──────────────────────────────────────────────────
-    Sections:AddButton({
-        Title    = "Refresh list",
-        Callback = function()
-            if dropdownRef then
-                dropdownRef:SetValues(getList(), selectedConfig)
-            end
-            Nt("List refreshed!", 2, Color3.fromRGB(80, 180, 255))
-        end,
-    })
-
-    -- ── Set as Autoload ───────────────────────────────────────────────
-    Sections:AddButton({
-        Title    = "Set as autoload",
-        Callback = function()
-            if not selectedConfig then
-                Nt("Select a config first!", 3, Color3.fromRGB(255, 165, 0))
-                return
-            end
-            setAutoload(selectedConfig)
-            if autoloadLabel then
-                autoloadLabel:SetContent(selectedConfig)
-            end
-            Nt("Autoload set to '" .. selectedConfig .. "'!", 3, Color3.fromRGB(80, 220, 100))
-        end,
-    })
-
-    -- ── Reset Autoload ────────────────────────────────────────────────
-    Sections:AddButton({
-        Title    = "Reset autoload",
-        Callback = function()
-            clearAutoload()
-            if autoloadLabel then
-                autoloadLabel:SetContent("none")
-            end
-            Nt("Autoload cleared!", 2, Color3.fromRGB(255, 165, 0))
-        end,
-    })
-
-    -- ── Current Autoload Label (paling bawah, seperti di gambar) ──────
-    autoloadLabel = Sections:AddParagraph({
-        Title   = "Current autoload config",
-        Content = currentAutoload ~= "" and currentAutoload or "none",
-    })
-
-    -- ── Auto-load on startup ──────────────────────────────────────────
-    if currentAutoload ~= "" then
-        task.defer(function()
-            task.wait(0.5)
-            if loadConfig(currentAutoload) then
-                Nt("Auto-loaded: " .. currentAutoload, 3, Color3.fromRGB(80, 220, 100))
-            end
-        end)
-    end
-
-    return Sections
-end
 
 function Chloex:Window(GuiConfig)
     GuiConfig               = GuiConfig or {}
@@ -1198,6 +956,7 @@ function Chloex:Window(GuiConfig)
     TitleIcon.Image = "rbxassetid://" .. GuiConfig.Image
 
     TextLabel.Font = Enum.Font.GothamBold
+    TextLabel.Text = ""
     TextLabel.TextColor3 = GuiConfig.Color
     TextLabel.TextSize = 14
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1212,6 +971,7 @@ function Chloex:Window(GuiConfig)
     UICorner1.Parent = Top
 
     TextLabel1.Font = Enum.Font.GothamBold
+    TextLabel1.Text = ""
     TextLabel1.TextColor3 = GuiConfig.Color
     TextLabel1.TextSize = 14
     TextLabel1.TextXAlignment = Enum.TextXAlignment.Left
@@ -1219,32 +979,28 @@ function Chloex:Window(GuiConfig)
     TextLabel1.BackgroundTransparency = 0.999
     TextLabel1.BorderColor3 = Color3.fromRGB(0, 0, 0)
     TextLabel1.BorderSizePixel = 0
+    TextLabel1.Size = UDim2.new(1, -(TextLabel.TextBounds.X + 104), 1, 0)
+    TextLabel1.Position = UDim2.new(0, 25 + TextLabel.TextBounds.X + 10, 0, 0)
     TextLabel1.Parent = Top
 
     if GuiConfig.Animation then
-        TextLabel.Text  = ""
-        TextLabel1.Text = ""
         TextLabel1.Visible = false
-
         task.spawn(function()
-            local function typeOut(label, text, charDelay)
-                label.Text = ""
-                label.Visible = true
+            local function typeOut(text, charDelay)
+                TextLabel.Text = ""
                 for i = 1, #text do
-                    if not label or not label.Parent then return end
-                    label.Text = string.sub(text, 1, i)
+                    TextLabel.Text = string.sub(text, 1, i)
                     task.wait(charDelay)
                 end
             end
 
-            local function typeErase(label, charDelay)
-                local current = label.Text
+            local function typeErase(charDelay)
+                local current = TextLabel.Text
                 for i = #current, 1, -1 do
-                    if not label or not label.Parent then return end
-                    label.Text = string.sub(current, 1, i - 1)
+                    TextLabel.Text = string.sub(current, 1, i - 1)
                     task.wait(charDelay)
                 end
-                label.Text = ""
+                TextLabel.Text = ""
             end
 
             local titleText  = GuiConfig.Title
@@ -1252,15 +1008,14 @@ function Chloex:Window(GuiConfig)
             local charDelay  = GuiConfig.TypeDelay or 0.07
             local pauseTime  = GuiConfig.TypePause or 2.5
 
-            while TextLabel and TextLabel.Parent do
-                typeOut(TextLabel, titleText, charDelay)
+            while true do
+                typeOut(titleText, charDelay)
                 task.wait(pauseTime)
-                typeErase(TextLabel, charDelay)
+                typeErase(charDelay)
                 task.wait(0.15)
-                typeOut(TextLabel1, footerText, charDelay)
+                typeOut(footerText, charDelay)
                 task.wait(pauseTime)
-                typeErase(TextLabel1, charDelay)
-                TextLabel1.Visible = false
+                typeErase(charDelay)
                 task.wait(0.15)
             end
         end)
