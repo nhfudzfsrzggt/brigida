@@ -1,4 +1,4 @@
--- // Version : 0.1.9 | Tag + KeySystem + ColorPicker Floating | Main.lua
+-- // Version : 0.2.1 | Fixed Animation Title & Footer | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -1198,7 +1198,6 @@ function Chloex:Window(GuiConfig)
     TitleIcon.Image = "rbxassetid://" .. GuiConfig.Image
 
     TextLabel.Font = Enum.Font.GothamBold
-    TextLabel.Text = GuiConfig.Title
     TextLabel.TextColor3 = GuiConfig.Color
     TextLabel.TextSize = 14
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -1213,7 +1212,6 @@ function Chloex:Window(GuiConfig)
     UICorner1.Parent = Top
 
     TextLabel1.Font = Enum.Font.GothamBold
-    TextLabel1.Text = GuiConfig.Footer
     TextLabel1.TextColor3 = GuiConfig.Color
     TextLabel1.TextSize = 14
     TextLabel1.TextXAlignment = Enum.TextXAlignment.Left
@@ -1221,9 +1219,55 @@ function Chloex:Window(GuiConfig)
     TextLabel1.BackgroundTransparency = 0.999
     TextLabel1.BorderColor3 = Color3.fromRGB(0, 0, 0)
     TextLabel1.BorderSizePixel = 0
-    TextLabel1.Size = UDim2.new(1, -(TextLabel.TextBounds.X + 104), 1, 0)
-    TextLabel1.Position = UDim2.new(0, 25 + TextLabel.TextBounds.X + 10, 0, 0)
     TextLabel1.Parent = Top
+
+    if GuiConfig.Animation then
+        TextLabel.Text  = ""
+        TextLabel1.Text = ""
+        TextLabel1.Visible = false
+
+        task.spawn(function()
+            local function typeOut(label, text, charDelay)
+                label.Text = ""
+                label.Visible = true
+                for i = 1, #text do
+                    if not label or not label.Parent then return end
+                    label.Text = string.sub(text, 1, i)
+                    task.wait(charDelay)
+                end
+            end
+
+            local function typeErase(label, charDelay)
+                local current = label.Text
+                for i = #current, 1, -1 do
+                    if not label or not label.Parent then return end
+                    label.Text = string.sub(current, 1, i - 1)
+                    task.wait(charDelay)
+                end
+                label.Text = ""
+            end
+
+            local titleText  = GuiConfig.Title
+            local footerText = GuiConfig.Footer
+            local charDelay  = GuiConfig.TypeDelay or 0.07
+            local pauseTime  = GuiConfig.TypePause or 2.5
+
+            while TextLabel and TextLabel.Parent do
+                typeOut(TextLabel, titleText, charDelay)
+                task.wait(pauseTime)
+                typeErase(TextLabel, charDelay)
+                task.wait(0.15)
+                typeOut(TextLabel1, footerText, charDelay)
+                task.wait(pauseTime)
+                typeErase(TextLabel1, charDelay)
+                TextLabel1.Visible = false
+                task.wait(0.15)
+            end
+        end)
+    else
+        TextLabel.Text  = GuiConfig.Title
+        TextLabel1.Text = GuiConfig.Footer
+    end
 
     local TagContainer = Instance.new("Frame")
     TagContainer.Name = "TagContainer"
