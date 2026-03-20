@@ -188,8 +188,7 @@ Sec.SectionRight:AddButton({
 })
 
 Sec.SectionTabbox = Tabs.Section:AddSection({
-    Title = "Right Section",
-    Tabbox   = "Right",
+    Title = "Tabbox Section",
 })
 
 local Test1  = Sec.SectionTabbox:AddTabbox({ Title = "Test1",     Icon = "lucide:cpu" })
