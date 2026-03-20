@@ -1,7 +1,7 @@
-local VelarisUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/dist/main.lua", true))()
+local VelarisUI = loadstring(game:HttpGet("https://fitri324.pythonanywhere.com/VilarisUi.lua/raw"))()
 
 local Window = VelarisUI:Window({
-    Title = "Velaris UI", -- Main title displayed at the top of the window
+    Title = "Velaris UI ", -- Main title displayed at the top of the window
     Footer = "By Nexa", -- Footer text shown at the bottom
     Content = "Content",
     Color = "Default", -- UI theme color (Default or custom theme)
@@ -11,39 +11,45 @@ local Window = VelarisUI:Window({
     Configname = "Vilaris_Ui", -- Configuration file name for saving settings
     Uitransparent = 0.15, -- UI transparency (0 = solid, 1 = fully transparent)
     ShowUser = true,
-    Search = true,  
+    Search = true, 
+    Animation  = true,   -- aktifkan animasi
+    TypeDelay  = 0.07,   -- opsional, default 0.07
+    TypePause  = 2.5,    -- opsional, default 2.5
     Config = {
         AutoSave = true, -- Automatically save settings
         AutoLoad = true -- Automatically load saved settings
     },
     KeySystem = {
-        Title = "My Super Hub",        
+        Title = "My Hub",
         Icon = "lucide:bird",
-        Note = "Example Key System. Key: mykey123",   
-        Placeholder = "Enter Key",     
-        Default = "mykey123",  
-        Buttons = {
-            {
-                Name = "Exit",
-                Callback = function(key)
-                end,
-            },
-            {
-                Name = "Get key",
-                Icon = "lucide:link",
-                Callback = function(key)
-                end,
-            },
-            {
-                Name = "Submit",
-                Callback = function(key)
-                    if key == "mykey123" then
-                        return true 
-                    end
-                    return false
-                end,
-            },
+        Placeholder = "Enter your key here",
+        Default = "",
+        DiscordText = "Join the Discord",
+        DiscordUrl  = "https://discord.gg/xxxxx",
+        Links = {
+            { Name = "Linkvertise", Icon = "lucide:link", Url = "https://linkvertise.com/xxxxx" },
+            { Name = "LootLabs",   Icon = "lucide:gift", Url = "https://lootlabs.gg/xxxxx" },
+            { Name = "Work.ink",   Icon = "lucide:pen",  Url = "https://work.ink/xxxxx" },
         },
+
+        Steps = {
+            "Choose your Authorization System!",
+            "Complete ads ( 2 Checkpoint )",
+            "Copy and paste key here!!",
+        },
+
+        Callback = function(key)
+            local validKeys = {
+                "mykey123",
+                "vip-key-456",
+            }
+            for _, v in ipairs(validKeys) do
+                if key == v then
+                    return true
+                end
+            end
+            return false
+        end,
     },
 })
 
@@ -58,7 +64,7 @@ local Tabs = {
         Name = "Section",
         Icon = "lucide:table-of-contents",
     }),
-    
+
     Badge = Window:AddTab({
         Name = "Badge",
         Icon = "lucide:badge-check",
@@ -117,6 +123,21 @@ local Tabs = {
 
 local Sec = {}
 
+Sec.SectionTransparency = Tabs.Section:AddSection({
+    Title = "Transparency Section",
+    Transparency   = true,  
+})
+
+Sec.SectionTransparency:AddToggle({
+    Title    = "Aimbot",
+    Default  = false,
+    Callback = function(value)
+        if value then
+        else
+        end
+    end
+})
+
 Sec.Section = Tabs.Section:AddSection({
     Title = "Normal Section",
 })
@@ -166,6 +187,16 @@ Sec.SectionRight:AddButton({
     Callback = function() end
 })
 
+Sec.SectionTabbox = Tabs.Section:AddSection({
+    Title = "Right Section",
+    Tabbox   = "Right",
+})
+
+local Test1  = Sec.SectionTabbox:AddTabbox({ Title = "Test1",     Icon = "lucide:cpu" })
+local Test2  = Sec.SectionTabbox:AddTabbox({ Title = "Test2",     Icon = "lucide:cpu" })
+local Test3  = Sec.SectionTabbox:AddTabbox({ Title = "Test3",     Icon = "lucide:cpu" })
+local Test4  = Sec.SectionTabbox:AddTabbox({ Title = "Test4",     Icon = "lucide:cpu" })
+local Test5  = Sec.SectionTabbox:AddTabbox({ Title = "Test5",     Icon = "lucide:cpu" })
 
 Sec.Badge = Tabs.Badge:AddSection({
     Title = "Badge Section",
@@ -247,6 +278,7 @@ Sec.Button:AddButton({
 Sec.Button:AddButton({
     Title = "Locked",
     Locked = true,
+    LockMessage = "Locked",
     Callback = function()
         print("This is an example button")
         Nt("Example clicked!", 2)
@@ -490,7 +522,7 @@ Sec.Slider = Tabs.Slider:AddSection({
 
 -- Example Basic
 Sec.Slider:AddSlider({
-    Title = "Example BAsic",
+    Title = "Example Basic",
     Content = "Example slider description",
     Min = 0,
     Max = 100,
@@ -597,4 +629,19 @@ Sec.Colorpicker:AddColorpicker({
     Callback = function(color)
         print("Warna dipilih:", color)
     end
+})
+
+VelarisUI:AddConfigSection(Tabs.Config, {
+    Name = "My Config",
+    Icon = "lucide:settings-2",
+})
+
+local Notif = VelarisUI:MakeNotify({
+    Title       = "My Script",
+    Description = "Success",
+    Content     = "Script telah diload dengan sukses!",
+    Color       = "Default",
+    Time        = 0.5,
+    Delay       = 5,
+    Icon        = "lucide:check"  -- opsional, tampil di panel kiri
 })
