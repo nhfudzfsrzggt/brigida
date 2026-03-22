@@ -1,4 +1,4 @@
--- // Version : 0.2.2 | Fixed Animation Title & Footer | Main.lua
+-- // VilarisUi | Version : 0.2.2 | Fixed Animation Title & Footer | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
