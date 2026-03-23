@@ -55,7 +55,6 @@ local function getColor(colorInput)
         if ColorModule[colorInput] then
             return ColorModule[colorInput]
         else
-            -- color fallback ke default
             return ColorModule["Default"] or Color3.fromRGB(0, 208, 255)
         end
     end
@@ -349,7 +348,6 @@ function Chloex:MakeNotify(NotifyConfig)
             end)
         end
 
-        -- Hitung posisi
         local NotifyPosHeigh = 0
         for _, v in CoreGui.NotifyGui.NotifyLayout:GetChildren() do
             if v:IsA("Frame") then
@@ -357,7 +355,6 @@ function Chloex:MakeNotify(NotifyConfig)
             end
         end
 
-        -- Card
         local NotifyFrame = Instance.new("Frame")
         NotifyFrame.BackgroundTransparency = 1
         NotifyFrame.BorderSizePixel = 0
@@ -389,7 +386,6 @@ function Chloex:MakeNotify(NotifyConfig)
 
         if hasIcon then
             if hasButtons then
-                -- Ada buttons → icon 17x17 di kiri atas inline dengan title
                 local IconImg = Instance.new("ImageLabel")
                 IconImg.BackgroundTransparency = 1
                 IconImg.BorderSizePixel = 0
@@ -402,7 +398,6 @@ function Chloex:MakeNotify(NotifyConfig)
                 IconImg.Parent = NotifyFrameReal
                 titleOffsetX = 12 + 17 + 5
             else
-                -- Tidak ada buttons → icon panel kiri besar
                 local LeftIcon = Instance.new("ImageLabel")
                 LeftIcon.Image = iconId
                 LeftIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -418,7 +413,6 @@ function Chloex:MakeNotify(NotifyConfig)
             end
         end
 
-        -- Title
         local TitleLabel = Instance.new("TextLabel")
         TitleLabel.Font = Enum.Font.GothamBold
         TitleLabel.Text = NotifyConfig.Title
@@ -430,7 +424,6 @@ function Chloex:MakeNotify(NotifyConfig)
         TitleLabel.Size = UDim2.new(1, -titleOffsetX - 10, 0, 16)
         TitleLabel.Parent = NotifyFrameReal
 
-        -- Description (warna accent)
         local descY = 10
         if NotifyConfig.Description ~= "" then
             local DescLabel = Instance.new("TextLabel")
@@ -446,7 +439,6 @@ function Chloex:MakeNotify(NotifyConfig)
             DescLabel.Parent = NotifyFrameReal
         end
 
-        -- Content
         local contentY = 30
         if NotifyConfig.Content ~= "" then
             local ContentLabel = Instance.new("TextLabel")
@@ -461,13 +453,11 @@ function Chloex:MakeNotify(NotifyConfig)
             ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 14)
             ContentLabel.TextWrapped = true
             ContentLabel.Parent = NotifyFrameReal
-            -- hitung tinggi konten
             local lines_count = math.max(1, math.ceil(ContentLabel.TextBounds.X / math.max(ContentLabel.AbsoluteSize.X, 1)))
             ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 14 * lines_count)
             contentY = contentY + 14 * lines_count + 4
         end
 
-        -- Buttons: full width, tiap button sama rata
         if hasButtons then
             local btnAreaY = contentY + 4
             local gap = 6
@@ -494,7 +484,6 @@ function Chloex:MakeNotify(NotifyConfig)
                 Btn.TextSize = 11
                 Btn.Text = ""
                 Btn.AutomaticSize = Enum.AutomaticSize.None
-                -- Tiap button sama rata memenuhi lebar
                 Btn.Size = UDim2.new(1/btnCount, -(totalGap/btnCount), 1, 0)
                 Btn.BorderSizePixel = 0
                 Btn.LayoutOrder = idx
@@ -530,7 +519,6 @@ function Chloex:MakeNotify(NotifyConfig)
                 BtnInnerList.Padding = UDim.new(0, 4)
                 BtnInnerList.Parent = BtnInner
 
-                -- Icon button
                 local btnIconId = getIconId(btnCfg.Icon or "")
                 if btnIconId ~= "" then
                     local BtnIcon = Instance.new("ImageLabel")
@@ -567,7 +555,6 @@ function Chloex:MakeNotify(NotifyConfig)
             NotifyFrame.Size = UDim2.new(1, 0, 0, contentY + 12)
         end
 
-        -- Close button (X)
         local CloseBtn = Instance.new("TextButton")
         CloseBtn.Text = ""
         CloseBtn.AnchorPoint = Vector2.new(1, 0)
@@ -598,15 +585,10 @@ function Chloex:MakeNotify(NotifyConfig)
 
         CloseBtn.Activated:Connect(function() NotifyFunction:Close() end)
 
-        -- Slide in
         TweenService:Create(NotifyFrameReal, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             Position = UDim2.new(0, 0, 0, 0)
         }):Play()
 
-        -- Auto close:
-        -- Tidak ada buttons → selalu auto close setelah Delay
-        -- Ada buttons + Delay > 0 → auto close setelah Delay
-        -- Ada buttons + tidak ada Delay (nil/0) → tidak auto close
         local delay = tonumber(NotifyConfig.Delay) or 0
         if not hasButtons then
             task.wait(delay)
@@ -636,7 +618,6 @@ function Chloex:Dialog(DialogConfig)
     return DialogModule(DialogConfig)
 end
 
--- AddConfigSection diload dari URL terpisah
 local _ConfigSectionSetup = loadUrl("https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/addons/configsection.lua")
 _ConfigSectionSetup(
     Chloex,
@@ -673,6 +654,13 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Configname    = GuiConfig.Configname or "Velaris UI"
     GuiConfig.Size          = GuiConfig.Size or UDim2.fromOffset(640, 400)
     GuiConfig.Search        = GuiConfig.Search ~= nil and GuiConfig.Search or false
+
+    -- DiscordSet defaults
+    GuiConfig.DiscordSet        = GuiConfig.DiscordSet or {}
+    GuiConfig.DiscordSet.Enable = GuiConfig.DiscordSet.Enable ~= nil and GuiConfig.DiscordSet.Enable or false
+    GuiConfig.DiscordSet.Title  = GuiConfig.DiscordSet.Title or "DISCORD"
+    GuiConfig.DiscordSet.Link   = GuiConfig.DiscordSet.Link or ""
+    GuiConfig.DiscordSet.Icon   = GuiConfig.DiscordSet.Icon or ""
 
     GuiConfig.Config = GuiConfig.Config or {}
     GuiConfig.Config.AutoSave = GuiConfig.Config.AutoSave ~= nil and GuiConfig.Config.AutoSave or true
@@ -712,11 +700,6 @@ function Chloex:Window(GuiConfig)
             end
         end
     end
-
-
-
-
-
 
     local GuiFunc = {}
 
@@ -851,19 +834,16 @@ function Chloex:Window(GuiConfig)
             local videoInput = GuiConfig.BackgroundVideo
             local videoId    = nil
 
-            -- ── Deteksi tipe input ────────────────────────────────────
             local isAssetId = videoInput:match("^%d+$")
                 or videoInput:match("^rbxassetid://")
 
             if isAssetId then
-                -- Pakai langsung sebagai asset ID
                 if videoInput:match("^%d+$") then
                     videoId = "rbxassetid://" .. videoInput
                 else
                     videoId = videoInput
                 end
             else
-                -- Pakai URL — download & cache
                 local fileName = "VelarisUI_bgvideo.webm"
 
                 if writefile and getcustomasset and isfile then
@@ -872,7 +852,6 @@ function Chloex:Window(GuiConfig)
                             writefile(fileName, game:HttpGet(videoInput))
                         end)
                         if not ok then
-                            -- download failed, skip
                             return
                         end
                     end
@@ -880,7 +859,6 @@ function Chloex:Window(GuiConfig)
                     if ok2 and id then
                         videoId = id
                     else
-                        -- getcustomasset failed, skip
                         return
                     end
                 else
@@ -889,7 +867,6 @@ function Chloex:Window(GuiConfig)
                 end
             end
 
-            -- VideoFrame wrapper (ClipsDescendants agar tidak overflow)
             local VideoWrapper = Instance.new("Frame")
             VideoWrapper.Name = "VideoWrapper"
             VideoWrapper.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -900,7 +877,6 @@ function Chloex:Window(GuiConfig)
             VideoWrapper.ZIndex = 0
             VideoWrapper.ClipsDescendants = true
             VideoWrapper.Parent = Main
-            -- Samakan corner radius dengan Main frame
             Instance.new("UICorner", VideoWrapper).CornerRadius = UDim.new(0, 8)
 
             local BgVideo = Instance.new("VideoFrame")
@@ -915,7 +891,6 @@ function Chloex:Window(GuiConfig)
             BgVideo.ZIndex = 0
             BgVideo.Parent = VideoWrapper
 
-            -- Overlay gelap supaya UI tetap terbaca
             local VideoOverlay = Instance.new("Frame")
             VideoOverlay.Name = "VideoOverlay"
             VideoOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -929,7 +904,6 @@ function Chloex:Window(GuiConfig)
                 BgVideo:Play()
             end)
 
-            -- Expose ke GuiFunc
             function GuiFunc:SetBackgroundVideoVolume(Vol)
                 BgVideo.Volume = math.clamp(Vol, 0, 10)
             end
@@ -1211,12 +1185,141 @@ function Chloex:Window(GuiConfig)
         SearchModule(GuiConfig, LayersTab, LayersFolder, LayersPageLayout, TweenService, searchOffset)
     end
 
+    -- ╔══════════════════════════════════════════════════════════════════╗
+    -- ║  DISCORD BUTTON — independen dari ShowUser                      ║
+    -- ╚══════════════════════════════════════════════════════════════════╝
+    local ds = GuiConfig.DiscordSet
+    local DISCORD_H      = 28
+    local DISCORD_MARGIN = 3
+    local discordBottomOffset = ds.Enable and ds.Link ~= "" and (DISCORD_H + DISCORD_MARGIN + 2) or 0
+
+    if ds.Enable and ds.Link ~= "" then
+        local resolvedIcon = getIconId(ds.Icon)
+        if resolvedIcon == "" then resolvedIcon = "rbxassetid://7072725342" end
+
+        local DiscordCard = Instance.new("TextButton")
+        DiscordCard.Name                   = "DiscordCard"
+        DiscordCard.AnchorPoint            = Vector2.new(0, 1)
+        DiscordCard.Position               = UDim2.new(0, 3, 1, -DISCORD_MARGIN)
+        DiscordCard.Size                   = UDim2.new(1, -18, 0, DISCORD_H)
+        DiscordCard.BackgroundColor3       = Color3.fromRGB(22, 22, 28)
+        DiscordCard.BackgroundTransparency = 0
+        DiscordCard.BorderSizePixel        = 0
+        DiscordCard.ClipsDescendants       = false
+        DiscordCard.ZIndex                 = 100
+        DiscordCard.Text                   = ""
+        DiscordCard.Parent                 = LayersTab
+        Instance.new("UICorner", DiscordCard).CornerRadius = UDim.new(0, 5)
+
+        -- Border tipis accent dengan pulse glow
+        local CardStroke = Instance.new("UIStroke")
+        CardStroke.Color           = GuiConfig.Color
+        CardStroke.Thickness       = 0.8
+        CardStroke.Transparency    = 0.5
+        CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        CardStroke.Parent          = DiscordCard
+
+        task.spawn(function()
+            local t = 0
+            while DiscordCard and DiscordCard.Parent do
+                local dt = task.wait(0.04)
+                t = t + dt
+                local pulse = (math.sin(t * 1.5) + 1) / 2
+                CardStroke.Transparency = 0.2 + pulse * 0.55
+            end
+        end)
+
+        -- Icon
+        local DIcon = Instance.new("ImageLabel")
+        DIcon.BackgroundTransparency = 1
+        DIcon.AnchorPoint   = Vector2.new(0, 0.5)
+        DIcon.Position      = UDim2.new(0, 5, 0.5, 0)
+        DIcon.Size          = UDim2.new(0, 18, 0, 18)
+        DIcon.Image         = resolvedIcon
+        DIcon.ImageColor3   = Color3.fromRGB(255, 255, 255)
+        DIcon.ScaleType     = Enum.ScaleType.Fit
+        DIcon.ZIndex        = 101
+        DIcon.Parent        = DiscordCard
+
+        -- Teks atas: nama script (UPPERCASE)
+        local DTitle = Instance.new("TextLabel")
+        DTitle.Font                 = Enum.Font.GothamBold
+        DTitle.Text                 = string.upper(ds.Title)
+        DTitle.TextColor3           = Color3.fromRGB(255, 255, 255)
+        DTitle.TextSize             = 10
+        DTitle.TextXAlignment       = Enum.TextXAlignment.Left
+        DTitle.BackgroundTransparency = 1
+        DTitle.AnchorPoint          = Vector2.new(0, 1)
+        DTitle.Position             = UDim2.new(0, 28, 0.5, -1)
+        DTitle.Size                 = UDim2.new(1, -32, 0, 11)
+        DTitle.ZIndex               = 101
+        DTitle.Parent               = DiscordCard
+
+        -- Teks bawah: JOIN DISCORD (fixed cyan)
+        local DSub = Instance.new("TextLabel")
+        DSub.Font                 = Enum.Font.GothamBold
+        DSub.Text                 = "JOIN DISCORD"
+        DSub.TextColor3           = Color3.fromRGB(30, 200, 255)
+        DSub.TextSize             = 8
+        DSub.TextXAlignment       = Enum.TextXAlignment.Left
+        DSub.BackgroundTransparency = 1
+        DSub.AnchorPoint          = Vector2.new(0, 0)
+        DSub.Position             = UDim2.new(0, 28, 0.5, 1)
+        DSub.Size                 = UDim2.new(1, -32, 0, 10)
+        DSub.ZIndex               = 101
+        DSub.Parent               = DiscordCard
+
+        -- Animasi warna DTitle: sweep kiri → kanan → kiri
+        local GradTitle = Instance.new("UIGradient")
+        GradTitle.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.5, GuiConfig.Color),
+            ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 255, 255)),
+        })
+        GradTitle.Rotation = 0
+        GradTitle.Offset   = Vector2.new(-1, 0)
+        GradTitle.Parent   = DTitle
+
+        task.spawn(function()
+            local dir   = 1
+            local pos   = -1.0
+            local speed = 0.8
+            while DiscordCard and DiscordCard.Parent do
+                local dt = task.wait(0.03)
+                pos = pos + speed * dir * dt
+                if pos >= 1.0 then pos = 1.0; dir = -1
+                elseif pos <= -1.0 then pos = -1.0; dir = 1 end
+                GradTitle.Offset = Vector2.new(pos, 0)
+            end
+        end)
+
+        -- Klik: salin link
+        local _copied = false
+        DiscordCard.Activated:Connect(function()
+            if _copied then return end
+            _copied = true
+            pcall(function() setclipboard(ds.Link) end)
+            local origText  = DSub.Text
+            local origColor = DSub.TextColor3
+            DSub.Text       = "LINK COPIED!"
+            DSub.TextColor3 = Color3.fromRGB(180, 180, 180)
+            task.wait(1.5)
+            DSub.Text       = origText
+            DSub.TextColor3 = origColor
+            _copied = false
+        end)
+    end
+    -- ══════════════════════════════════════════════════════════════════
+
+    -- ShowUser + ScrollTab size (dengan mempertimbangkan discordBottomOffset)
     if GuiConfig.ShowUser then
         ScrollTab.Position = UDim2.new(0, 0, 0, searchOffset)
-        ScrollTab.Size = UDim2.new(1, 0, 1, -(40 + searchOffset))
+        ScrollTab.Size = UDim2.new(1, 0, 1, -(40 + searchOffset + discordBottomOffset))
     else
         ScrollTab.Position = UDim2.new(0, 0, 0, searchOffset)
-        ScrollTab.Size = UDim2.new(1, 0, 1, -searchOffset)
+        ScrollTab.Size = UDim2.new(1, 0, 1, -(searchOffset + discordBottomOffset))
     end
 
     ScrollTab.Parent = LayersTab
@@ -1238,12 +1341,13 @@ function Chloex:Window(GuiConfig)
     ScrollTab.ChildRemoved:Connect(UpdateSize1)
 
     if GuiConfig.ShowUser then
+        local pfOffsetY = -(3 + discordBottomOffset)
         local PlayerFooter = Instance.new("Frame")
         PlayerFooter.Name = "PlayerFooter"
         PlayerFooter.AnchorPoint = Vector2.new(0, 1)
         PlayerFooter.BackgroundTransparency = 1
         PlayerFooter.BorderSizePixel = 0
-        PlayerFooter.Position = UDim2.new(0, 3, 1, -3)
+        PlayerFooter.Position = UDim2.new(0, 3, 1, pfOffsetY)
         PlayerFooter.Size = UDim2.new(1, -18, 0, 40)
         PlayerFooter.Parent = LayersTab
         PlayerFooter.ZIndex = 100
@@ -1495,8 +1599,6 @@ function Chloex:Window(GuiConfig)
         AnimateClose()
     end)
 
-
-
     Close.Activated:Connect(function()
         CircleClick(Close, Mouse.X, Mouse.Y)
         Chloex:Dialog({
@@ -1558,10 +1660,8 @@ function Chloex:Window(GuiConfig)
         Button.MouseButton1Click:Connect(function()
             if DropShadowHolder then
                 if DropShadowHolder.Visible then
-                    -- Tutup dengan animasi
                     AnimateClose(function()
                         DropShadowHolder.Visible = false
-                        -- Reset posisi
                         DropShadowHolder.Position = UDim2.new(
                             DropShadowHolder.Position.X.Scale,
                             DropShadowHolder.Position.X.Offset,
@@ -1818,7 +1918,6 @@ function Chloex:Window(GuiConfig)
                 end
 
                 if not sa then
-                    -- parent section tidak terdeteksi
                     return {}
                 end
 
@@ -1897,7 +1996,6 @@ function Chloex:Window(GuiConfig)
         CardList.Padding = UDim.new(0, 6)
         CardList.Parent = Card
 
-        -- Accent bar kiri
         local Accent = Instance.new("Frame")
         Accent.BackgroundColor3 = GuiConfig.Color
         Accent.BorderSizePixel = 0
@@ -1907,7 +2005,6 @@ function Chloex:Window(GuiConfig)
         Accent.Parent = Card
         Instance.new("UICorner", Accent).CornerRadius = UDim.new(1, 0)
 
-        -- Title
         local TitleLabel = Instance.new("TextLabel")
         TitleLabel.Text = Config.Title
         TitleLabel.Font = Enum.Font.GothamBold
@@ -1921,7 +2018,6 @@ function Chloex:Window(GuiConfig)
         TitleLabel.LayoutOrder = 0
         TitleLabel.Parent = Card
 
-        -- Content
         if Config.Content ~= "" then
             local ContentLabel = Instance.new("TextLabel")
             ContentLabel.Text = Config.Content
@@ -1937,7 +2033,6 @@ function Chloex:Window(GuiConfig)
             ContentLabel.Parent = Card
         end
 
-        -- Buttons custom
         if #Config.Buttons > 0 then
             local BtnRow = Instance.new("Frame")
             BtnRow.BackgroundTransparency = 1
@@ -1987,7 +2082,6 @@ function Chloex:Window(GuiConfig)
             end
         end
 
-        -- Progress bar (hanya kalau tidak ada buttons)
         if Config.Duration > 0 and #Config.Buttons == 0 then
             local ProgressBg = Instance.new("Frame")
             ProgressBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
@@ -2013,7 +2107,6 @@ function Chloex:Window(GuiConfig)
             end)
         end
 
-        -- Slide in dari kanan
         Card.Position = UDim2.new(1, 300, 0, 0)
         TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             Position = UDim2.new(0, 0, 0, 0)
