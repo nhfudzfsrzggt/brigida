@@ -1,5 +1,5 @@
 -- // vilarisUi | Elements.lua
--- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style) |
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1770,17 +1770,23 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     TextBox.Parent             = RightContainer
 
     -- ── Tooltip Wind UI style (opsional) ────────────────────────────────
-    local TooltipFrame   = nil
-    local TooltipLabel   = nil
-    local TooltipScale   = nil
-    local TooltipBg      = nil
-    local TooltipArrow   = nil
+    -- Persis seperti Tooltip.lua Wind UI:
+    -- Container (Visible=false) → UIListLayout vertikal
+    --   Background (Squircle ImageLabel, fade in/out)
+    --   Arrow     (ImageLabel rbxassetid://105854070513330, fade in/out)
+    -- UIScale 0.9 → 1 saat open, balik 0.9 saat close
+    local TooltipFrame  = nil
+    local TooltipLabel  = nil
+    local TooltipScale  = nil
+    local TooltipBg     = nil
+    local TooltipArrowImg = nil
 
     if cfg.Tooltip then
+        -- Container utama
         TooltipFrame = Instance.new("Frame")
         TooltipFrame.Name               = "Tooltip"
         TooltipFrame.AnchorPoint        = Vector2.new(0.5, 1)
-        TooltipFrame.Position           = UDim2.new(0.5, 0, 0, -4)
+        TooltipFrame.Position           = UDim2.new(0.5, 0, 0, -8)
         TooltipFrame.AutomaticSize      = Enum.AutomaticSize.XY
         TooltipFrame.BackgroundTransparency = 1
         TooltipFrame.ZIndex             = 20
@@ -1788,34 +1794,60 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TooltipFrame.ClipsDescendants   = false
         TooltipFrame.Parent             = Thumb
 
+        -- UIListLayout vertikal: Background di atas, Arrow di bawah
         local TipList = Instance.new("UIListLayout")
         TipList.FillDirection           = Enum.FillDirection.Vertical
         TipList.HorizontalAlignment     = Enum.HorizontalAlignment.Center
         TipList.VerticalAlignment       = Enum.VerticalAlignment.Center
         TipList.Padding                 = UDim.new(0, 0)
+        TipList.SortOrder               = Enum.SortOrder.LayoutOrder
         TipList.Parent                  = TooltipFrame
 
+        -- UISizeConstraint (dari Wind UI asli)
+        local SizeConstraint = Instance.new("UISizeConstraint")
+        SizeConstraint.MaxSize          = Vector2.new(400, math.huge)
+        SizeConstraint.Parent           = TooltipFrame
+
+        -- UIScale (0.9 → 1 saat open, persis Wind UI)
         TooltipScale = Instance.new("UIScale")
-        TooltipScale.Scale              = 0.85
+        TooltipScale.Scale              = 0.9
         TooltipScale.Parent             = TooltipFrame
 
-        TooltipBg = Instance.new("Frame")
+        -- Background: ImageLabel Squircle (mirip NewRoundFrame Squircle Wind UI)
+        TooltipBg = Instance.new("ImageLabel")
         TooltipBg.Name                  = "Background"
-        TooltipBg.AutomaticSize         = Enum.AutomaticSize.XY
-        TooltipBg.BackgroundColor3      = Color3.fromRGB(28, 28, 32)
+        TooltipBg.Image                 = "rbxassetid://80999662900595"  -- Squircle
+        TooltipBg.ScaleType             = Enum.ScaleType.Slice
+        TooltipBg.SliceCenter           = Rect.new(512/2, 512/2, 512/2, 512/2)
+        TooltipBg.SliceScale            = (999 / (512/2))
         TooltipBg.BackgroundTransparency = 1
-        TooltipBg.BorderSizePixel       = 0
+        TooltipBg.ImageColor3           = Color3.fromRGB(40, 38, 55)
+        TooltipBg.ImageTransparency     = 1
+        TooltipBg.AutomaticSize         = Enum.AutomaticSize.XY
         TooltipBg.ZIndex                = 21
         TooltipBg.LayoutOrder           = 1
         TooltipBg.Parent                = TooltipFrame
-        Instance.new("UICorner", TooltipBg).CornerRadius = UDim.new(1, 0)
-        local BgPad = Instance.new("UIPadding")
-        BgPad.PaddingLeft   = UDim.new(0, 10)
-        BgPad.PaddingRight  = UDim.new(0, 10)
-        BgPad.PaddingTop    = UDim.new(0, 5)
-        BgPad.PaddingBottom = UDim.new(0, 5)
-        BgPad.Parent        = TooltipBg
 
+        -- Inner frame (padding + label, dari Wind UI asli)
+        local BgInner = Instance.new("Frame")
+        BgInner.AutomaticSize           = Enum.AutomaticSize.XY
+        BgInner.BackgroundTransparency  = 1
+        BgInner.ZIndex                  = 22
+        BgInner.Parent                  = TooltipBg
+        Instance.new("UICorner", BgInner).CornerRadius = UDim.new(0, 16)
+        local BgList = Instance.new("UIListLayout")
+        BgList.FillDirection            = Enum.FillDirection.Horizontal
+        BgList.VerticalAlignment        = Enum.VerticalAlignment.Center
+        BgList.Padding                  = UDim.new(0, 0)
+        BgList.Parent                   = BgInner
+        local BgPad = Instance.new("UIPadding")
+        BgPad.PaddingLeft               = UDim.new(0, 12)
+        BgPad.PaddingRight              = UDim.new(0, 12)
+        BgPad.PaddingTop                = UDim.new(0, 7)
+        BgPad.PaddingBottom             = UDim.new(0, 7)
+        BgPad.Parent                    = BgInner
+
+        -- Label nilai
         TooltipLabel = Instance.new("TextLabel")
         TooltipLabel.Name               = "Label"
         TooltipLabel.AutomaticSize      = Enum.AutomaticSize.XY
@@ -1824,50 +1856,46 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TooltipLabel.Text               = tostring(FormatValue(cfg.Default))
         TooltipLabel.TextColor3         = Color3.fromRGB(255, 255, 255)
         TooltipLabel.TextTransparency   = 1
-        TooltipLabel.TextSize           = 13
-        TooltipLabel.ZIndex             = 22
-        TooltipLabel.Parent             = TooltipBg
+        TooltipLabel.TextSize           = 15
+        TooltipLabel.ZIndex             = 23
+        TooltipLabel.Parent             = BgInner
 
-        TooltipArrow = Instance.new("Frame")
-        TooltipArrow.Name               = "Arrow"
-        TooltipArrow.Size               = UDim2.new(0, 10, 0, 5)
-        TooltipArrow.BackgroundColor3   = Color3.fromRGB(28, 28, 32)
-        TooltipArrow.BackgroundTransparency = 1
-        TooltipArrow.BorderSizePixel    = 0
-        TooltipArrow.ZIndex             = 21
-        TooltipArrow.LayoutOrder        = 2
-        TooltipArrow.Parent             = TooltipFrame
-        local ArrowGrad = Instance.new("UIGradient")
-        ArrowGrad.Rotation              = 45
-        ArrowGrad.Transparency          = NumberSequence.new({
-            NumberSequenceKeypoint.new(0,   0),
-            NumberSequenceKeypoint.new(0.5, 0),
-            NumberSequenceKeypoint.new(0.5, 1),
-            NumberSequenceKeypoint.new(1,   1),
-        })
-        ArrowGrad.Parent                = TooltipArrow
+        -- Arrow: ImageLabel pakai asset Wind UI asli
+        local ArrowContainer = Instance.new("Frame")
+        ArrowContainer.Name             = "Arrow"
+        ArrowContainer.AutomaticSize    = Enum.AutomaticSize.XY
+        ArrowContainer.BackgroundTransparency = 1
+        ArrowContainer.LayoutOrder      = 2
+        ArrowContainer.ZIndex           = 21
+        ArrowContainer.Parent           = TooltipFrame
+        TooltipArrowImg = Instance.new("ImageLabel")
+        TooltipArrowImg.Name            = "ImageLabel"
+        TooltipArrowImg.Size            = UDim2.new(0, 16, 0, 6)
+        TooltipArrowImg.BackgroundTransparency = 1
+        TooltipArrowImg.Image           = "rbxassetid://105854070513330"
+        TooltipArrowImg.ImageColor3     = Color3.fromRGB(40, 38, 55)
+        TooltipArrowImg.ImageTransparency = 1
+        TooltipArrowImg.ZIndex          = 22
+        TooltipArrowImg.Parent          = ArrowContainer
     end
 
     local function OpenTooltip()
         if not TooltipFrame then return end
         TooltipFrame.Visible = true
-        TweenService:Create(TooltipBg,    TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
-        TweenService:Create(TooltipArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
-        TweenService:Create(TooltipLabel, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
-        TweenService:Create(TooltipScale, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+        TweenService:Create(TooltipBg,       TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { ImageTransparency = 0 }):Play()
+        TweenService:Create(TooltipArrowImg, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { ImageTransparency = 0 }):Play()
+        TweenService:Create(TooltipLabel,    TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
+        TweenService:Create(TooltipScale,    TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 }):Play()
     end
 
     local function CloseTooltip()
         if not TooltipFrame then return end
-        TweenService:Create(TooltipBg,    TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
-        TweenService:Create(TooltipArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
-        TweenService:Create(TooltipLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { TextTransparency = 1 }):Play()
-        TweenService:Create(TooltipScale, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Scale = 0.85 }):Play()
+        TweenService:Create(TooltipBg,       TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { ImageTransparency = 1 }):Play()
+        TweenService:Create(TooltipArrowImg, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { ImageTransparency = 1 }):Play()
+        TweenService:Create(TooltipLabel,    TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { TextTransparency = 1 }):Play()
+        TweenService:Create(TooltipScale,    TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In),  { Scale = 0.9 }):Play()
         task.delay(0.35, function()
-            -- Hanya hide kalau slider sudah tidak di-drag
-            if TooltipFrame and not Dragging then
-                TooltipFrame.Visible = false
-            end
+            if TooltipFrame then TooltipFrame.Visible = false end
         end)
     end
 
