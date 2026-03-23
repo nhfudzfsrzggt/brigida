@@ -1,4 +1,5 @@
 -- // vilarisUi | Elements.lua
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -366,7 +367,7 @@ local function RoundToFactor(value, factor)
 end
 
 -- ============================================================
---  CreateParagraph  (DIPERBAIKI: layout media + bug video hitam)
+--  CreateParagraph
 -- ============================================================
 function Elements:CreateParagraph(parent, config, countItem)
     local cfg = config or {}
@@ -378,26 +379,22 @@ function Elements:CreateParagraph(parent, config, countItem)
     cfg.MediaType   = cfg.MediaType   or nil
     cfg.MediaId     = cfg.MediaId     or nil
     cfg.VideoId     = cfg.VideoId     or nil
-    -- ImageSize / VideoSize = tinggi container media (px). MediaHeight sebagai fallback lama.
     cfg.ImageSize   = cfg.ImageSize   or cfg.MediaHeight or 160
     cfg.VideoSize   = cfg.VideoSize   or cfg.MediaHeight or 160
-    -- Tentukan tinggi sesuai tipe
     local _mediaH = 0
     if cfg.MediaType == "Image" then
         _mediaH = cfg.ImageSize
     elseif cfg.MediaType == "Video" then
         _mediaH = cfg.VideoSize
     end
-    cfg.MediaHeight = _mediaH   -- compat internal
+    cfg.MediaHeight = _mediaH
     cfg.AutoPlay    = cfg.AutoPlay    or false
     cfg.Volume      = cfg.Volume      or 1
-    -- Volume support 0-1000; di-map ke VideoFrame max 1 + Sound booster
     local _rawVol = tonumber(cfg.Volume) or 1
-    cfg.Volume = _rawVol  -- simpan raw untuk Sound
+    cfg.Volume = _rawVol
 
     local ParagraphFunc = {}
 
-    -- ── Root frame ──────────────────────────────────────────────────────────
     local Paragraph = Instance.new("Frame")
     Paragraph.Name               = "Paragraph"
     Paragraph.BorderSizePixel    = 0
@@ -431,18 +428,18 @@ function Elements:CreateParagraph(parent, config, countItem)
     Instance.new("UICorner", Paragraph).CornerRadius = UDim.new(0, 8)
     if cfg.Badge then CreateBadge(Paragraph, cfg.Badge) end
 
-    -- ── Media (Image / Video) — full-width di ATAS teks ─────────────────────
     local VideoObject  = nil
     local ThumbnailImg = nil
     local PlayOverlay  = nil
     local PlayBgRef    = nil
     local IsPlaying    = false
     local mediaBlockH  = 0
+    local MediaContainer
 
     if cfg.MediaType == "Image" or cfg.MediaType == "Video" then
         mediaBlockH = cfg.MediaHeight
 
-        local MediaContainer = Instance.new("Frame")
+        MediaContainer = Instance.new("Frame")
         MediaContainer.Name                   = "MediaContainer"
         MediaContainer.Position               = UDim2.new(0, 0, 0, 0)
         MediaContainer.Size                   = UDim2.new(1, 0, 0, cfg.MediaHeight)
@@ -454,7 +451,6 @@ function Elements:CreateParagraph(parent, config, countItem)
         MediaContainer.Parent                 = Paragraph
         Instance.new("UICorner", MediaContainer).CornerRadius = UDim.new(0, 8)
 
-        -- Garis pemisah tipis antara media dan teks
         local Divider = Instance.new("Frame")
         Divider.Name                   = "MediaDivider"
         Divider.Position               = UDim2.new(0, 0, 0, cfg.MediaHeight)
@@ -479,8 +475,7 @@ function Elements:CreateParagraph(parent, config, countItem)
             VideoObject.Size                   = UDim2.new(1, 0, 1, 0)
             VideoObject.BackgroundTransparency = 1
             VideoObject.Video                  = cfg.VideoId or ""
-            VideoObject.Volume                 = 1  -- selalu max
-            -- Sound booster: support volume > 1 (hingga 1000)
+            VideoObject.Volume                 = 1
             local SoundBooster = Instance.new("Sound")
             SoundBooster.Name        = "SoundBooster"
             SoundBooster.SoundId     = cfg.VideoId or ""
@@ -491,7 +486,6 @@ function Elements:CreateParagraph(parent, config, countItem)
             VideoObject.Visible                = false
             VideoObject.Parent                 = MediaContainer
 
-            -- Overlay gelap saat pause agar ikon play terlihat
             PlayBgRef = Instance.new("Frame")
             PlayBgRef.Name                   = "PlayBg"
             PlayBgRef.Size                   = UDim2.new(1, 0, 1, 0)
@@ -510,7 +504,6 @@ function Elements:CreateParagraph(parent, config, countItem)
             PlayOverlay.ZIndex                 = 5
             PlayOverlay.Parent                 = MediaContainer
 
-            -- Lingkaran tombol play
             local PlayCircle = Instance.new("Frame")
             PlayCircle.Name                   = "PlayCircle"
             PlayCircle.AnchorPoint            = Vector2.new(0.5, 0.5)
@@ -535,15 +528,9 @@ function Elements:CreateParagraph(parent, config, countItem)
             PlayIcon.ZIndex                 = 7
             PlayIcon.Parent                 = PlayCircle
 
-            -- Klik di mana saja di video untuk toggle play/pause
             PlayOverlay.MouseButton1Click:Connect(function()
-                if IsPlaying then
-                    ParagraphFunc:StopVideo()
-                else
-                    ParagraphFunc:StartVideo()
-                end
+                if IsPlaying then ParagraphFunc:StopVideo() else ParagraphFunc:StartVideo() end
             end)
-            -- Klik langsung di VideoFrame saat overlay hidden juga bisa toggle
             local VideoClickBtn = Instance.new("TextButton")
             VideoClickBtn.Name = "VideoClickBtn"
             VideoClickBtn.Size = UDim2.new(1, 0, 1, 0)
@@ -553,14 +540,9 @@ function Elements:CreateParagraph(parent, config, countItem)
             VideoClickBtn.ZIndex = 3
             VideoClickBtn.Parent = MediaContainer
             VideoClickBtn.MouseButton1Click:Connect(function()
-                if IsPlaying then
-                    ParagraphFunc:StopVideo()
-                else
-                    ParagraphFunc:StartVideo()
-                end
+                if IsPlaying then ParagraphFunc:StopVideo() else ParagraphFunc:StartVideo() end
             end)
 
-            -- Video loop: setelah selesai langsung play ulang dari awal
             VideoObject.Ended:Connect(function()
                 if IsPlaying then
                     VideoObject.TimePosition = 0
@@ -573,7 +555,6 @@ function Elements:CreateParagraph(parent, config, countItem)
         end
     end
 
-    -- ── Icon (hanya jika tidak ada media) ───────────────────────────────────
     local iconSize = 0
     local iconPadL = 0
     if cfg.Icon and not cfg.MediaType then
@@ -594,7 +575,6 @@ function Elements:CreateParagraph(parent, config, countItem)
         IconImg.Parent                 = IconContainer
     end
 
-    -- ── Posisi teks (di bawah media jika ada) ───────────────────────────────
     local textLeft
     if cfg.MediaType then
         textLeft = cfg.Color and 14 or 10
@@ -636,7 +616,6 @@ function Elements:CreateParagraph(parent, config, countItem)
     ParagraphContent.RichText               = true
     ParagraphContent.Parent                 = Paragraph
 
-    -- ── Tombol opsional ─────────────────────────────────────────────────────
     local btnBgColor = cfg.ButtonColor    or Color3.fromRGB(255, 255, 255)
     local subBgColor = cfg.SubButtonColor or Color3.fromRGB(255, 255, 255)
     local btnBgTrans = cfg.ButtonColor    and 0.15 or 0.85
@@ -686,7 +665,6 @@ function Elements:CreateParagraph(parent, config, countItem)
         end
     end
 
-    -- ── UpdateSize ───────────────────────────────────────────────────────────
     local function UpdateSize()
         task.wait()
         local contentH = math.max(12, ParagraphContent.TextBounds.Y)
@@ -709,7 +687,6 @@ function Elements:CreateParagraph(parent, config, countItem)
 
     local LockFunc = ApplyLock(Paragraph, cfg.Locked)
 
-    -- ── Video API ────────────────────────────────────────────────────────────
     function ParagraphFunc:StartVideo()
         if not VideoObject then return end
         if IsPlaying then return end
@@ -720,14 +697,8 @@ function Elements:CreateParagraph(parent, config, countItem)
         VideoObject:Play()
         if resumePos > 0 then VideoObject.TimePosition = resumePos end
         local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
-        if sb then
-            sb.TimePosition = resumePos
-            sb:Play()
-        end
-        if PlayBgRef then
-            TweenService:Create(PlayBgRef, TweenInfo.new(0.25),
-                { BackgroundTransparency = 1 }):Play()
-        end
+        if sb then sb.TimePosition = resumePos; sb:Play() end
+        if PlayBgRef then TweenService:Create(PlayBgRef, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play() end
         if PlayOverlay then PlayOverlay.Visible = false end
     end
 
@@ -738,7 +709,6 @@ function Elements:CreateParagraph(parent, config, countItem)
         VideoObject:Pause()
         local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
         if sb then sb:Pause() end
-        -- Frame terakhir video tetap kelihatan, semua overlay disembunyikan
         if PlayBgRef then PlayBgRef.BackgroundTransparency = 1 end
         if PlayOverlay then PlayOverlay.Visible = false end
     end
@@ -749,23 +719,16 @@ function Elements:CreateParagraph(parent, config, countItem)
         ThumbnailImg.Image = mediaId or ""
         ThumbnailImg.Visible = (mediaId ~= nil and mediaId ~= "")
         if VideoObject then VideoObject.Video = videoId or "" end
-        cfg.MediaType = mediaType
-        cfg.MediaId   = mediaId
-        cfg.VideoId   = videoId
+        cfg.MediaType = mediaType; cfg.MediaId = mediaId; cfg.VideoId = videoId
     end
 
     function ParagraphFunc:IsVideoPlaying() return IsPlaying end
-    function ParagraphFunc:SetContent(content)
-        ParagraphContent.Text = tostring(content or "Content")
-        UpdateSize()
-    end
-    function ParagraphFunc:SetTitle(title)
-        ParagraphTitle.Text = tostring(title or "Title")
-    end
+    function ParagraphFunc:SetContent(content) ParagraphContent.Text = tostring(content or "Content"); UpdateSize() end
+    function ParagraphFunc:SetTitle(title) ParagraphTitle.Text = tostring(title or "Title") end
     function ParagraphFunc:GetContent() return ParagraphContent.Text end
-    function ParagraphFunc:GetTitle()   return ParagraphTitle.Text   end
-    function ParagraphFunc:SetLocked(state)     LockFunc:SetLocked(state) end
-    function ParagraphFunc:GetLocked()          return LockFunc:GetLocked() end
+    function ParagraphFunc:GetTitle() return ParagraphTitle.Text end
+    function ParagraphFunc:SetLocked(state) LockFunc:SetLocked(state) end
+    function ParagraphFunc:GetLocked() return LockFunc:GetLocked() end
     function ParagraphFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
 
     if cfg.AutoPlay and cfg.MediaType == "Video" then
@@ -892,11 +855,7 @@ function Elements:CreateEditableParagraph(parent, config, countItem)
     ParagraphTextBox:GetPropertyChangedSignal("TextBounds"):Connect(UpdateSize)
     Paragraph:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateSize)
     local LockFunc = ApplyLock(Paragraph, cfg.Locked)
-    function ParagraphFunc:SetContent(content)
-        ParagraphTextBox.Text = tostring(content or "")
-        ParagraphFunc.Value = ParagraphTextBox.Text
-        UpdateSize()
-    end
+    function ParagraphFunc:SetContent(content) ParagraphTextBox.Text = tostring(content or ""); ParagraphFunc.Value = ParagraphTextBox.Text; UpdateSize() end
     function ParagraphFunc:GetContent() return ParagraphTextBox.Text end
     function ParagraphFunc:SetTitle(title) ParagraphTitle.Text = tostring(title or "Title") end
     function ParagraphFunc:GetTitle() return ParagraphTitle.Text end
@@ -1257,6 +1216,9 @@ function Elements:CreateButton(parent, config, countItem)
     return ButtonFunc
 end
 
+-- ============================================================
+--  CreateToggle  ★ UPGRADE: Drag horizontal + scroll guard
+-- ============================================================
 function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
     cfg.Title    = cfg.Title    or "Title"
@@ -1271,6 +1233,8 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
     if typeof(cfg.Default) ~= "boolean" then cfg.Default = cfg.Default and true or false end
     local ToggleFunc = { Value = cfg.Default }
+
+    -- ── Frame utama ──────────────────────────────────────────
     local Toggle        = Instance.new("Frame")
     local UICorner20    = Instance.new("UICorner")
     local ToggleTitle   = Instance.new("TextLabel")
@@ -1286,6 +1250,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     UICorner20.CornerRadius = UDim.new(0, 4)
     UICorner20.Parent = Toggle
     if cfg.Badge then CreateBadge(Toggle, cfg.Badge) end
+
     ToggleTitle.Font = Enum.Font.GothamBold
     ToggleTitle.Text = cfg.Title
     ToggleTitle.TextSize = 13
@@ -1297,6 +1262,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleTitle.Size = UDim2.new(1, -100, 0, 13)
     ToggleTitle.Name = "ToggleTitle"
     ToggleTitle.Parent = Toggle
+
     ToggleTitle2.Font = Enum.Font.GothamBold
     ToggleTitle2.Text = cfg.Title2
     ToggleTitle2.TextSize = 12
@@ -1308,6 +1274,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleTitle2.Size = UDim2.new(1, -100, 0, 12)
     ToggleTitle2.Name = "ToggleTitle2"
     ToggleTitle2.Parent = Toggle
+
     ToggleContent.Font = Enum.Font.GothamBold
     ToggleContent.Text = cfg.Content
     ToggleContent.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1318,6 +1285,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleContent.BackgroundTransparency = 1
     ToggleContent.Name = "ToggleContent"
     ToggleContent.Parent = Toggle
+
     if cfg.Title2 ~= "" then
         Toggle.Size = UDim2.new(1, 0, 0, 57)
         ToggleContent.Position = UDim2.new(0, 10, 0, 36)
@@ -1345,6 +1313,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         ToggleContent.TextWrapped = true
         if updateSectionSize then updateSectionSize() end
     end)
+
     ToggleButton.Font = Enum.Font.SourceSans
     ToggleButton.Text = ""
     ToggleButton.BackgroundTransparency = 1
@@ -1352,8 +1321,17 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleButton.Size = UDim2.new(1, 0, 1, 0)
     ToggleButton.Name = "ToggleButton"
     ToggleButton.Parent = Toggle
+
+    -- ── Komponen visual toggle / checkbox ────────────────────
     local FeatureFrame, ToggleCircle, UIStroke8
     local CheckboxFrame, CheckMark
+
+    -- Ukuran track toggle (30×15) untuk kalkulasi drag
+    local TRACK_W  = 30   -- lebar FeatureFrame
+    local CIRCLE_W = 14   -- diameter ToggleCircle
+    local DRAG_MIN = 0
+    local DRAG_MAX = TRACK_W - CIRCLE_W  -- = 16
+
     if cfg.Type == "Checkbox" then
         CheckboxFrame = Instance.new("Frame")
         CheckboxFrame.AnchorPoint = Vector2.new(1, 0.5)
@@ -1389,7 +1367,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         FeatureFrame.BackgroundTransparency = 0.92
         FeatureFrame.BorderSizePixel = 0
         FeatureFrame.Position = UDim2.new(1, -15, 0.5, 0)
-        FeatureFrame.Size = UDim2.new(0, 30, 0, 15)
+        FeatureFrame.Size = UDim2.new(0, TRACK_W, 0, 15)
         FeatureFrame.Name = "FeatureFrame"
         FeatureFrame.Parent = Toggle
         Instance.new("UICorner", FeatureFrame)
@@ -1401,14 +1379,13 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         ToggleCircle = Instance.new("Frame")
         ToggleCircle.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
         ToggleCircle.BorderSizePixel = 0
-        ToggleCircle.Size = UDim2.new(0, 14, 0, 14)
+        ToggleCircle.Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W)
         ToggleCircle.Name = "ToggleCircle"
         ToggleCircle.Parent = FeatureFrame
         Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(0, 15)
     end
-    ToggleButton.Activated:Connect(function()
-        ToggleFunc:Set(not ToggleFunc.Value)
-    end)
+
+    -- ── ToggleFunc:Set ────────────────────────────────────────
     function ToggleFunc:Set(Value, SkipCallback)
         Value = Value and true or false
         ToggleFunc.Value = Value
@@ -1433,17 +1410,121 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         else
             if Value then
                 TweenService:Create(ToggleTitle,  TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
-                TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0) }):Play()
+                TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, DRAG_MAX, 0, 0) }):Play()
                 TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play()
                 TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
             else
                 TweenService:Create(ToggleTitle,  TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0) }):Play()
+                TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, DRAG_MIN, 0, 0) }):Play()
                 TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
                 TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
             end
         end
     end
+
+    -- ── Drag + Scroll Guard (hanya untuk tipe Toggle, bukan Checkbox) ──
+    if cfg.Type ~= "Checkbox" then
+        local isDragging   = false
+        local isScrolling  = false
+        local startMouseX  = 0
+        local startMouseY  = 0
+        local startCircleX = 0
+        local dragConn, endConn
+
+        -- Saat tombol ditekan
+        ToggleButton.InputBegan:Connect(function(input)
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1
+            and input.UserInputType ~= Enum.UserInputType.Touch then return end
+            if isDragging then return end
+
+            isDragging   = true
+            isScrolling  = false
+            startMouseX  = input.Position.X
+            startMouseY  = input.Position.Y
+            startCircleX = ToggleCircle.Position.X.Offset
+
+            -- Efek tekan: circle membesar sedikit
+            TweenService:Create(ToggleCircle,
+                TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                { Size = UDim2.new(0, CIRCLE_W + 4, 0, CIRCLE_W + 4) }):Play()
+
+            -- Sambungkan drag
+            if dragConn then dragConn:Disconnect() end
+            dragConn = UserInputService.InputChanged:Connect(function(inputChanged)
+                if not isDragging then return end
+                if inputChanged.UserInputType ~= Enum.UserInputType.MouseMovement
+                and inputChanged.UserInputType ~= Enum.UserInputType.Touch then return end
+                if isScrolling then return end
+
+                local dX = math.abs(inputChanged.Position.X - startMouseX)
+                local dY = math.abs(inputChanged.Position.Y - startMouseY)
+
+                -- Scroll guard: kalau gerakan vertikal dominan, batalkan drag
+                if dY > dX and dY > 8 then
+                    isScrolling = true
+                    isDragging  = false
+
+                    -- Kembalikan circle ke posisi semula
+                    TweenService:Create(ToggleCircle,
+                        TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                        { Position = UDim2.new(0, startCircleX, 0, 0),
+                          Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W) }):Play()
+
+                    if dragConn then dragConn:Disconnect(); dragConn = nil end
+                    if endConn  then endConn:Disconnect();  endConn  = nil end
+                    return
+                end
+
+                -- Gerakkan circle mengikuti mouse
+                local delta  = inputChanged.Position.X - startMouseX
+                local newX   = math.clamp(startCircleX + delta, DRAG_MIN, DRAG_MAX)
+                ToggleCircle.Position = UDim2.new(0, newX, 0, 0)
+
+                -- Update warna track secara real-time sesuai posisi
+                local pct = newX / DRAG_MAX
+                TweenService:Create(FeatureFrame, TweenInfo.new(0.05),
+                    { BackgroundColor3  = GuiConfig.Color,
+                      BackgroundTransparency = 1 - pct }):Play()
+                TweenService:Create(UIStroke8, TweenInfo.new(0.05),
+                    { Color = GuiConfig.Color, Transparency = 1 - pct }):Play()
+            end)
+
+            -- Sambungkan InputEnded
+            if endConn then endConn:Disconnect() end
+            endConn = UserInputService.InputEnded:Connect(function(inputEnded)
+                if not isDragging then return end
+                if inputEnded.UserInputType ~= Enum.UserInputType.MouseButton1
+                and inputEnded.UserInputType ~= Enum.UserInputType.Touch then return end
+
+                isDragging = false
+                if dragConn then dragConn:Disconnect(); dragConn = nil end
+                if endConn  then endConn:Disconnect();  endConn  = nil end
+
+                -- Kembalikan ukuran circle
+                TweenService:Create(ToggleCircle,
+                    TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                    { Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W) }):Play()
+
+                -- Tentukan nilai: tap kecil = flip, drag jauh = tengah track menentukan
+                local totalDelta = math.abs(inputEnded.Position.X - startMouseX)
+                if totalDelta < 6 then
+                    -- Tap biasa → flip
+                    ToggleFunc:Set(not ToggleFunc.Value)
+                else
+                    -- Drag → posisi circle menentukan ON/OFF
+                    local currentX = ToggleCircle.Position.X.Offset
+                    local midPoint = DRAG_MAX / 2
+                    ToggleFunc:Set(currentX >= midPoint)
+                end
+            end)
+        end)
+    else
+        -- Checkbox: tetap pakai Activated biasa (tidak ada drag)
+        ToggleButton.Activated:Connect(function()
+            ToggleFunc:Set(not ToggleFunc.Value)
+        end)
+    end
+
     function ToggleFunc:GetValue() return ToggleFunc.Value end
     local LockFunc = ApplyLock(Toggle, cfg.Locked)
     function ToggleFunc:SetLocked(state) LockFunc:SetLocked(state) end
@@ -2180,10 +2261,7 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             if type(Value) == "table" then DropdownFunc.Value = Value[1]
             else DropdownFunc.Value = Value end
         end
-        if not SkipCallback then
-            ConfigData[configKey] = DropdownFunc.Value
-            SaveConfig()
-        end
+        if not SkipCallback then ConfigData[configKey] = DropdownFunc.Value; SaveConfig() end
         local texts = {}
         for _, Drop in ScrollSelect:GetChildren() do
             if Drop.Name == "Option" and Drop:FindFirstChild("OptionText") then
