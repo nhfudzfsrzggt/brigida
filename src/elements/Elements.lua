@@ -1,5 +1,5 @@
 -- // vilarisUi | Elements.lua
--- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style) |
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1327,70 +1327,191 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleButton.Name = "ToggleButton"
     ToggleButton.Parent = Toggle
 
-    -- ── Komponen visual toggle / checkbox ────────────────────
-    local FeatureFrame, ToggleCircle, UIStroke8
-    local CheckboxFrame, CheckMark
+    -- ── Komponen visual Toggle / Checkbox (Wind UI style) ──────────────
+    -- Toggle: NewRoundFrame Squircle track + Layer overlay + Stroke + Thumb
+    -- Checkbox: NewRoundFrame Squircle + Layer + Stroke (Glass-1.4) + Icon
 
-    -- Ukuran track toggle (30×15) untuk kalkulasi drag
-    local TRACK_W  = 30   -- lebar FeatureFrame
-    local CIRCLE_W = 14   -- diameter ToggleCircle
-    local DRAG_MIN = 0
-    local DRAG_MAX = TRACK_W - CIRCLE_W  -- = 16
+    local TRACK_W  = 24 + 24 + 4   -- lebar track Wind UI (NewElements style)
+    local CIRCLE_W = 20             -- lebar thumb
+    local CIRCLE_H = 24             -- tinggi thumb
+    local DRAG_MIN = 2
+    local DRAG_MAX = TRACK_W - CIRCLE_W - 2  -- posisi thumb saat ON
+
+    -- Variabel yang dipakai oleh Set
+    local ToggleTrack      = nil   -- ImageLabel track background
+    local ToggleLayer      = nil   -- ImageLabel overlay warna ON
+    local ToggleStroke     = nil   -- ImageLabel glass outline
+    local ToggleThumb      = nil   -- ImageLabel thumb
+    local ToggleIconImg    = nil   -- ImageLabel icon di dalam thumb (opsional)
+    local CBTrack          = nil   -- ImageLabel checkbox background
+    local CBLayer          = nil   -- ImageLabel checkbox fill ON
+    local CBIconImg        = nil   -- ImageLabel icon centang
 
     if cfg.Type == "Checkbox" then
-        CheckboxFrame = Instance.new("Frame")
-        CheckboxFrame.AnchorPoint = Vector2.new(1, 0.5)
-        CheckboxFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        CheckboxFrame.BackgroundTransparency = 0.92
-        CheckboxFrame.BorderSizePixel = 0
-        CheckboxFrame.Position = UDim2.new(1, -15, 0.5, 0)
-        CheckboxFrame.Size = UDim2.new(0, 18, 0, 18)
-        CheckboxFrame.Name = "CheckboxFrame"
-        CheckboxFrame.Parent = Toggle
-        Instance.new("UICorner", CheckboxFrame).CornerRadius = UDim.new(0, 4)
-        local CBStroke = Instance.new("UIStroke")
-        CBStroke.Color = Color3.fromRGB(255, 255, 255)
-        CBStroke.Thickness = 1.5
-        CBStroke.Transparency = 0.7
-        CBStroke.Name = "CBStroke"
-        CBStroke.Parent = CheckboxFrame
-        CheckMark = Instance.new("ImageLabel")
-        CheckMark.Name = "CheckMark"
-        CheckMark.AnchorPoint = Vector2.new(0.5, 0.5)
-        CheckMark.Position = UDim2.new(0.5, 0, 0.5, 0)
-        CheckMark.Size = UDim2.new(0, 12, 0, 12)
-        CheckMark.BackgroundTransparency = 1
-        CheckMark.ScaleType = Enum.ScaleType.Fit
-        CheckMark.Image = "rbxassetid://6031094667"
-        CheckMark.ImageColor3 = Color3.fromRGB(255, 255, 255)
-        CheckMark.ImageTransparency = 1
-        CheckMark.ZIndex = 2
-        CheckMark.Parent = CheckboxFrame
+        -- ── Checkbox Wind UI: Squircle 26×26 ──────────────────────────────
+        local CB_RADIUS = 9
+
+        CBTrack = Instance.new("ImageLabel")
+        CBTrack.Name                = "CheckboxTrack"
+        CBTrack.Image               = "rbxassetid://80999662900595"  -- Squircle
+        CBTrack.ScaleType           = Enum.ScaleType.Slice
+        CBTrack.SliceCenter         = Rect.new(512/2, 512/2, 512/2, 512/2)
+        CBTrack.SliceScale          = CB_RADIUS / (512/2)
+        CBTrack.BackgroundTransparency = 1
+        CBTrack.ImageColor3         = Color3.fromRGB(255, 255, 255)
+        CBTrack.ImageTransparency   = 0.85
+        CBTrack.AnchorPoint         = Vector2.new(1, 0.5)
+        CBTrack.Position            = UDim2.new(1, -15, 0.5, 0)
+        CBTrack.Size                = UDim2.new(0, 26, 0, 26)
+        CBTrack.ZIndex              = 2
+        CBTrack.Parent              = Toggle
+
+        -- Layer (warna fill saat ON)
+        CBLayer = Instance.new("ImageLabel")
+        CBLayer.Name                = "Layer"
+        CBLayer.Image               = "rbxassetid://80999662900595"
+        CBLayer.ScaleType           = Enum.ScaleType.Slice
+        CBLayer.SliceCenter         = Rect.new(512/2, 512/2, 512/2, 512/2)
+        CBLayer.SliceScale          = CB_RADIUS / (512/2)
+        CBLayer.BackgroundTransparency = 1
+        CBLayer.ImageColor3         = GuiConfig.Color
+        CBLayer.ImageTransparency   = 1
+        CBLayer.Size                = UDim2.new(1, 0, 1, 0)
+        CBLayer.ZIndex              = 3
+        CBLayer.Parent              = CBTrack
+
+        -- Stroke glass (Glass-1.4 Wind UI)
+        local CBStroke = Instance.new("ImageLabel")
+        CBStroke.Name               = "Stroke"
+        CBStroke.Image              = "rbxassetid://95071123641270"  -- Glass-1.4
+        CBStroke.ScaleType          = Enum.ScaleType.Slice
+        CBStroke.SliceCenter        = Rect.new(512, 512, 512, 512)
+        CBStroke.SliceScale         = CB_RADIUS / 512
+        CBStroke.BackgroundTransparency = 1
+        CBStroke.ImageColor3        = Color3.fromRGB(255, 255, 255)
+        CBStroke.ImageTransparency  = 0.5
+        CBStroke.Size               = UDim2.new(1, 0, 1, 0)
+        CBStroke.ZIndex             = 4
+        CBStroke.Parent             = CBTrack
+
+        -- Icon centang (default "checkmark" gaya Wind UI)
+        local iconId = GetIconId(cfg.Icon or "checkmark")
+        CBIconImg = Instance.new("ImageLabel")
+        CBIconImg.Name              = "Icon"
+        CBIconImg.BackgroundTransparency = 1
+        CBIconImg.ScaleType         = Enum.ScaleType.Fit
+        CBIconImg.Image             = iconId ~= "" and iconId or "rbxassetid://6031094667"
+        CBIconImg.ImageColor3       = Color3.fromRGB(255, 255, 255)
+        CBIconImg.ImageTransparency = 1
+        CBIconImg.AnchorPoint       = Vector2.new(0.5, 0.5)
+        CBIconImg.Position          = UDim2.new(0.5, 0, 0.5, 0)
+        CBIconImg.Size              = UDim2.new(0, 14, 0, 14)
+        CBIconImg.ZIndex            = 5
+        CBIconImg.Parent            = CBTrack
+
     else
-        FeatureFrame = Instance.new("Frame")
-        FeatureFrame.AnchorPoint = Vector2.new(1, 0.5)
-        FeatureFrame.BackgroundTransparency = 0.92
-        FeatureFrame.BorderSizePixel = 0
-        FeatureFrame.Position = UDim2.new(1, -15, 0.5, 0)
-        FeatureFrame.Size = UDim2.new(0, TRACK_W, 0, 15)
-        FeatureFrame.Name = "FeatureFrame"
-        FeatureFrame.Parent = Toggle
-        Instance.new("UICorner", FeatureFrame)
-        UIStroke8 = Instance.new("UIStroke")
-        UIStroke8.Color = Color3.fromRGB(255, 255, 255)
-        UIStroke8.Thickness = 2
-        UIStroke8.Transparency = 0.9
-        UIStroke8.Parent = FeatureFrame
-        ToggleCircle = Instance.new("Frame")
-        ToggleCircle.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-        ToggleCircle.BorderSizePixel = 0
-        ToggleCircle.Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W)
-        ToggleCircle.Name = "ToggleCircle"
-        ToggleCircle.Parent = FeatureFrame
-        Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(0, 15)
+        -- ── Toggle Wind UI: Squircle pill track ───────────────────────────
+        local TK_RADIUS = 24 / 2
+
+        ToggleTrack = Instance.new("ImageLabel")
+        ToggleTrack.Name            = "ToggleTrack"
+        ToggleTrack.Image           = "rbxassetid://80999662900595"
+        ToggleTrack.ScaleType       = Enum.ScaleType.Slice
+        ToggleTrack.SliceCenter     = Rect.new(512/2, 512/2, 512/2, 512/2)
+        ToggleTrack.SliceScale      = TK_RADIUS / (512/2)
+        ToggleTrack.BackgroundTransparency = 1
+        ToggleTrack.ImageColor3     = Color3.fromRGB(255, 255, 255)
+        ToggleTrack.ImageTransparency = 0.85
+        ToggleTrack.AnchorPoint     = Vector2.new(1, 0.5)
+        ToggleTrack.Position        = UDim2.new(1, -15, 0.5, 0)
+        ToggleTrack.Size            = UDim2.new(0, TRACK_W, 0, 24)
+        ToggleTrack.ZIndex          = 2
+        ToggleTrack.Parent          = Toggle
+
+        -- Layer overlay (warna aksen saat ON)
+        ToggleLayer = Instance.new("ImageLabel")
+        ToggleLayer.Name            = "Layer"
+        ToggleLayer.Image           = "rbxassetid://80999662900595"
+        ToggleLayer.ScaleType       = Enum.ScaleType.Slice
+        ToggleLayer.SliceCenter     = Rect.new(512/2, 512/2, 512/2, 512/2)
+        ToggleLayer.SliceScale      = TK_RADIUS / (512/2)
+        ToggleLayer.BackgroundTransparency = 1
+        ToggleLayer.ImageColor3     = GuiConfig.Color
+        ToggleLayer.ImageTransparency = 1
+        ToggleLayer.Size            = UDim2.new(1, 0, 1, 0)
+        ToggleLayer.ZIndex          = 3
+        ToggleLayer.Parent          = ToggleTrack
+
+        -- Stroke glass outline
+        ToggleStroke = Instance.new("ImageLabel")
+        ToggleStroke.Name           = "Stroke"
+        ToggleStroke.Image          = "rbxassetid://117788349049947"  -- SquircleOutline
+        ToggleStroke.ScaleType      = Enum.ScaleType.Slice
+        ToggleStroke.SliceCenter    = Rect.new(512, 512, 512, 512)
+        ToggleStroke.SliceScale     = TK_RADIUS / 512
+        ToggleStroke.BackgroundTransparency = 1
+        ToggleStroke.ImageColor3    = Color3.fromRGB(255, 255, 255)
+        ToggleStroke.ImageTransparency = 0.9
+        ToggleStroke.Size           = UDim2.new(1, 0, 1, 0)
+        ToggleStroke.ZIndex         = 4
+        ToggleStroke.Parent         = ToggleTrack
+        local StrokeGrad = Instance.new("UIGradient")
+        StrokeGrad.Rotation         = 90
+        StrokeGrad.Transparency     = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        StrokeGrad.Parent           = ToggleStroke
+
+        -- Thumb (Squircle, posisi di dalam track)
+        local TH_RADIUS = 24 / 2
+        ToggleThumb = Instance.new("ImageLabel")
+        ToggleThumb.Name            = "Thumb"
+        ToggleThumb.Image           = "rbxassetid://80999662900595"
+        ToggleThumb.ScaleType       = Enum.ScaleType.Slice
+        ToggleThumb.SliceCenter     = Rect.new(512/2, 512/2, 512/2, 512/2)
+        ToggleThumb.SliceScale      = TH_RADIUS / (512/2)
+        ToggleThumb.BackgroundTransparency = 1
+        ToggleThumb.ImageColor3     = GuiConfig.Color  -- warna thumb = aksen (OFF state: putih/abu)
+        ToggleThumb.ImageTransparency = 0
+        ToggleThumb.AnchorPoint     = Vector2.new(0, 0.5)
+        ToggleThumb.Position        = UDim2.new(0, DRAG_MIN, 0.5, 0)
+        ToggleThumb.Size            = UDim2.new(0, CIRCLE_W, 0, CIRCLE_H)
+        ToggleThumb.ZIndex          = 5
+        ToggleThumb.Parent          = ToggleTrack
+
+        -- Highlight glass di atas thumb
+        local ThumbHL = Instance.new("ImageLabel")
+        ThumbHL.Name                = "Highlight"
+        ThumbHL.Image               = "rbxassetid://97324581055162"  -- Glass-1
+        ThumbHL.ScaleType           = Enum.ScaleType.Slice
+        ThumbHL.SliceCenter         = Rect.new(512, 512, 512, 512)
+        ThumbHL.SliceScale          = TH_RADIUS / 512
+        ThumbHL.BackgroundTransparency = 1
+        ThumbHL.ImageColor3         = Color3.fromRGB(255, 255, 255)
+        ThumbHL.ImageTransparency   = 0.6
+        ThumbHL.Size                = UDim2.new(1, 0, 1, 0)
+        ThumbHL.ZIndex              = 6
+        ThumbHL.Parent              = ToggleThumb
+
+        -- Icon opsional di dalam thumb
+        if cfg.Icon and cfg.Icon ~= "" then
+            ToggleIconImg = Instance.new("ImageLabel")
+            ToggleIconImg.Name          = "Icon"
+            ToggleIconImg.BackgroundTransparency = 1
+            ToggleIconImg.ScaleType     = Enum.ScaleType.Fit
+            ToggleIconImg.Image         = GetIconId(cfg.Icon)
+            ToggleIconImg.ImageColor3   = Color3.fromRGB(0, 0, 0)
+            ToggleIconImg.ImageTransparency = 1
+            ToggleIconImg.AnchorPoint   = Vector2.new(0.5, 0.5)
+            ToggleIconImg.Position      = UDim2.new(0.5, 0, 0.5, 0)
+            ToggleIconImg.Size          = UDim2.new(0, CIRCLE_W - 7, 0, CIRCLE_W - 7)
+            ToggleIconImg.ZIndex        = 7
+            ToggleIconImg.Parent        = ToggleThumb
+        end
     end
 
-    -- ── ToggleFunc:Set ────────────────────────────────────────
+    -- ── ToggleFunc:Set — Wind UI style ──────────────────────────────────
     function ToggleFunc:Set(Value, SkipCallback)
         Value = Value and true or false
         ToggleFunc.Value = Value
@@ -1400,32 +1521,34 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             SafeCall(cfg.Callback, Value)
         end
         if cfg.Type == "Checkbox" then
-            local cbStroke = CheckboxFrame:FindFirstChild("CBStroke")
+            -- Checkbox: Layer fade in/out + Icon fade
             if Value then
-                TweenService:Create(ToggleTitle,   TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
-                TweenService:Create(CheckboxFrame, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
-                if cbStroke then TweenService:Create(cbStroke, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play() end
-                TweenService:Create(CheckMark, TweenInfo.new(0.15), { ImageTransparency = 0 }):Play()
+                TweenService:Create(CBLayer,    TweenInfo.new(0.06), { ImageTransparency = 0 }):Play()
+                TweenService:Create(CBIconImg,  TweenInfo.new(0.06), { ImageTransparency = 0 }):Play()
             else
-                TweenService:Create(ToggleTitle,   TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                TweenService:Create(CheckboxFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
-                if cbStroke then TweenService:Create(cbStroke, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.7 }):Play() end
-                TweenService:Create(CheckMark, TweenInfo.new(0.1), { ImageTransparency = 1 }):Play()
+                TweenService:Create(CBLayer,    TweenInfo.new(0.05), { ImageTransparency = 1 }):Play()
+                TweenService:Create(CBIconImg,  TweenInfo.new(0.06), { ImageTransparency = 1 }):Play()
             end
         else
+            -- Toggle: Layer fade + Thumb geser + icon fade
             if Value then
-                TweenService:Create(ToggleTitle,  TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
-                TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, DRAG_MAX, 0, 0) }):Play()
-                TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play()
-                TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
+                TweenService:Create(ToggleLayer, TweenInfo.new(0.1), { ImageTransparency = 0 }):Play()
+                TweenService:Create(ToggleThumb, TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                    { Position = UDim2.new(0, DRAG_MAX, 0.5, 0) }):Play()
+                if ToggleIconImg then
+                    TweenService:Create(ToggleIconImg, TweenInfo.new(0.1), { ImageTransparency = 0 }):Play()
+                end
             else
-                TweenService:Create(ToggleTitle,  TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, DRAG_MIN, 0, 0) }):Play()
-                TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
-                TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
+                TweenService:Create(ToggleLayer, TweenInfo.new(0.1), { ImageTransparency = 1 }):Play()
+                TweenService:Create(ToggleThumb, TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                    { Position = UDim2.new(0, DRAG_MIN, 0.5, 0) }):Play()
+                if ToggleIconImg then
+                    TweenService:Create(ToggleIconImg, TweenInfo.new(0.1), { ImageTransparency = 1 }):Play()
+                end
             end
         end
     end
+
 
     -- ── Drag + Scroll Guard (hanya untuk tipe Toggle, bukan Checkbox) ──
     if cfg.Type ~= "Checkbox" then
@@ -1434,7 +1557,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         local startMouseX  = 0
         local startMouseY  = 0
         local startCircleX = 0
-        local currentCircleX = ToggleFunc.Value and DRAG_MAX or DRAG_MIN  -- track posisi real-time
+        local currentCircleX = ToggleFunc.Value and DRAG_MAX or DRAG_MIN
         local activeTweenCircle = nil  -- simpan tween aktif agar bisa dibatalkan
         local dragConn, endConn
 
@@ -1463,7 +1586,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             -- Batalkan tween circle yang sedang jalan agar posisi langsung akurat
             CancelCircleTween()
             -- Snap circle ke posisi yang sudah tercatat (menghindari posisi tween intermediate)
-            ToggleCircle.Position = UDim2.new(0, currentCircleX, 0, 0)
+            ToggleThumb.Position = UDim2.new(0, currentCircleX, 0.5, 0)
 
             isDragging   = true
             isScrolling  = false
@@ -1471,10 +1594,10 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             startMouseY  = input.Position.Y
             startCircleX = currentCircleX  -- ambil dari variabel yang selalu akurat
 
-            -- Efek tekan: circle membesar sedikit
-            TweenService:Create(ToggleCircle,
+            -- Efek tekan: thumb membesar sedikit (Wind UI)
+            TweenService:Create(ToggleThumb,
                 TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                { Size = UDim2.new(0, CIRCLE_W + 4, 0, CIRCLE_W + 4) }):Play()
+                { Size = UDim2.new(0, CIRCLE_W + 4, 0, CIRCLE_H + 4) }):Play()
 
             -- Sambungkan drag
             if dragConn then dragConn:Disconnect() end
@@ -1493,10 +1616,10 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                     isDragging  = false
 
                     -- Kembalikan circle ke posisi semula
-                    TweenService:Create(ToggleCircle,
+                    TweenService:Create(ToggleThumb,
                         TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                        { Position = UDim2.new(0, startCircleX, 0, 0),
-                          Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W) }):Play()
+                        { Position = UDim2.new(0, startCircleX, 0.5, 0),
+                          Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_H) }):Play()
                     currentCircleX = startCircleX
 
                     if dragConn then dragConn:Disconnect(); dragConn = nil end
@@ -1508,15 +1631,12 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 local delta = inputChanged.Position.X - startMouseX
                 local newX  = math.clamp(startCircleX + delta, DRAG_MIN, DRAG_MAX)
                 currentCircleX = newX
-                ToggleCircle.Position = UDim2.new(0, newX, 0, 0)
+                ToggleThumb.Position = UDim2.new(0, newX, 0.5, 0)
 
-                -- Update warna track secara real-time sesuai posisi
+                -- Update Layer track real-time sesuai posisi (Wind UI)
                 local pct = newX / DRAG_MAX
-                TweenService:Create(FeatureFrame, TweenInfo.new(0.05),
-                    { BackgroundColor3  = GuiConfig.Color,
-                      BackgroundTransparency = 1 - pct }):Play()
-                TweenService:Create(UIStroke8, TweenInfo.new(0.05),
-                    { Color = GuiConfig.Color, Transparency = 1 - pct }):Play()
+                TweenService:Create(ToggleLayer, TweenInfo.new(0.05),
+                    { ImageTransparency = 1 - pct }):Play()
             end)
 
             -- Sambungkan InputEnded
@@ -1530,10 +1650,10 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 if dragConn then dragConn:Disconnect(); dragConn = nil end
                 if endConn  then endConn:Disconnect();  endConn  = nil end
 
-                -- Kembalikan ukuran circle
-                TweenService:Create(ToggleCircle,
+                -- Kembalikan ukuran thumb
+                TweenService:Create(ToggleThumb,
                     TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                    { Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W) }):Play()
+                    { Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_H) }):Play()
 
                 -- Tentukan nilai: tap kecil = flip, drag jauh = posisi circle menentukan
                 local totalDelta = math.abs(inputEnded.Position.X - startMouseX)
