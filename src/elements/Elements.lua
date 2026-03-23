@@ -1864,7 +1864,10 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TweenService:Create(TooltipLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { TextTransparency = 1 }):Play()
         TweenService:Create(TooltipScale, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Scale = 0.85 }):Play()
         task.delay(0.35, function()
-            CloseTooltip()
+            -- Hanya hide kalau slider sudah tidak di-drag
+            if TooltipFrame and not Dragging then
+                TooltipFrame.Visible = false
+            end
         end)
     end
 
