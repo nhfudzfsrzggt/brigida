@@ -1,5 +1,5 @@
 -- // vilarisUi | Elements.lua
--- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style) |
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1330,6 +1330,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     -- ── Komponen visual toggle / checkbox ────────────────────────
     local FeatureFrame, ToggleCircle, UIStroke8
     local CheckboxFrame, CheckMark
+    local CircleScale = nil  -- UIScale untuk animasi drag toggle
 
     local TRACK_W  = 30
     local CIRCLE_W = 14
@@ -1387,7 +1388,7 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         ToggleCircle.Name = "ToggleCircle"
         ToggleCircle.Parent = FeatureFrame
         Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(0, 15)
-        local CircleScale = Instance.new("UIScale")
+        CircleScale = Instance.new("UIScale")
         CircleScale.Scale  = 1
         CircleScale.Parent = ToggleCircle
     end
@@ -1474,10 +1475,12 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             startMouseY  = input.Position.Y
             startCircleX = currentCircleX
 
-            -- Efek tekan: Scale 1 → 1.5 + transparansi naik (Wind UI style)
-            TweenService:Create(CircleScale,
-                TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                { Scale = 1.5 }):Play()
+            -- Efek tekan: Scale 1 → 1.5 + transparansi naik
+            if CircleScale then
+                TweenService:Create(CircleScale,
+                    TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                    { Scale = 1.5 }):Play()
+            end
             TweenService:Create(ToggleCircle,
                 TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                 { BackgroundTransparency = 0.85 }):Play()
@@ -1503,9 +1506,11 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                         TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                         { Position = UDim2.new(0, startCircleX, 0, 0),
                           BackgroundTransparency = 0 }):Play()
-                    TweenService:Create(CircleScale,
-                        TweenInfo.new(0.23, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                        { Scale = 1 }):Play()
+                    if CircleScale then
+                        TweenService:Create(CircleScale,
+                            TweenInfo.new(0.23, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                            { Scale = 1 }):Play()
+                    end
                     currentCircleX = startCircleX
 
                     if dragConn then dragConn:Disconnect(); dragConn = nil end
@@ -1539,9 +1544,11 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 if endConn  then endConn:Disconnect();  endConn  = nil end
 
                 -- Knob kembali normal: Scale 1.5 → 1 + transparansi 0
-                TweenService:Create(CircleScale,
-                    TweenInfo.new(0.23, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                    { Scale = 1 }):Play()
+                if CircleScale then
+                    TweenService:Create(CircleScale,
+                        TweenInfo.new(0.23, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+                        { Scale = 1 }):Play()
+                end
                 TweenService:Create(ToggleCircle,
                     TweenInfo.new(0.23, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     { BackgroundTransparency = 0 }):Play()
