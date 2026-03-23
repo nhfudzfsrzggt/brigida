@@ -1,4 +1,4 @@
--- // VilarisUi | Version : 0.2.2 | Fixed Animation Title & Footer | Main.lua
+-- // VilarisUi | Version : 0.2.3 | | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -76,6 +76,7 @@ function SaveConfig()
     end
 end
 
+-- ✅ FIX: update ConfigData in-place agar semua referensi element tidak stale
 function LoadConfigFromFile()
     if not CURRENT_VERSION or ConfigFile == "" then return end
     if isfile and isfile(ConfigFile) then
@@ -84,15 +85,33 @@ function LoadConfigFromFile()
         end)
         if success and type(result) == "table" then
             if result._version == CURRENT_VERSION then
-                ConfigData = result
+                -- Hapus semua key lama dulu
+                for k in pairs(ConfigData) do
+                    ConfigData[k] = nil
+                end
+                -- Isi ulang in-place (bukan ganti referensi tabel)
+                for k, v in pairs(result) do
+                    ConfigData[k] = v
+                end
+                ConfigData._version = CURRENT_VERSION
             else
-                ConfigData = { _version = CURRENT_VERSION }
+                -- Version beda: reset bersih
+                for k in pairs(ConfigData) do
+                    ConfigData[k] = nil
+                end
+                ConfigData._version = CURRENT_VERSION
             end
         else
-            ConfigData = { _version = CURRENT_VERSION }
+            for k in pairs(ConfigData) do
+                ConfigData[k] = nil
+            end
+            ConfigData._version = CURRENT_VERSION
         end
     else
-        ConfigData = { _version = CURRENT_VERSION }
+        for k in pairs(ConfigData) do
+            ConfigData[k] = nil
+        end
+        ConfigData._version = CURRENT_VERSION
     end
 end
 
@@ -623,6 +642,7 @@ _ConfigSectionSetup(
     Chloex,
     function() return ConfigFolder end,
     function() return CURRENT_VERSION end,
+    -- ✅ FIX: selalu return referensi ConfigData yang sama (bukan copy)
     function() return ConfigData end,
     function() return Elements end,
     LoadConfigElements,
@@ -1186,7 +1206,7 @@ function Chloex:Window(GuiConfig)
     end
 
     -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  DISCORD BUTTON — independen dari ShowUser                      ║
+    -- ║  DISCORD BUTTON                                                 ║
     -- ╚══════════════════════════════════════════════════════════════════╝
     local ds = GuiConfig.DiscordSet
     local DISCORD_H      = 28
@@ -1211,7 +1231,6 @@ function Chloex:Window(GuiConfig)
         DiscordCard.Parent                 = LayersTab
         Instance.new("UICorner", DiscordCard).CornerRadius = UDim.new(0, 5)
 
-        -- Border tipis accent dengan pulse glow
         local CardStroke = Instance.new("UIStroke")
         CardStroke.Color           = GuiConfig.Color
         CardStroke.Thickness       = 0.8
@@ -1229,7 +1248,6 @@ function Chloex:Window(GuiConfig)
             end
         end)
 
-        -- Icon
         local DIcon = Instance.new("ImageLabel")
         DIcon.BackgroundTransparency = 1
         DIcon.AnchorPoint   = Vector2.new(0, 0.5)
@@ -1241,7 +1259,6 @@ function Chloex:Window(GuiConfig)
         DIcon.ZIndex        = 101
         DIcon.Parent        = DiscordCard
 
-        -- Teks atas: nama script (UPPERCASE)
         local DTitle = Instance.new("TextLabel")
         DTitle.Font                 = Enum.Font.GothamBold
         DTitle.Text                 = string.upper(ds.Title)
@@ -1255,7 +1272,6 @@ function Chloex:Window(GuiConfig)
         DTitle.ZIndex               = 101
         DTitle.Parent               = DiscordCard
 
-        -- Teks bawah: JOIN DISCORD (fixed cyan)
         local DSub = Instance.new("TextLabel")
         DSub.Font                 = Enum.Font.GothamBold
         DSub.Text                 = "JOIN DISCORD"
@@ -1269,7 +1285,6 @@ function Chloex:Window(GuiConfig)
         DSub.ZIndex               = 101
         DSub.Parent               = DiscordCard
 
-        -- Animasi warna DTitle: sweep kiri → kanan → kiri
         local GradTitle = Instance.new("UIGradient")
         GradTitle.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 255, 255)),
@@ -1295,7 +1310,6 @@ function Chloex:Window(GuiConfig)
             end
         end)
 
-        -- Klik: salin link
         local _copied = false
         DiscordCard.Activated:Connect(function()
             if _copied then return end
@@ -1313,7 +1327,6 @@ function Chloex:Window(GuiConfig)
     end
     -- ══════════════════════════════════════════════════════════════════
 
-    -- ShowUser + ScrollTab size (dengan mempertimbangkan discordBottomOffset)
     if GuiConfig.ShowUser then
         ScrollTab.Position = UDim2.new(0, 0, 0, searchOffset)
         ScrollTab.Size = UDim2.new(1, 0, 1, -(40 + searchOffset + discordBottomOffset))
