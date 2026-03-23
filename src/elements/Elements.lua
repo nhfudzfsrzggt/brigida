@@ -1,5 +1,6 @@
 -- // vilarisUi | Elements.lua
 -- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
+-- Upgrade: CreateToggle & CreateCheckbox support cfg.Icon di dalam knob/checkbox
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -21,10 +22,7 @@ local function GetIconId(iconName)
     if iconName:match("^rbxassetid://") then return iconName end
     if iconName:match("^https?://") then return iconName end
     if iconName:match("^%d+$") then return "rbxassetid://" .. iconName end
-    -- Coba lookup langsung dulu (e.g. "sun")
     if Icons and Icons[iconName] then return Icons[iconName] end
-    -- Support prefix: "lucide:sun", "solar:sun-bold", "sfsymbols:sun.min.fill" dll
-    -- Strip prefix, lookup nama sisanya
     local stripped = iconName:match("^[%a]+:(.+)$")
     if stripped and Icons and Icons[stripped] then return Icons[stripped] end
     return ""
@@ -1223,6 +1221,7 @@ end
 
 -- ============================================================
 --  CreateToggle  ★ UPGRADE: Drag horizontal + scroll guard
+--               ★ UPGRADE: cfg.Icon support (Toggle & Checkbox)
 -- ============================================================
 function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
@@ -1234,12 +1233,12 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     cfg.Badge    = cfg.Badge    or nil
     cfg.Locked   = cfg.Locked   or false
     cfg.Type     = cfg.Type     or "Toggle"
+    cfg.Icon     = cfg.Icon     or nil   -- rbxassetid / lucide / solar / angka / URL
     local configKey = ResolveKey("Toggle", cfg)
     if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
     if typeof(cfg.Default) ~= "boolean" then cfg.Default = cfg.Default and true or false end
     local ToggleFunc = { Value = cfg.Default }
 
-    -- ── Frame utama ──────────────────────────────────────────
     local Toggle        = Instance.new("Frame")
     local UICorner20    = Instance.new("UICorner")
     local ToggleTitle   = Instance.new("TextLabel")
@@ -1327,15 +1326,19 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleButton.Name = "ToggleButton"
     ToggleButton.Parent = Toggle
 
-    -- ── Komponen visual toggle / checkbox ────────────────────────
+    -- ── Komponen visual ──────────────────────────────────────────
     local FeatureFrame, ToggleCircle, UIStroke8
     local CheckboxFrame, CheckMark
-    local CircleScale = nil  -- UIScale untuk animasi drag toggle
+    local CircleScale = nil
 
     local TRACK_W  = 30
     local CIRCLE_W = 14
     local DRAG_MIN = 0
     local DRAG_MAX = TRACK_W - CIRCLE_W  -- = 16
+
+    -- Icon references (dipakai di Set())
+    local ToggleIcon   = nil  -- untuk tipe Toggle
+    local CheckboxIcon = nil  -- untuk tipe Checkbox
 
     if cfg.Type == "Checkbox" then
         CheckboxFrame = Instance.new("Frame")
@@ -1366,6 +1369,23 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         CheckMark.ImageTransparency = 1
         CheckMark.ZIndex = 2
         CheckMark.Parent = CheckboxFrame
+
+        -- ★ Icon di dalam CheckboxFrame (menggantikan CheckMark jika ada Icon)
+        if cfg.Icon and cfg.Icon ~= "" then
+            CheckMark.Visible = false  -- sembunyikan checkmark default
+            CheckboxIcon = Instance.new("ImageLabel")
+            CheckboxIcon.Name                   = "CheckboxIcon"
+            CheckboxIcon.AnchorPoint            = Vector2.new(0.5, 0.5)
+            CheckboxIcon.Position               = UDim2.new(0.5, 0, 0.5, 0)
+            CheckboxIcon.Size                   = UDim2.new(0, 11, 0, 11)
+            CheckboxIcon.BackgroundTransparency = 1
+            CheckboxIcon.ScaleType              = Enum.ScaleType.Fit
+            CheckboxIcon.Image                  = GetIconId(cfg.Icon)
+            CheckboxIcon.ImageColor3            = Color3.fromRGB(255, 255, 255)
+            CheckboxIcon.ImageTransparency      = 1
+            CheckboxIcon.ZIndex                 = 3
+            CheckboxIcon.Parent                 = CheckboxFrame
+        end
     else
         FeatureFrame = Instance.new("Frame")
         FeatureFrame.AnchorPoint = Vector2.new(1, 0.5)
@@ -1391,7 +1411,24 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         CircleScale = Instance.new("UIScale")
         CircleScale.Scale  = 1
         CircleScale.Parent = ToggleCircle
+
+        -- ★ Icon di dalam ToggleCircle (fade in saat ON)
+        if cfg.Icon and cfg.Icon ~= "" then
+            ToggleIcon = Instance.new("ImageLabel")
+            ToggleIcon.Name                   = "ToggleIcon"
+            ToggleIcon.AnchorPoint            = Vector2.new(0.5, 0.5)
+            ToggleIcon.Position               = UDim2.new(0.5, 0, 0.5, 0)
+            ToggleIcon.Size                   = UDim2.new(0, 10, 0, 10)
+            ToggleIcon.BackgroundTransparency = 1
+            ToggleIcon.ScaleType              = Enum.ScaleType.Fit
+            ToggleIcon.Image                  = GetIconId(cfg.Icon)
+            ToggleIcon.ImageColor3            = Color3.fromRGB(255, 255, 255)
+            ToggleIcon.ImageTransparency      = 1   -- mulai hidden
+            ToggleIcon.ZIndex                 = 3
+            ToggleIcon.Parent                 = ToggleCircle
+        end
     end
+
     -- ── ToggleFunc:Set ────────────────────────────────────────────
     function ToggleFunc:Set(Value, SkipCallback)
         Value = Value and true or false
@@ -1407,12 +1444,21 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 TweenService:Create(ToggleTitle,   TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
                 TweenService:Create(CheckboxFrame, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
                 if cbStroke then TweenService:Create(cbStroke, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play() end
-                TweenService:Create(CheckMark, TweenInfo.new(0.15), { ImageTransparency = 0 }):Play()
+                -- icon atau checkmark
+                if CheckboxIcon then
+                    TweenService:Create(CheckboxIcon, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { ImageTransparency = 0 }):Play()
+                else
+                    TweenService:Create(CheckMark, TweenInfo.new(0.15), { ImageTransparency = 0 }):Play()
+                end
             else
                 TweenService:Create(ToggleTitle,   TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
                 TweenService:Create(CheckboxFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
                 if cbStroke then TweenService:Create(cbStroke, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.7 }):Play() end
-                TweenService:Create(CheckMark, TweenInfo.new(0.1), { ImageTransparency = 1 }):Play()
+                if CheckboxIcon then
+                    TweenService:Create(CheckboxIcon, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageTransparency = 1 }):Play()
+                else
+                    TweenService:Create(CheckMark, TweenInfo.new(0.1), { ImageTransparency = 1 }):Play()
+                end
             end
         else
             if Value then
@@ -1420,16 +1466,20 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, DRAG_MAX, 0, 0) }):Play()
                 TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play()
                 TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
+                if ToggleIcon then
+                    TweenService:Create(ToggleIcon, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageTransparency = 0 }):Play()
+                end
             else
                 TweenService:Create(ToggleTitle,  TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
                 TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, DRAG_MIN, 0, 0) }):Play()
                 TweenService:Create(UIStroke8,    TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
                 TweenService:Create(FeatureFrame, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
+                if ToggleIcon then
+                    TweenService:Create(ToggleIcon, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageTransparency = 1 }):Play()
+                end
             end
         end
     end
-
-
 
     -- ── Drag + Scroll Guard (hanya untuk tipe Toggle, bukan Checkbox) ──
     if cfg.Type ~= "Checkbox" then
@@ -1439,10 +1489,9 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         local startMouseY  = 0
         local startCircleX = 0
         local currentCircleX = ToggleFunc.Value and DRAG_MAX or DRAG_MIN
-        local activeTweenCircle = nil  -- simpan tween aktif agar bisa dibatalkan
+        local activeTweenCircle = nil
         local dragConn, endConn
 
-        -- Helper: batalkan tween circle yang sedang berjalan
         local function CancelCircleTween()
             if activeTweenCircle then
                 activeTweenCircle:Cancel()
@@ -1450,23 +1499,18 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             end
         end
 
-        -- Wrap Set agar update currentCircleX setelah tween selesai
         local _origSet = ToggleFunc.Set
         function ToggleFunc:Set(Value, SkipCallback)
             _origSet(self, Value, SkipCallback)
-            -- Setelah Set, catat posisi tujuan sebagai currentCircleX
             currentCircleX = Value and DRAG_MAX or DRAG_MIN
         end
 
-        -- Saat tombol ditekan
         ToggleButton.InputBegan:Connect(function(input)
             if input.UserInputType ~= Enum.UserInputType.MouseButton1
             and input.UserInputType ~= Enum.UserInputType.Touch then return end
             if isDragging then return end
 
-            -- Batalkan tween circle yang sedang jalan agar posisi langsung akurat
             CancelCircleTween()
-            -- Snap circle ke posisi yang sudah tercatat
             ToggleCircle.Position = UDim2.new(0, currentCircleX, 0, 0)
 
             isDragging   = true
@@ -1475,7 +1519,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             startMouseY  = input.Position.Y
             startCircleX = currentCircleX
 
-            -- Efek tekan: Scale 1 → 1.5 + transparansi naik
             if CircleScale then
                 TweenService:Create(CircleScale,
                     TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
@@ -1485,7 +1528,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                 { BackgroundTransparency = 0.85 }):Play()
 
-            -- Sambungkan drag
             if dragConn then dragConn:Disconnect() end
             dragConn = UserInputService.InputChanged:Connect(function(inputChanged)
                 if not isDragging then return end
@@ -1496,12 +1538,10 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 local dX = math.abs(inputChanged.Position.X - startMouseX)
                 local dY = math.abs(inputChanged.Position.Y - startMouseY)
 
-                -- Scroll guard: kalau gerakan vertikal dominan, batalkan drag
                 if dY > dX and dY > 8 then
                     isScrolling = true
                     isDragging  = false
 
-                    -- Kembalikan circle ke posisi semula + scale normal
                     TweenService:Create(ToggleCircle,
                         TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                         { Position = UDim2.new(0, startCircleX, 0, 0),
@@ -1518,13 +1558,11 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                     return
                 end
 
-                -- Gerakkan circle mengikuti mouse secara langsung (tanpa tween)
                 local delta = inputChanged.Position.X - startMouseX
                 local newX  = math.clamp(startCircleX + delta, DRAG_MIN, DRAG_MAX)
                 currentCircleX = newX
                 ToggleCircle.Position = UDim2.new(0, newX, 0, 0)
 
-                -- Update warna track secara real-time
                 local pct = newX / DRAG_MAX
                 TweenService:Create(FeatureFrame, TweenInfo.new(0.05),
                     { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 1 - pct }):Play()
@@ -1532,7 +1570,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                     { Color = GuiConfig.Color, Transparency = 1 - pct }):Play()
             end)
 
-            -- Sambungkan InputEnded
             if endConn then endConn:Disconnect() end
             endConn = UserInputService.InputEnded:Connect(function(inputEnded)
                 if not isDragging then return end
@@ -1543,7 +1580,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 if dragConn then dragConn:Disconnect(); dragConn = nil end
                 if endConn  then endConn:Disconnect();  endConn  = nil end
 
-                -- Knob kembali normal: Scale 1.5 → 1 + transparansi 0
                 if CircleScale then
                     TweenService:Create(CircleScale,
                         TweenInfo.new(0.23, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
@@ -1553,7 +1589,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                     TweenInfo.new(0.23, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     { BackgroundTransparency = 0 }):Play()
 
-                -- Delta < 10px → tap flip, Delta > 10px → posisi knob tentukan nilai
                 local totalDelta = math.abs(inputEnded.Position.X - startMouseX)
                 if totalDelta < 10 then
                     ToggleFunc:Set(not ToggleFunc.Value)
@@ -1564,7 +1599,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             end)
         end)
     else
-        -- Checkbox: tetap pakai Activated biasa (tidak ada drag)
         ToggleButton.Activated:Connect(function()
             ToggleFunc:Set(not ToggleFunc.Value)
         end)
@@ -1583,13 +1617,8 @@ end
 
 -- ============================================================
 --  CreateSlider  ★ UPGRADE: Wind UI style
---  + RenderStepped (smooth), thumb animasi Quint
---  + Disable scroll saat drag
---  + IsSliderHolding mutex global
---  + Tooltip opsional (cfg.Tooltip = true)
---  + Icon From/To opsional (cfg.IconFrom, cfg.IconTo = rbxassetid)
 -- ============================================================
-local _IsSliderHolding = false  -- mutex global antar slider
+local _IsSliderHolding = false
 
 function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
@@ -1602,11 +1631,9 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     cfg.Callback  = cfg.Callback  or function() end
     cfg.Badge     = cfg.Badge     or nil
     cfg.Locked    = cfg.Locked    or false
-    cfg.Tooltip   = cfg.Tooltip   or false   -- tampilkan tooltip nilai di atas thumb
-    cfg.IconFrom  = cfg.IconFrom  or nil     -- rbxassetid icon kiri
-    cfg.IconTo    = cfg.IconTo    or nil     -- rbxassetid icon kanan
-    -- ScrollingFrame parent untuk disable scroll saat drag
-    -- caller bisa pass cfg.ScrollParent; kalau nil dicari otomatis
+    cfg.Tooltip   = cfg.Tooltip   or false
+    cfg.IconFrom  = cfg.IconFrom  or nil
+    cfg.IconTo    = cfg.IconTo    or nil
     cfg.ScrollParent = cfg.ScrollParent or nil
 
     if cfg.Min >= cfg.Max then cfg.Max = cfg.Min + 1 end
@@ -1628,7 +1655,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
 
     local SliderFunc = { Value = FormatValue(cfg.Default) }
 
-    -- ── Root frame ────────────────────────────────────────────────────────
     local Slider = Instance.new("Frame")
     Slider.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
     Slider.BackgroundTransparency = 0.935
@@ -1639,7 +1665,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     Instance.new("UICorner", Slider).CornerRadius = UDim.new(0, 4)
     if cfg.Badge then CreateBadge(Slider, cfg.Badge) end
 
-    -- ── Title ─────────────────────────────────────────────────────────────
     local SliderTitle = Instance.new("TextLabel")
     SliderTitle.Font               = Enum.Font.GothamBold
     SliderTitle.Text               = cfg.Title
@@ -1653,7 +1678,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     SliderTitle.Name               = "SliderTitle"
     SliderTitle.Parent             = Slider
 
-    -- ── Content ───────────────────────────────────────────────────────────
     local SliderContent = Instance.new("TextLabel")
     SliderContent.Font             = Enum.Font.GothamBold
     SliderContent.Text             = cfg.Content
@@ -1677,7 +1701,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         if updateSectionSize then updateSectionSize() end
     end)
 
-    -- ── Kontainer kanan (icon + track + textbox) ──────────────────────────
     local RightContainer = Instance.new("Frame")
     RightContainer.Name               = "RightContainer"
     RightContainer.AnchorPoint        = Vector2.new(1, 0.5)
@@ -1695,7 +1718,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     RightLayout.SortOrder             = Enum.SortOrder.LayoutOrder
     RightLayout.Parent                = RightContainer
 
-    -- Icon From (kiri track) — support rbxassetid, angka, URL, lucide/solar
     if cfg.IconFrom and cfg.IconFrom ~= "" then
         local IconFromImg = Instance.new("ImageLabel")
         IconFromImg.Size               = UDim2.new(0, 18, 0, 18)
@@ -1709,7 +1731,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         IconFromImg.Parent             = RightContainer
     end
 
-    -- ── Track gaya Vilaris (SliderFrame + SliderDraggable + SliderCircle) ─────────
     local TrackWidth = 100
     local SliderFrame = Instance.new("Frame")
     SliderFrame.Name               = "TrackBg"
@@ -1734,7 +1755,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     TrackFill.Parent             = SliderFrame
     Instance.new("UICorner", TrackFill).CornerRadius = UDim.new(1, 0)
 
-    -- Thumb bulat gaya Vilaris lama
     local THUMB_W = 8
     local THUMB_H = 8
     local Thumb = Instance.new("Frame")
@@ -1752,10 +1772,8 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     ThumbStroke.Color        = GuiConfig.Color
     ThumbStroke.Parent       = Thumb
 
-    -- TrackBg alias untuk GetDelta (pakai SliderFrame)
     local TrackBg = SliderFrame
 
-    -- Icon To (kanan track) — support rbxassetid, angka, URL, lucide/solar
     if cfg.IconTo and cfg.IconTo ~= "" then
         local IconToImg = Instance.new("ImageLabel")
         IconToImg.Size               = UDim2.new(0, 18, 0, 18)
@@ -1769,7 +1787,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         IconToImg.Parent             = RightContainer
     end
 
-    -- TextBox nilai
     local TextBox = Instance.new("TextBox")
     TextBox.Font               = Enum.Font.GothamBold
     TextBox.Text               = tostring(FormatValue(cfg.Default))
@@ -1785,12 +1802,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     TextBox.Name               = "TextBox"
     TextBox.Parent             = RightContainer
 
-    -- ── Tooltip Wind UI style (opsional) ────────────────────────────────
-    -- Persis seperti Tooltip.lua Wind UI:
-    -- Container (Visible=false) → UIListLayout vertikal
-    --   Background (Squircle ImageLabel, fade in/out)
-    --   Arrow     (ImageLabel rbxassetid://105854070513330, fade in/out)
-    -- UIScale 0.9 → 1 saat open, balik 0.9 saat close
     local TooltipFrame  = nil
     local TooltipLabel  = nil
     local TooltipScale  = nil
@@ -1798,7 +1809,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     local TooltipArrowImg = nil
 
     if cfg.Tooltip then
-        -- Container utama
         TooltipFrame = Instance.new("Frame")
         TooltipFrame.Name               = "Tooltip"
         TooltipFrame.AnchorPoint        = Vector2.new(0.5, 1)
@@ -1810,7 +1820,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TooltipFrame.ClipsDescendants   = false
         TooltipFrame.Parent             = Thumb
 
-        -- UIListLayout vertikal: Background di atas, Arrow di bawah
         local TipList = Instance.new("UIListLayout")
         TipList.FillDirection           = Enum.FillDirection.Vertical
         TipList.HorizontalAlignment     = Enum.HorizontalAlignment.Center
@@ -1819,20 +1828,17 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TipList.SortOrder               = Enum.SortOrder.LayoutOrder
         TipList.Parent                  = TooltipFrame
 
-        -- UISizeConstraint (dari Wind UI asli)
         local SizeConstraint = Instance.new("UISizeConstraint")
         SizeConstraint.MaxSize          = Vector2.new(400, math.huge)
         SizeConstraint.Parent           = TooltipFrame
 
-        -- UIScale (0.9 → 1 saat open, persis Wind UI)
         TooltipScale = Instance.new("UIScale")
         TooltipScale.Scale              = 0.9
         TooltipScale.Parent             = TooltipFrame
 
-        -- Background: ImageLabel Squircle (mirip NewRoundFrame Squircle Wind UI)
         TooltipBg = Instance.new("ImageLabel")
         TooltipBg.Name                  = "Background"
-        TooltipBg.Image                 = "rbxassetid://80999662900595"  -- Squircle
+        TooltipBg.Image                 = "rbxassetid://80999662900595"
         TooltipBg.ScaleType             = Enum.ScaleType.Slice
         TooltipBg.SliceCenter           = Rect.new(512/2, 512/2, 512/2, 512/2)
         TooltipBg.SliceScale            = (999 / (512/2))
@@ -1844,7 +1850,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TooltipBg.LayoutOrder           = 1
         TooltipBg.Parent                = TooltipFrame
 
-        -- Inner frame (padding + label, dari Wind UI asli)
         local BgInner = Instance.new("Frame")
         BgInner.AutomaticSize           = Enum.AutomaticSize.XY
         BgInner.BackgroundTransparency  = 1
@@ -1863,7 +1868,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         BgPad.PaddingBottom             = UDim.new(0, 7)
         BgPad.Parent                    = BgInner
 
-        -- Label nilai
         TooltipLabel = Instance.new("TextLabel")
         TooltipLabel.Name               = "Label"
         TooltipLabel.AutomaticSize      = Enum.AutomaticSize.XY
@@ -1876,7 +1880,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TooltipLabel.ZIndex             = 23
         TooltipLabel.Parent             = BgInner
 
-        -- Arrow: ImageLabel pakai asset Wind UI asli
         local ArrowContainer = Instance.new("Frame")
         ArrowContainer.Name             = "Arrow"
         ArrowContainer.AutomaticSize    = Enum.AutomaticSize.XY
@@ -1915,7 +1918,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         end)
     end
 
-    -- ── Hitbox transparan di atas track (area klik lebih lebar) ──────────
     local SliderHitbox = Instance.new("TextButton")
     SliderHitbox.Text              = ""
     SliderHitbox.BackgroundTransparency = 1
@@ -1927,7 +1929,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     SliderHitbox.Name              = "SliderHitbox"
     SliderHitbox.Parent            = TrackBg
 
-    -- ── Logika drag ───────────────────────────────────────────────────────
     local Dragging = false
     local moveConn, releaseConn
     local RunService = game:GetService("RunService")
@@ -1943,7 +1944,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         TweenService:Create(TrackFill, TweenInfo.new(0.05), { Size = UDim2.new(delta, 0, 1, 0) }):Play()
     end
 
-    -- cari ScrollingFrame terdekat untuk disable scroll saat drag
     local function FindScrollParent()
         if cfg.ScrollParent then return cfg.ScrollParent end
         local p = Slider.Parent
@@ -1993,7 +1993,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         SliderFunc:Set(math.min(SliderFunc.Value, cfg.Max), true)
     end
 
-    -- InputBegan: mulai drag
     SliderHitbox.InputBegan:Connect(function(input)
         if input.UserInputType ~= Enum.UserInputType.MouseButton1
         and input.UserInputType ~= Enum.UserInputType.Touch then return end
@@ -2002,25 +2001,21 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         Dragging = true
         _IsSliderHolding = true
 
-        -- Disable scroll saat drag
         local scrollP = FindScrollParent()
         if scrollP then scrollP.ScrollingEnabled = false end
 
-        -- Thumb membesar saat drag (Vilaris style)
         TweenService:Create(Thumb,
             TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
             { Size = UDim2.new(0, 14, 0, 14) }):Play()
 
         OpenTooltip()
 
-        -- Set nilai di posisi klik
         local isTouch = input.UserInputType == Enum.UserInputType.Touch
         local function GetX()
             return isTouch and input.Position.X or UserInputService:GetMouseLocation().X
         end
         SliderFunc:Set(cfg.Min + (cfg.Max - cfg.Min) * GetDelta(GetX()))
 
-        -- RenderStepped: update smooth setiap frame
         if moveConn then moveConn:Disconnect() end
         moveConn = RunService.Heartbeat:Connect(function()
             if not Dragging then return end
@@ -2028,7 +2023,6 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
             SliderFunc:Set(cfg.Min + (cfg.Max - cfg.Min) * GetDelta(x))
         end)
 
-        -- InputEnded: selesai drag
         if releaseConn then releaseConn:Disconnect() end
         releaseConn = UserInputService.InputEnded:Connect(function(endInput)
             if endInput.UserInputType ~= Enum.UserInputType.MouseButton1
@@ -2039,10 +2033,8 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
             if moveConn then moveConn:Disconnect(); moveConn = nil end
             if releaseConn then releaseConn:Disconnect(); releaseConn = nil end
 
-            -- Re-enable scroll
             if scrollP then scrollP.ScrollingEnabled = true end
 
-            -- Thumb kembali ke ukuran normal
             TweenService:Create(Thumb,
                 TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
                 { Size = UDim2.new(0, 8, 0, 8) }):Play()
@@ -2051,11 +2043,9 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         end)
     end)
 
-    -- TextBox manual input
     TextBox.FocusLost:Connect(function(enterPressed)
         if _settingFromCode then return end
         if not enterPressed then
-            -- Kembalikan teks ke nilai terakhir kalau tidak enter
             _settingFromCode = true
             TextBox.Text = tostring(SliderFunc.Value)
             _settingFromCode = false
