@@ -1,5 +1,5 @@
 -- // vilarisUi | Elements.lua
--- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style) | 
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1015,219 +1015,64 @@ function Elements:CreatePanel(parent, config, countItem)
     return PanelFunc
 end
 
--- ============================================================
---  CreateButton  ★ UPGRADE: Wind UI 5-layer style
---  Variant: "Primary" | "Secondary" | "White"
---  FullRounded: true = pill shape (rx 99)
--- ============================================================
 function Elements:CreateButton(parent, config, countItem)
     local cfg = config or {}
-    cfg.Title        = cfg.Title        or "Confirm"
-    cfg.Content      = cfg.Content      or ""
-    cfg.Callback     = cfg.Callback     or function() end
-    cfg.SubTitle     = cfg.SubTitle     or nil
-    cfg.SubCallback  = cfg.SubCallback  or function() end
-    cfg.Badge        = cfg.Badge        or nil
-    cfg.Locked       = cfg.Locked       or false
-    cfg.Variant      = cfg.Variant      or "Primary"   -- "Primary" | "Secondary" | "White"
-    cfg.FullRounded  = cfg.FullRounded  or false
-    cfg.Icon         = cfg.Icon         or nil
-    -- V1 / V2 tetap didukung untuk backward-compat, tapi sekarang
-    -- semua versi pakai sistem layer Wind UI
-    cfg.Version      = cfg.Version      or "V1"
-
+    cfg.Title       = cfg.Title       or "Confirm"
+    cfg.Content     = cfg.Content     or ""
+    cfg.Callback    = cfg.Callback    or function() end
+    cfg.SubTitle    = cfg.SubTitle    or nil
+    cfg.SubCallback = cfg.SubCallback or function() end
+    cfg.Badge       = cfg.Badge       or nil
+    cfg.Version     = cfg.Version     or "V1"
+    cfg.Locked      = cfg.Locked      or false
     local ButtonFunc = {}
-
-    -- ── Helper: buat 1 button dengan sistem layer Wind UI ───────────────
-    local function MakeWindButton(btnTitle, btnIcon, btnVariant, btnFullRounded, btnCallback, btnParent, btnSize, btnPos, btnLayoutOrder)
-        local radius = btnFullRounded and 99 or 8
-        local isWhite     = btnVariant == "White"
-        local isPrimary   = btnVariant == "Primary"
-        local isSecondary = btnVariant == "Secondary"
-
-        -- Warna aksen dari GuiConfig
-        local accentColor = GuiConfig and GuiConfig.Color or Color3.fromRGB(140, 80, 255)
-
-        -- ── Wrapper (TextButton transparan sebagai hitbox) ──────────────
-        local Wrapper = Instance.new("TextButton")
-        Wrapper.Text                = ""
-        Wrapper.BackgroundTransparency = 1
-        Wrapper.AutoButtonColor     = false
-        Wrapper.BorderSizePixel     = 0
-        Wrapper.Size                = btnSize or UDim2.new(1, -12, 1, -10)
-        Wrapper.Position            = btnPos  or UDim2.new(0, 6, 0, 5)
-        Wrapper.LayoutOrder         = btnLayoutOrder or 0
-        Wrapper.ClipsDescendants    = false
-        Wrapper.Parent              = btnParent
-
-        -- ── Layer 1: Squircle — background utama ────────────────────────
-        local Squircle = Instance.new("Frame")
-        Squircle.Name               = "Squircle"
-        Squircle.Size               = UDim2.new(1, 0, 1, 0)
-        Squircle.BorderSizePixel    = 0
-        Squircle.BackgroundColor3   = isWhite and Color3.fromRGB(255, 255, 255)
-                                      or isPrimary and accentColor
-                                      or Color3.fromRGB(255, 255, 255)
-        Squircle.BackgroundTransparency = isSecondary and 1 or 0
-        Squircle.Parent             = Wrapper
-        Instance.new("UICorner", Squircle).CornerRadius = UDim.new(0, radius)
-
-        -- ── Layer 2: Special — tint putih tipis (Secondary only) ────────
-        local Special = Instance.new("Frame")
-        Special.Name               = "Special"
-        Special.Size               = UDim2.new(1, 0, 1, 0)
-        Special.BorderSizePixel    = 0
-        Special.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
-        Special.BackgroundTransparency = isSecondary and 0.92 or 1
-        Special.Parent             = Wrapper
-        Instance.new("UICorner", Special).CornerRadius = UDim.new(0, radius)
-
-        -- ── Layer 3: Outline — rim glass putih tipis ────────────────────
-        local Outline = Instance.new("Frame")
-        Outline.Name               = "Outline"
-        Outline.Size               = UDim2.new(1, 0, 1, 0)
-        Outline.BorderSizePixel    = 0
-        Outline.BackgroundTransparency = 1
-        Outline.Parent             = Wrapper
-        Instance.new("UICorner", Outline).CornerRadius = UDim.new(0, radius)
-        local OutlineStroke = Instance.new("UIStroke")
-        OutlineStroke.Color        = Color3.fromRGB(255, 255, 255)
-        OutlineStroke.Thickness    = 1
-        OutlineStroke.Transparency = isWhite and 0.85 or 0.55
-        OutlineStroke.Parent       = Outline
-
-        -- ── Layer 4: Hover overlay — muncul saat MouseEnter ─────────────
-        local HoverLayer = Instance.new("Frame")
-        HoverLayer.Name              = "HoverLayer"
-        HoverLayer.Size              = UDim2.new(1, 0, 1, 0)
-        HoverLayer.BorderSizePixel   = 0
-        HoverLayer.BackgroundColor3  = isWhite and Color3.fromRGB(0, 0, 0)
-                                       or Color3.fromRGB(255, 255, 255)
-        HoverLayer.BackgroundTransparency = 1
-        HoverLayer.Parent            = Wrapper
-        Instance.new("UICorner", HoverLayer).CornerRadius = UDim.new(0, radius)
-
-        -- ── Layer 5: Frame konten — icon + label ─────────────────────────
-        local ContentFrame = Instance.new("Frame")
-        ContentFrame.Name              = "ContentFrame"
-        ContentFrame.Size              = UDim2.new(1, 0, 1, 0)
-        ContentFrame.BackgroundTransparency = 1
-        ContentFrame.BorderSizePixel   = 0
-        ContentFrame.Parent            = Wrapper
-        local UIList = Instance.new("UIListLayout")
-        UIList.FillDirection           = Enum.FillDirection.Horizontal
-        UIList.VerticalAlignment       = Enum.VerticalAlignment.Center
-        UIList.HorizontalAlignment     = Enum.HorizontalAlignment.Center
-        UIList.Padding                 = UDim.new(0, 6)
-        UIList.Parent                  = ContentFrame
-        local UIPad = Instance.new("UIPadding")
-        UIPad.PaddingLeft              = UDim.new(0, 14)
-        UIPad.PaddingRight             = UDim.new(0, 14)
-        UIPad.Parent                   = ContentFrame
-
-        -- Icon (opsional)
-        local IconLabel
-        if btnIcon and btnIcon ~= "" then
-            IconLabel = Instance.new("ImageLabel")
-            IconLabel.Size               = UDim2.new(0, 16, 0, 16)
-            IconLabel.BackgroundTransparency = 1
-            IconLabel.ScaleType          = Enum.ScaleType.Fit
-            IconLabel.Image              = GetIconId(btnIcon)
-            IconLabel.ImageColor3        = isWhite and Color3.fromRGB(30, 30, 30)
-                                           or Color3.fromRGB(255, 255, 255)
-            IconLabel.ImageTransparency  = 0
-            IconLabel.LayoutOrder        = 1
-            IconLabel.Parent             = ContentFrame
-        end
-
-        -- Label teks
-        local TitleLabel = Instance.new("TextLabel")
-        TitleLabel.Name                = "TitleLabel"
-        TitleLabel.BackgroundTransparency = 1
-        TitleLabel.Font                = Enum.Font.GothamBold
-        TitleLabel.Text                = btnTitle or "Button"
-        TitleLabel.TextSize            = 13
-        TitleLabel.TextColor3          = isWhite and Color3.fromRGB(30, 30, 30)
-                                         or Color3.fromRGB(255, 255, 255)
-        TitleLabel.AutomaticSize       = Enum.AutomaticSize.XY
-        TitleLabel.LayoutOrder         = 2
-        TitleLabel.Parent              = ContentFrame
-
-        -- ── Events ───────────────────────────────────────────────────────
-        Wrapper.MouseEnter:Connect(function()
-            -- Hover: overlay tipis muncul
-            TweenService:Create(HoverLayer, TweenInfo.new(0.1, Enum.EasingStyle.Quad),
-                { BackgroundTransparency = isWhite and 0.92 or 0.88 }):Play()
-        end)
-
-        Wrapper.MouseLeave:Connect(function()
-            TweenService:Create(HoverLayer, TweenInfo.new(0.12, Enum.EasingStyle.Quad),
-                { BackgroundTransparency = 1 }):Play()
-        end)
-
-        Wrapper.MouseButton1Down:Connect(function()
-            -- Press: overlay lebih gelap
-            TweenService:Create(HoverLayer, TweenInfo.new(0.05),
-                { BackgroundTransparency = isWhite and 0.85 or 0.78 }):Play()
-        end)
-
-        Wrapper.MouseButton1Up:Connect(function()
-            -- Release: kembali ke hover state
-            TweenService:Create(HoverLayer, TweenInfo.new(0.1),
-                { BackgroundTransparency = isWhite and 0.92 or 0.88 }):Play()
-            SafeCall(btnCallback)
-        end)
-
-        return Wrapper, TitleLabel, IconLabel
-    end
-
-    -- ── Tentukan apakah V2 (punya Content label) ─────────────────────────
     if cfg.Version == "V2" then
         local hasContent = cfg.Content ~= ""
-        local frameH = hasContent and 56 or 36
-
+        local frameH = hasContent and 56 or 40
         local Button = Instance.new("Frame")
-        Button.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+        Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         Button.BackgroundTransparency = 0.935
-        Button.BorderSizePixel        = 0
-        Button.LayoutOrder            = countItem
-        Button.Size                   = UDim2.new(1, 0, 0, frameH)
-        Button.Name                   = "ButtonV2"
-        Button.Parent                 = parent
+        Button.BorderSizePixel = 0
+        Button.LayoutOrder = countItem
+        Button.Size = UDim2.new(1, 0, 0, frameH)
+        Button.Name = "ButtonV2"
+        Button.Parent = parent
         Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
         if cfg.Badge then CreateBadge(Button, cfg.Badge) end
-
-        -- Teks judul
         local TitleLabel = Instance.new("TextLabel")
-        TitleLabel.Font               = Enum.Font.GothamBold
-        TitleLabel.Text               = cfg.Title
-        TitleLabel.TextSize           = 13
-        TitleLabel.TextColor3         = Color3.fromRGB(231, 231, 231)
-        TitleLabel.TextXAlignment     = Enum.TextXAlignment.Left
-        TitleLabel.TextYAlignment     = Enum.TextYAlignment.Top
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.Text = cfg.Title
+        TitleLabel.TextSize = 13
+        TitleLabel.TextColor3 = Color3.fromRGB(231, 231, 231)
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.TextYAlignment = Enum.TextYAlignment.Top
         TitleLabel.BackgroundTransparency = 1
-        TitleLabel.Name               = "ButtonTitle"
-        TitleLabel.Parent             = Button
-        TitleLabel.Position           = hasContent and UDim2.new(0, 12, 0, 10) or UDim2.new(0, 12, 0.5, -7)
-        TitleLabel.Size               = UDim2.new(1, -60, 0, 15)
-
+        TitleLabel.Name = "ButtonTitle"
+        TitleLabel.Parent = Button
+        if hasContent then
+            TitleLabel.Position = UDim2.new(0, 12, 0, 10)
+            TitleLabel.Size = UDim2.new(1, -60, 0, 15)
+        else
+            TitleLabel.Position = UDim2.new(0, 12, 0.5, -7)
+            TitleLabel.Size = UDim2.new(1, -60, 0, 15)
+        end
         local ContentLabel
         if hasContent then
             ContentLabel = Instance.new("TextLabel")
-            ContentLabel.Font         = Enum.Font.GothamBold
-            ContentLabel.Text         = cfg.Content
-            ContentLabel.TextSize     = 11
-            ContentLabel.TextColor3   = Color3.fromRGB(255, 255, 255)
+            ContentLabel.Font = Enum.Font.GothamBold
+            ContentLabel.Text = cfg.Content
+            ContentLabel.TextSize = 11
+            ContentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
             ContentLabel.TextTransparency = 0.45
             ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
             ContentLabel.TextYAlignment = Enum.TextYAlignment.Top
             ContentLabel.BackgroundTransparency = 1
-            ContentLabel.Position     = UDim2.new(0, 12, 0, 28)
-            ContentLabel.Size         = UDim2.new(1, -60, 0, 14)
-            ContentLabel.TextWrapped  = true
-            ContentLabel.RichText     = true
-            ContentLabel.Name         = "ButtonContent"
-            ContentLabel.Parent       = Button
+            ContentLabel.Position = UDim2.new(0, 12, 0, 28)
+            ContentLabel.Size = UDim2.new(1, -60, 0, 14)
+            ContentLabel.TextWrapped = true
+            ContentLabel.RichText = true
+            ContentLabel.Name = "ButtonContent"
+            ContentLabel.Parent = Button
             ContentLabel.Size = UDim2.new(1, -60, 0, 12 + (12 * (ContentLabel.TextBounds.X // math.max(1, ContentLabel.AbsoluteSize.X))))
             Button.Size = UDim2.new(1, 0, 0, ContentLabel.AbsoluteSize.Y + 42)
             ContentLabel:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
@@ -1237,149 +1082,142 @@ function Elements:CreateButton(parent, config, countItem)
                 ContentLabel.TextWrapped = true
             end)
         end
-
-        -- Chevron kanan
-        local ChevronFrame = Instance.new("Frame")
-        ChevronFrame.Name             = "Chevron"
-        ChevronFrame.AnchorPoint      = Vector2.new(1, 0.5)
-        ChevronFrame.Position         = UDim2.new(1, -12, 0.5, 0)
-        ChevronFrame.Size             = UDim2.new(0, 16, 0, 16)
-        ChevronFrame.BackgroundTransparency = 1
-        ChevronFrame.Parent           = Button
-        local LineTop = Instance.new("Frame")
-        LineTop.Size = UDim2.new(0, 6, 0, 2); LineTop.Position = UDim2.new(0, 2, 0, 4)
-        LineTop.Rotation = 45; LineTop.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-        LineTop.BackgroundTransparency = 0.2; LineTop.BorderSizePixel = 0; LineTop.Parent = ChevronFrame
-        Instance.new("UICorner", LineTop).CornerRadius = UDim.new(1, 0)
-        local LineBot = Instance.new("Frame")
-        LineBot.Size = UDim2.new(0, 6, 0, 2); LineBot.Position = UDim2.new(0, 2, 0, 9)
-        LineBot.Rotation = -45; LineBot.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-        LineBot.BackgroundTransparency = 0.2; LineBot.BorderSizePixel = 0; LineBot.Parent = ChevronFrame
-        Instance.new("UICorner", LineBot).CornerRadius = UDim.new(1, 0)
-
-        -- ClickButton Wind UI style: hover subtle, click langsung callback
+        local IconImg
+        if cfg.Icon then
+            IconImg = Instance.new("ImageLabel")
+            IconImg.AnchorPoint = Vector2.new(1, 0.5)
+            IconImg.Position = UDim2.new(1, -10, 0.5, 0)
+            IconImg.Size = UDim2.new(0, 20, 0, 20)
+            IconImg.BackgroundTransparency = 1
+            IconImg.ScaleType = Enum.ScaleType.Fit
+            IconImg.Image = GetIconId(cfg.Icon)
+            IconImg.ImageColor3 = Color3.fromRGB(220, 220, 220)
+            IconImg.ImageTransparency = 0.2
+            IconImg.Name = "IconImg"
+            IconImg.Parent = Button
+        else
+            local ChevronFrame = Instance.new("Frame")
+            ChevronFrame.Name = "IconImg"
+            ChevronFrame.AnchorPoint = Vector2.new(1, 0.5)
+            ChevronFrame.Position = UDim2.new(1, -12, 0.5, 0)
+            ChevronFrame.Size = UDim2.new(0, 16, 0, 16)
+            ChevronFrame.BackgroundTransparency = 1
+            ChevronFrame.Parent = Button
+            local LineTop = Instance.new("Frame")
+            LineTop.Size = UDim2.new(0, 6, 0, 2)
+            LineTop.Position = UDim2.new(0, 2, 0, 4)
+            LineTop.Rotation = 45
+            LineTop.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+            LineTop.BackgroundTransparency = 0.2
+            LineTop.BorderSizePixel = 0
+            LineTop.Parent = ChevronFrame
+            Instance.new("UICorner", LineTop).CornerRadius = UDim.new(1, 0)
+            local LineBot = Instance.new("Frame")
+            LineBot.Size = UDim2.new(0, 6, 0, 2)
+            LineBot.Position = UDim2.new(0, 2, 0, 9)
+            LineBot.Rotation = -45
+            LineBot.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+            LineBot.BackgroundTransparency = 0.2
+            LineBot.BorderSizePixel = 0
+            LineBot.Parent = ChevronFrame
+            Instance.new("UICorner", LineBot).CornerRadius = UDim.new(1, 0)
+            IconImg = ChevronFrame
+        end
         local ClickButton = Instance.new("TextButton")
-        ClickButton.Text = ""; ClickButton.BackgroundTransparency = 1
-        ClickButton.AutoButtonColor = false; ClickButton.Size = UDim2.new(1, 0, 1, 0)
-        ClickButton.Name = "ClickButton"; ClickButton.Parent = Button
-
-        -- HoverLayer tipis di atas semua
-        local HoverLayer = Instance.new("Frame")
-        HoverLayer.Name = "HoverLayer"; HoverLayer.Size = UDim2.new(1, 0, 1, 0)
-        HoverLayer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        HoverLayer.BackgroundTransparency = 1; HoverLayer.BorderSizePixel = 0
-        HoverLayer.Parent = Button
-        Instance.new("UICorner", HoverLayer).CornerRadius = UDim.new(0, 6)
-
+        ClickButton.Text = ""
+        ClickButton.BackgroundTransparency = 1
+        ClickButton.Size = UDim2.new(1, 0, 1, 0)
+        ClickButton.Name = "ClickButton"
+        ClickButton.AutoButtonColor = false
+        ClickButton.Parent = Button
+        ClickButton.MouseButton1Click:Connect(function()
+            AnimateButtonClick(ClickButton)
+            SafeCall(cfg.Callback)
+        end)
         ClickButton.MouseEnter:Connect(function()
             TweenService:Create(TitleLabel, TweenInfo.new(0.15), { TextColor3 = GuiConfig.Color }):Play()
-            TweenService:Create(HoverLayer, TweenInfo.new(0.1), { BackgroundTransparency = 0.92 }):Play()
-            for _, line in ipairs(ChevronFrame:GetChildren()) do
-                if line:IsA("Frame") then
-                    TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
+            if not cfg.Icon and IconImg then
+                for _, line in ipairs(IconImg:GetChildren()) do
+                    if line:IsA("Frame") then
+                        TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
+                    end
                 end
             end
         end)
         ClickButton.MouseLeave:Connect(function()
             TweenService:Create(TitleLabel, TweenInfo.new(0.15), { TextColor3 = Color3.fromRGB(231, 231, 231) }):Play()
-            TweenService:Create(HoverLayer, TweenInfo.new(0.12), { BackgroundTransparency = 1 }):Play()
-            for _, line in ipairs(ChevronFrame:GetChildren()) do
-                if line:IsA("Frame") then
-                    TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(200, 200, 200), BackgroundTransparency = 0.2 }):Play()
+            if not cfg.Icon and IconImg then
+                for _, line in ipairs(IconImg:GetChildren()) do
+                    if line:IsA("Frame") then
+                        TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(200, 200, 200), BackgroundTransparency = 0.2 }):Play()
+                    end
                 end
             end
         end)
-        ClickButton.MouseButton1Down:Connect(function()
-            TweenService:Create(HoverLayer, TweenInfo.new(0.05), { BackgroundTransparency = 0.82 }):Play()
-        end)
-        ClickButton.MouseButton1Up:Connect(function()
-            TweenService:Create(HoverLayer, TweenInfo.new(0.1), { BackgroundTransparency = 0.92 }):Play()
-            SafeCall(cfg.Callback)
-        end)
-
         local LockFunc = ApplyLock(Button, cfg.Locked)
         function ButtonFunc:Fire() SafeCall(cfg.Callback) end
-        function ButtonFunc:SetTitle(t) TitleLabel.Text = tostring(t or "") cfg.Title = TitleLabel.Text end
-        function ButtonFunc:SetContent(t) if ContentLabel then ContentLabel.Text = tostring(t or "") end cfg.Content = tostring(t or "") end
+        function ButtonFunc:SetTitle(text) TitleLabel.Text = tostring(text or "") cfg.Title = TitleLabel.Text end
+        function ButtonFunc:SetContent(text) if ContentLabel then ContentLabel.Text = tostring(text or "") end cfg.Content = tostring(text or "") end
         function ButtonFunc:SetCallback(fn) cfg.Callback = typeof(fn) == "function" and fn or function() end end
         function ButtonFunc:SetLocked(state) LockFunc:SetLocked(state) end
         function ButtonFunc:GetLocked() return LockFunc:GetLocked() end
         return ButtonFunc
     end
-
-    -- ── V1: Wind UI style penuh (Squircle + Special + Outline + Hover) ───
-    local ButtonRowH = 36
     local Button = Instance.new("Frame")
-    Button.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+    Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Button.BackgroundTransparency = 0.935
-    Button.BorderSizePixel        = 0
-    Button.LayoutOrder            = countItem
-    Button.Size                   = UDim2.new(1, 0, 0, ButtonRowH + 10)
-    Button.Name                   = "Button"
-    Button.Parent                 = parent
-    Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
+    Button.Size = UDim2.new(1, 0, 0, 40)
+    Button.LayoutOrder = countItem
+    Button.Parent = parent
+    Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 4)
     if cfg.Badge then CreateBadge(Button, cfg.Badge) end
-
-    -- Button utama
-    local MainWrapper, MainTitle = MakeWindButton(
-        cfg.Title, cfg.Icon, cfg.Variant, cfg.FullRounded,
-        cfg.Callback, Button,
-        cfg.SubTitle and UDim2.new(0.5, -8, 0, ButtonRowH) or UDim2.new(1, -12, 0, ButtonRowH),
-        cfg.SubTitle and UDim2.new(0, 6, 0, 5) or UDim2.new(0, 6, 0, 5),
-        1
-    )
-
-    -- Sub button (opsional)
-    local SubWrapper, SubTitle
-    if cfg.SubTitle then
-        SubWrapper, SubTitle = MakeWindButton(
-            cfg.SubTitle, nil, "Secondary", cfg.FullRounded,
-            cfg.SubCallback, Button,
-            UDim2.new(0.5, -8, 0, ButtonRowH),
-            UDim2.new(0.5, 2, 0, 5),
-            2
-        )
-    end
-
-    local LockFunc = ApplyLock(Button, cfg.Locked)
-
-    function ButtonFunc:Fire()
+    local MainButton = Instance.new("TextButton")
+    MainButton.Font = Enum.Font.GothamBold
+    MainButton.Text = cfg.Title
+    MainButton.TextSize = 12
+    MainButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MainButton.TextTransparency = 0.3
+    MainButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    MainButton.BackgroundTransparency = 0.935
+    MainButton.Size = cfg.SubTitle and UDim2.new(0.5, -8, 1, -10) or UDim2.new(1, -12, 1, -10)
+    MainButton.Position = UDim2.new(0, 6, 0, 5)
+    MainButton.AutoButtonColor = false
+    MainButton.Parent = Button
+    Instance.new("UICorner", MainButton).CornerRadius = UDim.new(0, 4)
+    MainButton.MouseButton1Click:Connect(function()
+        AnimateButtonClick(MainButton)
         SafeCall(cfg.Callback)
+    end)
+    local SubButtonRef
+    if cfg.SubTitle then
+        SubButtonRef = Instance.new("TextButton")
+        SubButtonRef.Font = Enum.Font.GothamBold
+        SubButtonRef.Text = cfg.SubTitle
+        SubButtonRef.TextSize = 12
+        SubButtonRef.TextTransparency = 0.3
+        SubButtonRef.TextColor3 = Color3.fromRGB(255, 255, 255)
+        SubButtonRef.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        SubButtonRef.BackgroundTransparency = 0.935
+        SubButtonRef.Size = UDim2.new(0.5, -8, 1, -10)
+        SubButtonRef.Position = UDim2.new(0.5, 2, 0, 5)
+        SubButtonRef.AutoButtonColor = false
+        SubButtonRef.Parent = Button
+        Instance.new("UICorner", SubButtonRef).CornerRadius = UDim.new(0, 4)
+        SubButtonRef.MouseButton1Click:Connect(function()
+            AnimateButtonClick(SubButtonRef)
+            SafeCall(cfg.SubCallback)
+        end)
     end
-    function ButtonFunc:FireSub()
-        if SubWrapper then SafeCall(cfg.SubCallback) end
-    end
-    function ButtonFunc:SetTitle(text)
-        cfg.Title = tostring(text or "Confirm")
-        MainTitle.Text = cfg.Title
-    end
-    function ButtonFunc:SetSubTitle(text)
-        cfg.SubTitle = tostring(text or "")
-        if SubTitle then SubTitle.Text = cfg.SubTitle end
-    end
-    function ButtonFunc:SetVariant(variant)
-        -- Ganti variant tidak rebuild layer, hanya ubah warna Squircle & teks
-        cfg.Variant = variant
-        local sq = MainWrapper:FindFirstChild("Squircle")
-        local hl = MainWrapper:FindFirstChild("HoverLayer")
-        local accentColor = GuiConfig and GuiConfig.Color or Color3.fromRGB(140, 80, 255)
-        if sq then
-            sq.BackgroundColor3 = variant == "White" and Color3.fromRGB(255,255,255)
-                                   or variant == "Primary" and accentColor
-                                   or Color3.fromRGB(255,255,255)
-            sq.BackgroundTransparency = variant == "Secondary" and 1 or 0
-        end
-    end
-    function ButtonFunc:SetCallback(fn)
-        cfg.Callback = typeof(fn) == "function" and fn or function() end
-    end
-    function ButtonFunc:SetSubCallback(fn)
-        cfg.SubCallback = typeof(fn) == "function" and fn or function() end
-    end
+    local LockFunc = ApplyLock(Button, cfg.Locked)
+    function ButtonFunc:Fire() AnimateButtonClick(MainButton) SafeCall(cfg.Callback) end
+    function ButtonFunc:FireSub() if SubButtonRef then AnimateButtonClick(SubButtonRef) SafeCall(cfg.SubCallback) end end
+    function ButtonFunc:SetTitle(text) MainButton.Text = tostring(text or "Confirm") cfg.Title = MainButton.Text end
+    function ButtonFunc:SetSubTitle(text) if SubButtonRef then SubButtonRef.Text = tostring(text or "") cfg.SubTitle = SubButtonRef.Text end end
+    function ButtonFunc:SetCallback(fn) cfg.Callback = typeof(fn) == "function" and fn or function() end end
+    function ButtonFunc:SetSubCallback(fn) cfg.SubCallback = typeof(fn) == "function" and fn or function() end end
     function ButtonFunc:SetLocked(state) LockFunc:SetLocked(state) end
     function ButtonFunc:GetLocked() return LockFunc:GetLocked() end
     function ButtonFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
-
     return ButtonFunc
 end
 
@@ -1855,56 +1693,51 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         IconFromImg.Parent             = RightContainer
     end
 
-    -- ── Track (background + fill + thumb) ────────────────────────────────
+    -- ── Track gaya Vilaris (SliderFrame + SliderDraggable + SliderCircle) ─────────
     local TrackWidth = 100
-    local TrackBg = Instance.new("Frame")
-    TrackBg.Name               = "TrackBg"
-    TrackBg.Size               = UDim2.new(0, TrackWidth, 0, 4)
-    TrackBg.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
-    TrackBg.BackgroundTransparency = 0.82
-    TrackBg.BorderSizePixel    = 0
-    TrackBg.LayoutOrder        = 2
-    TrackBg.Parent             = RightContainer
-    Instance.new("UICorner", TrackBg).CornerRadius = UDim.new(1, 0)
+    local SliderFrame = Instance.new("Frame")
+    SliderFrame.Name               = "TrackBg"
+    SliderFrame.Size               = UDim2.new(0, TrackWidth, 0, 3)
+    SliderFrame.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
+    SliderFrame.BackgroundTransparency = 0.8
+    SliderFrame.BorderSizePixel    = 0
+    SliderFrame.LayoutOrder        = 2
+    SliderFrame.Parent             = RightContainer
+    Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(1, 0)
 
     local initDelta = math.clamp((cfg.Default - cfg.Min) / (cfg.Max - cfg.Min), 0, 1)
 
-    -- Fill (lebar ngikut nilai)
     local TrackFill = Instance.new("Frame")
     TrackFill.Name               = "TrackFill"
-    TrackFill.Size               = UDim2.new(initDelta, 0, 1, 0)
-    TrackFill.BackgroundColor3   = GuiConfig.Color
-    TrackFill.BackgroundTransparency = 0.1
-    TrackFill.BorderSizePixel    = 0
     TrackFill.AnchorPoint        = Vector2.new(0, 0.5)
     TrackFill.Position           = UDim2.new(0, 0, 0.5, 0)
-    TrackFill.Parent             = TrackBg
+    TrackFill.Size               = UDim2.new(initDelta, 0, 1, 0)
+    TrackFill.BackgroundColor3   = GuiConfig.Color
+    TrackFill.BackgroundTransparency = 0
+    TrackFill.BorderSizePixel    = 0
+    TrackFill.Parent             = SliderFrame
     Instance.new("UICorner", TrackFill).CornerRadius = UDim.new(1, 0)
 
-    -- Thumb (di ujung fill)
-    local THUMB_W = 14
-    local THUMB_H = 18
+    -- Thumb bulat gaya Vilaris lama
+    local THUMB_W = 8
+    local THUMB_H = 8
     local Thumb = Instance.new("Frame")
     Thumb.Name               = "Thumb"
+    Thumb.AnchorPoint        = Vector2.new(1, 0.5)
+    Thumb.Position           = UDim2.new(1, 4, 0.5, 0)
     Thumb.Size               = UDim2.new(0, THUMB_W, 0, THUMB_H)
-    Thumb.AnchorPoint        = Vector2.new(0.5, 0.5)
-    Thumb.Position           = UDim2.new(1, 0, 0.5, 0)
     Thumb.BackgroundColor3   = GuiConfig.Color
     Thumb.BackgroundTransparency = 0
     Thumb.BorderSizePixel    = 0
     Thumb.ZIndex             = 2
     Thumb.Parent             = TrackFill
     Instance.new("UICorner", Thumb).CornerRadius = UDim.new(1, 0)
-    -- Highlight glass di atas thumb
-    local ThumbHighlight = Instance.new("Frame")
-    ThumbHighlight.Name               = "Highlight"
-    ThumbHighlight.Size               = UDim2.new(1, 0, 1, 0)
-    ThumbHighlight.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
-    ThumbHighlight.BackgroundTransparency = 0.6
-    ThumbHighlight.BorderSizePixel    = 0
-    ThumbHighlight.ZIndex             = 3
-    ThumbHighlight.Parent             = Thumb
-    Instance.new("UICorner", ThumbHighlight).CornerRadius = UDim.new(1, 0)
+    local ThumbStroke = Instance.new("UIStroke")
+    ThumbStroke.Color        = GuiConfig.Color
+    ThumbStroke.Parent       = Thumb
+
+    -- TrackBg alias untuk GetDelta (pakai SliderFrame)
+    local TrackBg = SliderFrame
 
     -- Icon To (kanan track) — support rbxassetid, angka, URL, lucide/solar
     if cfg.IconTo and cfg.IconTo ~= "" then
@@ -2126,11 +1959,10 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         local scrollP = FindScrollParent()
         if scrollP then scrollP.ScrollingEnabled = false end
 
-        -- Thumb membesar (animasi Wind UI)
+        -- Thumb membesar saat drag (Vilaris style)
         TweenService:Create(Thumb,
-            TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-            { Size = UDim2.new(0, THUMB_W + 6, 0, THUMB_H + 6),
-              BackgroundTransparency = 0.15 }):Play()
+            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            { Size = UDim2.new(0, 14, 0, 14) }):Play()
 
         OpenTooltip()
 
@@ -2163,11 +1995,10 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
             -- Re-enable scroll
             if scrollP then scrollP.ScrollingEnabled = true end
 
-            -- Thumb kembali ke ukuran normal (Quint)
+            -- Thumb kembali ke ukuran normal
             TweenService:Create(Thumb,
-                TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut),
-                { Size = UDim2.new(0, THUMB_W, 0, THUMB_H),
-                  BackgroundTransparency = 0 }):Play()
+                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                { Size = UDim2.new(0, 8, 0, 8) }):Play()
 
             CloseTooltip()
         end)
