@@ -1,5 +1,5 @@
 -- // vilarisUi | Elements.lua
--- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style) |
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1429,7 +1429,25 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         local startMouseX  = 0
         local startMouseY  = 0
         local startCircleX = 0
+        local currentCircleX = ToggleFunc.Value and DRAG_MAX or DRAG_MIN  -- track posisi real-time
+        local activeTweenCircle = nil  -- simpan tween aktif agar bisa dibatalkan
         local dragConn, endConn
+
+        -- Helper: batalkan tween circle yang sedang berjalan
+        local function CancelCircleTween()
+            if activeTweenCircle then
+                activeTweenCircle:Cancel()
+                activeTweenCircle = nil
+            end
+        end
+
+        -- Wrap Set agar update currentCircleX setelah tween selesai
+        local _origSet = ToggleFunc.Set
+        function ToggleFunc:Set(Value, SkipCallback)
+            _origSet(self, Value, SkipCallback)
+            -- Setelah Set, catat posisi tujuan sebagai currentCircleX
+            currentCircleX = Value and DRAG_MAX or DRAG_MIN
+        end
 
         -- Saat tombol ditekan
         ToggleButton.InputBegan:Connect(function(input)
@@ -1437,11 +1455,16 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             and input.UserInputType ~= Enum.UserInputType.Touch then return end
             if isDragging then return end
 
+            -- Batalkan tween circle yang sedang jalan agar posisi langsung akurat
+            CancelCircleTween()
+            -- Snap circle ke posisi yang sudah tercatat (menghindari posisi tween intermediate)
+            ToggleCircle.Position = UDim2.new(0, currentCircleX, 0, 0)
+
             isDragging   = true
             isScrolling  = false
             startMouseX  = input.Position.X
             startMouseY  = input.Position.Y
-            startCircleX = ToggleCircle.Position.X.Offset
+            startCircleX = currentCircleX  -- ambil dari variabel yang selalu akurat
 
             -- Efek tekan: circle membesar sedikit
             TweenService:Create(ToggleCircle,
@@ -1469,15 +1492,17 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                         TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                         { Position = UDim2.new(0, startCircleX, 0, 0),
                           Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W) }):Play()
+                    currentCircleX = startCircleX
 
                     if dragConn then dragConn:Disconnect(); dragConn = nil end
                     if endConn  then endConn:Disconnect();  endConn  = nil end
                     return
                 end
 
-                -- Gerakkan circle mengikuti mouse
-                local delta  = inputChanged.Position.X - startMouseX
-                local newX   = math.clamp(startCircleX + delta, DRAG_MIN, DRAG_MAX)
+                -- Gerakkan circle mengikuti mouse secara langsung (tanpa tween)
+                local delta = inputChanged.Position.X - startMouseX
+                local newX  = math.clamp(startCircleX + delta, DRAG_MIN, DRAG_MAX)
+                currentCircleX = newX
                 ToggleCircle.Position = UDim2.new(0, newX, 0, 0)
 
                 -- Update warna track secara real-time sesuai posisi
@@ -1505,16 +1530,15 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                     TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                     { Size = UDim2.new(0, CIRCLE_W, 0, CIRCLE_W) }):Play()
 
-                -- Tentukan nilai: tap kecil = flip, drag jauh = tengah track menentukan
+                -- Tentukan nilai: tap kecil = flip, drag jauh = posisi circle menentukan
                 local totalDelta = math.abs(inputEnded.Position.X - startMouseX)
                 if totalDelta < 6 then
                     -- Tap biasa → flip
                     ToggleFunc:Set(not ToggleFunc.Value)
                 else
-                    -- Drag → posisi circle menentukan ON/OFF
-                    local currentX = ToggleCircle.Position.X.Offset
+                    -- Drag → pakai currentCircleX yang selalu akurat
                     local midPoint = DRAG_MAX / 2
-                    ToggleFunc:Set(currentX >= midPoint)
+                    ToggleFunc:Set(currentCircleX >= midPoint)
                 end
             end)
         end)
