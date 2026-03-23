@@ -48,7 +48,7 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             local ok, files = pcall(listfiles, cfgFolder)
             if not ok then return list end
             for _, path in ipairs(files) do
-                local n = path:match("([^/\\]+)\.json$")
+                local n = path:match("([^/\\]+)%.json$")
                 if n then table.insert(list, n) end
             end
             table.sort(list)
@@ -62,6 +62,7 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             return ok
         end
 
+        -- ✅ FIX: update ConfigData in-place agar semua referensi Element ikut ter-update
         local function loadConfig(name)
             local path = toPath(name)
             if not (isfile and isfile(path)) then return false end
@@ -70,7 +71,16 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             end)
             if ok and type(data) == "table" then
                 if data._version == CURRENT_VERSION then
-                    ConfigData = data
+                    -- Hapus semua key lama
+                    for k in pairs(ConfigData) do
+                        ConfigData[k] = nil
+                    end
+                    -- Isi ulang dengan data baru (in-place, bukan replace reference)
+                    for k, v in pairs(data) do
+                        ConfigData[k] = v
+                    end
+                    ConfigData._version = CURRENT_VERSION
+                    -- Terapkan ke semua element
                     LoadConfigElements()
                     return true
                 else
