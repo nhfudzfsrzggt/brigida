@@ -1,5 +1,5 @@
 -- // vilarisUi | Elements.lua
--- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style) |
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style) | 
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -21,7 +21,12 @@ local function GetIconId(iconName)
     if iconName:match("^rbxassetid://") then return iconName end
     if iconName:match("^https?://") then return iconName end
     if iconName:match("^%d+$") then return "rbxassetid://" .. iconName end
+    -- Coba lookup langsung dulu (e.g. "sun")
     if Icons and Icons[iconName] then return Icons[iconName] end
+    -- Support prefix: "lucide:sun", "solar:sun-bold", "sfsymbols:sun.min.fill" dll
+    -- Strip prefix, lookup nama sisanya
+    local stripped = iconName:match("^[%a]+:(.+)$")
+    if stripped and Icons and Icons[stripped] then return Icons[stripped] end
     return ""
 end
 function Elements:GetIconId(iconName)
@@ -1010,64 +1015,219 @@ function Elements:CreatePanel(parent, config, countItem)
     return PanelFunc
 end
 
+-- ============================================================
+--  CreateButton  ★ UPGRADE: Wind UI 5-layer style
+--  Variant: "Primary" | "Secondary" | "White"
+--  FullRounded: true = pill shape (rx 99)
+-- ============================================================
 function Elements:CreateButton(parent, config, countItem)
     local cfg = config or {}
-    cfg.Title       = cfg.Title       or "Confirm"
-    cfg.Content     = cfg.Content     or ""
-    cfg.Callback    = cfg.Callback    or function() end
-    cfg.SubTitle    = cfg.SubTitle    or nil
-    cfg.SubCallback = cfg.SubCallback or function() end
-    cfg.Badge       = cfg.Badge       or nil
-    cfg.Version     = cfg.Version     or "V1"
-    cfg.Locked      = cfg.Locked      or false
+    cfg.Title        = cfg.Title        or "Confirm"
+    cfg.Content      = cfg.Content      or ""
+    cfg.Callback     = cfg.Callback     or function() end
+    cfg.SubTitle     = cfg.SubTitle     or nil
+    cfg.SubCallback  = cfg.SubCallback  or function() end
+    cfg.Badge        = cfg.Badge        or nil
+    cfg.Locked       = cfg.Locked       or false
+    cfg.Variant      = cfg.Variant      or "Primary"   -- "Primary" | "Secondary" | "White"
+    cfg.FullRounded  = cfg.FullRounded  or false
+    cfg.Icon         = cfg.Icon         or nil
+    -- V1 / V2 tetap didukung untuk backward-compat, tapi sekarang
+    -- semua versi pakai sistem layer Wind UI
+    cfg.Version      = cfg.Version      or "V1"
+
     local ButtonFunc = {}
+
+    -- ── Helper: buat 1 button dengan sistem layer Wind UI ───────────────
+    local function MakeWindButton(btnTitle, btnIcon, btnVariant, btnFullRounded, btnCallback, btnParent, btnSize, btnPos, btnLayoutOrder)
+        local radius = btnFullRounded and 99 or 8
+        local isWhite     = btnVariant == "White"
+        local isPrimary   = btnVariant == "Primary"
+        local isSecondary = btnVariant == "Secondary"
+
+        -- Warna aksen dari GuiConfig
+        local accentColor = GuiConfig and GuiConfig.Color or Color3.fromRGB(140, 80, 255)
+
+        -- ── Wrapper (TextButton transparan sebagai hitbox) ──────────────
+        local Wrapper = Instance.new("TextButton")
+        Wrapper.Text                = ""
+        Wrapper.BackgroundTransparency = 1
+        Wrapper.AutoButtonColor     = false
+        Wrapper.BorderSizePixel     = 0
+        Wrapper.Size                = btnSize or UDim2.new(1, -12, 1, -10)
+        Wrapper.Position            = btnPos  or UDim2.new(0, 6, 0, 5)
+        Wrapper.LayoutOrder         = btnLayoutOrder or 0
+        Wrapper.ClipsDescendants    = false
+        Wrapper.Parent              = btnParent
+
+        -- ── Layer 1: Squircle — background utama ────────────────────────
+        local Squircle = Instance.new("Frame")
+        Squircle.Name               = "Squircle"
+        Squircle.Size               = UDim2.new(1, 0, 1, 0)
+        Squircle.BorderSizePixel    = 0
+        Squircle.BackgroundColor3   = isWhite and Color3.fromRGB(255, 255, 255)
+                                      or isPrimary and accentColor
+                                      or Color3.fromRGB(255, 255, 255)
+        Squircle.BackgroundTransparency = isSecondary and 1 or 0
+        Squircle.Parent             = Wrapper
+        Instance.new("UICorner", Squircle).CornerRadius = UDim.new(0, radius)
+
+        -- ── Layer 2: Special — tint putih tipis (Secondary only) ────────
+        local Special = Instance.new("Frame")
+        Special.Name               = "Special"
+        Special.Size               = UDim2.new(1, 0, 1, 0)
+        Special.BorderSizePixel    = 0
+        Special.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
+        Special.BackgroundTransparency = isSecondary and 0.92 or 1
+        Special.Parent             = Wrapper
+        Instance.new("UICorner", Special).CornerRadius = UDim.new(0, radius)
+
+        -- ── Layer 3: Outline — rim glass putih tipis ────────────────────
+        local Outline = Instance.new("Frame")
+        Outline.Name               = "Outline"
+        Outline.Size               = UDim2.new(1, 0, 1, 0)
+        Outline.BorderSizePixel    = 0
+        Outline.BackgroundTransparency = 1
+        Outline.Parent             = Wrapper
+        Instance.new("UICorner", Outline).CornerRadius = UDim.new(0, radius)
+        local OutlineStroke = Instance.new("UIStroke")
+        OutlineStroke.Color        = Color3.fromRGB(255, 255, 255)
+        OutlineStroke.Thickness    = 1
+        OutlineStroke.Transparency = isWhite and 0.85 or 0.55
+        OutlineStroke.Parent       = Outline
+
+        -- ── Layer 4: Hover overlay — muncul saat MouseEnter ─────────────
+        local HoverLayer = Instance.new("Frame")
+        HoverLayer.Name              = "HoverLayer"
+        HoverLayer.Size              = UDim2.new(1, 0, 1, 0)
+        HoverLayer.BorderSizePixel   = 0
+        HoverLayer.BackgroundColor3  = isWhite and Color3.fromRGB(0, 0, 0)
+                                       or Color3.fromRGB(255, 255, 255)
+        HoverLayer.BackgroundTransparency = 1
+        HoverLayer.Parent            = Wrapper
+        Instance.new("UICorner", HoverLayer).CornerRadius = UDim.new(0, radius)
+
+        -- ── Layer 5: Frame konten — icon + label ─────────────────────────
+        local ContentFrame = Instance.new("Frame")
+        ContentFrame.Name              = "ContentFrame"
+        ContentFrame.Size              = UDim2.new(1, 0, 1, 0)
+        ContentFrame.BackgroundTransparency = 1
+        ContentFrame.BorderSizePixel   = 0
+        ContentFrame.Parent            = Wrapper
+        local UIList = Instance.new("UIListLayout")
+        UIList.FillDirection           = Enum.FillDirection.Horizontal
+        UIList.VerticalAlignment       = Enum.VerticalAlignment.Center
+        UIList.HorizontalAlignment     = Enum.HorizontalAlignment.Center
+        UIList.Padding                 = UDim.new(0, 6)
+        UIList.Parent                  = ContentFrame
+        local UIPad = Instance.new("UIPadding")
+        UIPad.PaddingLeft              = UDim.new(0, 14)
+        UIPad.PaddingRight             = UDim.new(0, 14)
+        UIPad.Parent                   = ContentFrame
+
+        -- Icon (opsional)
+        local IconLabel
+        if btnIcon and btnIcon ~= "" then
+            IconLabel = Instance.new("ImageLabel")
+            IconLabel.Size               = UDim2.new(0, 16, 0, 16)
+            IconLabel.BackgroundTransparency = 1
+            IconLabel.ScaleType          = Enum.ScaleType.Fit
+            IconLabel.Image              = GetIconId(btnIcon)
+            IconLabel.ImageColor3        = isWhite and Color3.fromRGB(30, 30, 30)
+                                           or Color3.fromRGB(255, 255, 255)
+            IconLabel.ImageTransparency  = 0
+            IconLabel.LayoutOrder        = 1
+            IconLabel.Parent             = ContentFrame
+        end
+
+        -- Label teks
+        local TitleLabel = Instance.new("TextLabel")
+        TitleLabel.Name                = "TitleLabel"
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Font                = Enum.Font.GothamBold
+        TitleLabel.Text                = btnTitle or "Button"
+        TitleLabel.TextSize            = 13
+        TitleLabel.TextColor3          = isWhite and Color3.fromRGB(30, 30, 30)
+                                         or Color3.fromRGB(255, 255, 255)
+        TitleLabel.AutomaticSize       = Enum.AutomaticSize.XY
+        TitleLabel.LayoutOrder         = 2
+        TitleLabel.Parent              = ContentFrame
+
+        -- ── Events ───────────────────────────────────────────────────────
+        Wrapper.MouseEnter:Connect(function()
+            -- Hover: overlay tipis muncul
+            TweenService:Create(HoverLayer, TweenInfo.new(0.1, Enum.EasingStyle.Quad),
+                { BackgroundTransparency = isWhite and 0.92 or 0.88 }):Play()
+        end)
+
+        Wrapper.MouseLeave:Connect(function()
+            TweenService:Create(HoverLayer, TweenInfo.new(0.12, Enum.EasingStyle.Quad),
+                { BackgroundTransparency = 1 }):Play()
+        end)
+
+        Wrapper.MouseButton1Down:Connect(function()
+            -- Press: overlay lebih gelap
+            TweenService:Create(HoverLayer, TweenInfo.new(0.05),
+                { BackgroundTransparency = isWhite and 0.85 or 0.78 }):Play()
+        end)
+
+        Wrapper.MouseButton1Up:Connect(function()
+            -- Release: kembali ke hover state
+            TweenService:Create(HoverLayer, TweenInfo.new(0.1),
+                { BackgroundTransparency = isWhite and 0.92 or 0.88 }):Play()
+            SafeCall(btnCallback)
+        end)
+
+        return Wrapper, TitleLabel, IconLabel
+    end
+
+    -- ── Tentukan apakah V2 (punya Content label) ─────────────────────────
     if cfg.Version == "V2" then
         local hasContent = cfg.Content ~= ""
-        local frameH = hasContent and 56 or 40
+        local frameH = hasContent and 56 or 36
+
         local Button = Instance.new("Frame")
-        Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Button.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
         Button.BackgroundTransparency = 0.935
-        Button.BorderSizePixel = 0
-        Button.LayoutOrder = countItem
-        Button.Size = UDim2.new(1, 0, 0, frameH)
-        Button.Name = "ButtonV2"
-        Button.Parent = parent
+        Button.BorderSizePixel        = 0
+        Button.LayoutOrder            = countItem
+        Button.Size                   = UDim2.new(1, 0, 0, frameH)
+        Button.Name                   = "ButtonV2"
+        Button.Parent                 = parent
         Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
         if cfg.Badge then CreateBadge(Button, cfg.Badge) end
+
+        -- Teks judul
         local TitleLabel = Instance.new("TextLabel")
-        TitleLabel.Font = Enum.Font.GothamBold
-        TitleLabel.Text = cfg.Title
-        TitleLabel.TextSize = 13
-        TitleLabel.TextColor3 = Color3.fromRGB(231, 231, 231)
-        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        TitleLabel.TextYAlignment = Enum.TextYAlignment.Top
+        TitleLabel.Font               = Enum.Font.GothamBold
+        TitleLabel.Text               = cfg.Title
+        TitleLabel.TextSize           = 13
+        TitleLabel.TextColor3         = Color3.fromRGB(231, 231, 231)
+        TitleLabel.TextXAlignment     = Enum.TextXAlignment.Left
+        TitleLabel.TextYAlignment     = Enum.TextYAlignment.Top
         TitleLabel.BackgroundTransparency = 1
-        TitleLabel.Name = "ButtonTitle"
-        TitleLabel.Parent = Button
-        if hasContent then
-            TitleLabel.Position = UDim2.new(0, 12, 0, 10)
-            TitleLabel.Size = UDim2.new(1, -60, 0, 15)
-        else
-            TitleLabel.Position = UDim2.new(0, 12, 0.5, -7)
-            TitleLabel.Size = UDim2.new(1, -60, 0, 15)
-        end
+        TitleLabel.Name               = "ButtonTitle"
+        TitleLabel.Parent             = Button
+        TitleLabel.Position           = hasContent and UDim2.new(0, 12, 0, 10) or UDim2.new(0, 12, 0.5, -7)
+        TitleLabel.Size               = UDim2.new(1, -60, 0, 15)
+
         local ContentLabel
         if hasContent then
             ContentLabel = Instance.new("TextLabel")
-            ContentLabel.Font = Enum.Font.GothamBold
-            ContentLabel.Text = cfg.Content
-            ContentLabel.TextSize = 11
-            ContentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            ContentLabel.Font         = Enum.Font.GothamBold
+            ContentLabel.Text         = cfg.Content
+            ContentLabel.TextSize     = 11
+            ContentLabel.TextColor3   = Color3.fromRGB(255, 255, 255)
             ContentLabel.TextTransparency = 0.45
             ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
             ContentLabel.TextYAlignment = Enum.TextYAlignment.Top
             ContentLabel.BackgroundTransparency = 1
-            ContentLabel.Position = UDim2.new(0, 12, 0, 28)
-            ContentLabel.Size = UDim2.new(1, -60, 0, 14)
-            ContentLabel.TextWrapped = true
-            ContentLabel.RichText = true
-            ContentLabel.Name = "ButtonContent"
-            ContentLabel.Parent = Button
+            ContentLabel.Position     = UDim2.new(0, 12, 0, 28)
+            ContentLabel.Size         = UDim2.new(1, -60, 0, 14)
+            ContentLabel.TextWrapped  = true
+            ContentLabel.RichText     = true
+            ContentLabel.Name         = "ButtonContent"
+            ContentLabel.Parent       = Button
             ContentLabel.Size = UDim2.new(1, -60, 0, 12 + (12 * (ContentLabel.TextBounds.X // math.max(1, ContentLabel.AbsoluteSize.X))))
             Button.Size = UDim2.new(1, 0, 0, ContentLabel.AbsoluteSize.Y + 42)
             ContentLabel:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
@@ -1077,142 +1237,149 @@ function Elements:CreateButton(parent, config, countItem)
                 ContentLabel.TextWrapped = true
             end)
         end
-        local IconImg
-        if cfg.Icon then
-            IconImg = Instance.new("ImageLabel")
-            IconImg.AnchorPoint = Vector2.new(1, 0.5)
-            IconImg.Position = UDim2.new(1, -10, 0.5, 0)
-            IconImg.Size = UDim2.new(0, 20, 0, 20)
-            IconImg.BackgroundTransparency = 1
-            IconImg.ScaleType = Enum.ScaleType.Fit
-            IconImg.Image = GetIconId(cfg.Icon)
-            IconImg.ImageColor3 = Color3.fromRGB(220, 220, 220)
-            IconImg.ImageTransparency = 0.2
-            IconImg.Name = "IconImg"
-            IconImg.Parent = Button
-        else
-            local ChevronFrame = Instance.new("Frame")
-            ChevronFrame.Name = "IconImg"
-            ChevronFrame.AnchorPoint = Vector2.new(1, 0.5)
-            ChevronFrame.Position = UDim2.new(1, -12, 0.5, 0)
-            ChevronFrame.Size = UDim2.new(0, 16, 0, 16)
-            ChevronFrame.BackgroundTransparency = 1
-            ChevronFrame.Parent = Button
-            local LineTop = Instance.new("Frame")
-            LineTop.Size = UDim2.new(0, 6, 0, 2)
-            LineTop.Position = UDim2.new(0, 2, 0, 4)
-            LineTop.Rotation = 45
-            LineTop.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-            LineTop.BackgroundTransparency = 0.2
-            LineTop.BorderSizePixel = 0
-            LineTop.Parent = ChevronFrame
-            Instance.new("UICorner", LineTop).CornerRadius = UDim.new(1, 0)
-            local LineBot = Instance.new("Frame")
-            LineBot.Size = UDim2.new(0, 6, 0, 2)
-            LineBot.Position = UDim2.new(0, 2, 0, 9)
-            LineBot.Rotation = -45
-            LineBot.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-            LineBot.BackgroundTransparency = 0.2
-            LineBot.BorderSizePixel = 0
-            LineBot.Parent = ChevronFrame
-            Instance.new("UICorner", LineBot).CornerRadius = UDim.new(1, 0)
-            IconImg = ChevronFrame
-        end
+
+        -- Chevron kanan
+        local ChevronFrame = Instance.new("Frame")
+        ChevronFrame.Name             = "Chevron"
+        ChevronFrame.AnchorPoint      = Vector2.new(1, 0.5)
+        ChevronFrame.Position         = UDim2.new(1, -12, 0.5, 0)
+        ChevronFrame.Size             = UDim2.new(0, 16, 0, 16)
+        ChevronFrame.BackgroundTransparency = 1
+        ChevronFrame.Parent           = Button
+        local LineTop = Instance.new("Frame")
+        LineTop.Size = UDim2.new(0, 6, 0, 2); LineTop.Position = UDim2.new(0, 2, 0, 4)
+        LineTop.Rotation = 45; LineTop.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+        LineTop.BackgroundTransparency = 0.2; LineTop.BorderSizePixel = 0; LineTop.Parent = ChevronFrame
+        Instance.new("UICorner", LineTop).CornerRadius = UDim.new(1, 0)
+        local LineBot = Instance.new("Frame")
+        LineBot.Size = UDim2.new(0, 6, 0, 2); LineBot.Position = UDim2.new(0, 2, 0, 9)
+        LineBot.Rotation = -45; LineBot.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+        LineBot.BackgroundTransparency = 0.2; LineBot.BorderSizePixel = 0; LineBot.Parent = ChevronFrame
+        Instance.new("UICorner", LineBot).CornerRadius = UDim.new(1, 0)
+
+        -- ClickButton Wind UI style: hover subtle, click langsung callback
         local ClickButton = Instance.new("TextButton")
-        ClickButton.Text = ""
-        ClickButton.BackgroundTransparency = 1
-        ClickButton.Size = UDim2.new(1, 0, 1, 0)
-        ClickButton.Name = "ClickButton"
-        ClickButton.AutoButtonColor = false
-        ClickButton.Parent = Button
-        ClickButton.MouseButton1Click:Connect(function()
-            AnimateButtonClick(ClickButton)
-            SafeCall(cfg.Callback)
-        end)
+        ClickButton.Text = ""; ClickButton.BackgroundTransparency = 1
+        ClickButton.AutoButtonColor = false; ClickButton.Size = UDim2.new(1, 0, 1, 0)
+        ClickButton.Name = "ClickButton"; ClickButton.Parent = Button
+
+        -- HoverLayer tipis di atas semua
+        local HoverLayer = Instance.new("Frame")
+        HoverLayer.Name = "HoverLayer"; HoverLayer.Size = UDim2.new(1, 0, 1, 0)
+        HoverLayer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        HoverLayer.BackgroundTransparency = 1; HoverLayer.BorderSizePixel = 0
+        HoverLayer.Parent = Button
+        Instance.new("UICorner", HoverLayer).CornerRadius = UDim.new(0, 6)
+
         ClickButton.MouseEnter:Connect(function()
             TweenService:Create(TitleLabel, TweenInfo.new(0.15), { TextColor3 = GuiConfig.Color }):Play()
-            if not cfg.Icon and IconImg then
-                for _, line in ipairs(IconImg:GetChildren()) do
-                    if line:IsA("Frame") then
-                        TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
-                    end
+            TweenService:Create(HoverLayer, TweenInfo.new(0.1), { BackgroundTransparency = 0.92 }):Play()
+            for _, line in ipairs(ChevronFrame:GetChildren()) do
+                if line:IsA("Frame") then
+                    TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
                 end
             end
         end)
         ClickButton.MouseLeave:Connect(function()
             TweenService:Create(TitleLabel, TweenInfo.new(0.15), { TextColor3 = Color3.fromRGB(231, 231, 231) }):Play()
-            if not cfg.Icon and IconImg then
-                for _, line in ipairs(IconImg:GetChildren()) do
-                    if line:IsA("Frame") then
-                        TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(200, 200, 200), BackgroundTransparency = 0.2 }):Play()
-                    end
+            TweenService:Create(HoverLayer, TweenInfo.new(0.12), { BackgroundTransparency = 1 }):Play()
+            for _, line in ipairs(ChevronFrame:GetChildren()) do
+                if line:IsA("Frame") then
+                    TweenService:Create(line, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(200, 200, 200), BackgroundTransparency = 0.2 }):Play()
                 end
             end
         end)
+        ClickButton.MouseButton1Down:Connect(function()
+            TweenService:Create(HoverLayer, TweenInfo.new(0.05), { BackgroundTransparency = 0.82 }):Play()
+        end)
+        ClickButton.MouseButton1Up:Connect(function()
+            TweenService:Create(HoverLayer, TweenInfo.new(0.1), { BackgroundTransparency = 0.92 }):Play()
+            SafeCall(cfg.Callback)
+        end)
+
         local LockFunc = ApplyLock(Button, cfg.Locked)
         function ButtonFunc:Fire() SafeCall(cfg.Callback) end
-        function ButtonFunc:SetTitle(text) TitleLabel.Text = tostring(text or "") cfg.Title = TitleLabel.Text end
-        function ButtonFunc:SetContent(text) if ContentLabel then ContentLabel.Text = tostring(text or "") end cfg.Content = tostring(text or "") end
+        function ButtonFunc:SetTitle(t) TitleLabel.Text = tostring(t or "") cfg.Title = TitleLabel.Text end
+        function ButtonFunc:SetContent(t) if ContentLabel then ContentLabel.Text = tostring(t or "") end cfg.Content = tostring(t or "") end
         function ButtonFunc:SetCallback(fn) cfg.Callback = typeof(fn) == "function" and fn or function() end end
         function ButtonFunc:SetLocked(state) LockFunc:SetLocked(state) end
         function ButtonFunc:GetLocked() return LockFunc:GetLocked() end
         return ButtonFunc
     end
+
+    -- ── V1: Wind UI style penuh (Squircle + Special + Outline + Hover) ───
+    local ButtonRowH = 36
     local Button = Instance.new("Frame")
-    Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Button.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
     Button.BackgroundTransparency = 0.935
-    Button.Size = UDim2.new(1, 0, 0, 40)
-    Button.LayoutOrder = countItem
-    Button.Parent = parent
-    Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 4)
+    Button.BorderSizePixel        = 0
+    Button.LayoutOrder            = countItem
+    Button.Size                   = UDim2.new(1, 0, 0, ButtonRowH + 10)
+    Button.Name                   = "Button"
+    Button.Parent                 = parent
+    Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
     if cfg.Badge then CreateBadge(Button, cfg.Badge) end
-    local MainButton = Instance.new("TextButton")
-    MainButton.Font = Enum.Font.GothamBold
-    MainButton.Text = cfg.Title
-    MainButton.TextSize = 12
-    MainButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    MainButton.TextTransparency = 0.3
-    MainButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    MainButton.BackgroundTransparency = 0.935
-    MainButton.Size = cfg.SubTitle and UDim2.new(0.5, -8, 1, -10) or UDim2.new(1, -12, 1, -10)
-    MainButton.Position = UDim2.new(0, 6, 0, 5)
-    MainButton.AutoButtonColor = false
-    MainButton.Parent = Button
-    Instance.new("UICorner", MainButton).CornerRadius = UDim.new(0, 4)
-    MainButton.MouseButton1Click:Connect(function()
-        AnimateButtonClick(MainButton)
-        SafeCall(cfg.Callback)
-    end)
-    local SubButtonRef
+
+    -- Button utama
+    local MainWrapper, MainTitle = MakeWindButton(
+        cfg.Title, cfg.Icon, cfg.Variant, cfg.FullRounded,
+        cfg.Callback, Button,
+        cfg.SubTitle and UDim2.new(0.5, -8, 0, ButtonRowH) or UDim2.new(1, -12, 0, ButtonRowH),
+        cfg.SubTitle and UDim2.new(0, 6, 0, 5) or UDim2.new(0, 6, 0, 5),
+        1
+    )
+
+    -- Sub button (opsional)
+    local SubWrapper, SubTitle
     if cfg.SubTitle then
-        SubButtonRef = Instance.new("TextButton")
-        SubButtonRef.Font = Enum.Font.GothamBold
-        SubButtonRef.Text = cfg.SubTitle
-        SubButtonRef.TextSize = 12
-        SubButtonRef.TextTransparency = 0.3
-        SubButtonRef.TextColor3 = Color3.fromRGB(255, 255, 255)
-        SubButtonRef.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        SubButtonRef.BackgroundTransparency = 0.935
-        SubButtonRef.Size = UDim2.new(0.5, -8, 1, -10)
-        SubButtonRef.Position = UDim2.new(0.5, 2, 0, 5)
-        SubButtonRef.AutoButtonColor = false
-        SubButtonRef.Parent = Button
-        Instance.new("UICorner", SubButtonRef).CornerRadius = UDim.new(0, 4)
-        SubButtonRef.MouseButton1Click:Connect(function()
-            AnimateButtonClick(SubButtonRef)
-            SafeCall(cfg.SubCallback)
-        end)
+        SubWrapper, SubTitle = MakeWindButton(
+            cfg.SubTitle, nil, "Secondary", cfg.FullRounded,
+            cfg.SubCallback, Button,
+            UDim2.new(0.5, -8, 0, ButtonRowH),
+            UDim2.new(0.5, 2, 0, 5),
+            2
+        )
     end
+
     local LockFunc = ApplyLock(Button, cfg.Locked)
-    function ButtonFunc:Fire() AnimateButtonClick(MainButton) SafeCall(cfg.Callback) end
-    function ButtonFunc:FireSub() if SubButtonRef then AnimateButtonClick(SubButtonRef) SafeCall(cfg.SubCallback) end end
-    function ButtonFunc:SetTitle(text) MainButton.Text = tostring(text or "Confirm") cfg.Title = MainButton.Text end
-    function ButtonFunc:SetSubTitle(text) if SubButtonRef then SubButtonRef.Text = tostring(text or "") cfg.SubTitle = SubButtonRef.Text end end
-    function ButtonFunc:SetCallback(fn) cfg.Callback = typeof(fn) == "function" and fn or function() end end
-    function ButtonFunc:SetSubCallback(fn) cfg.SubCallback = typeof(fn) == "function" and fn or function() end end
+
+    function ButtonFunc:Fire()
+        SafeCall(cfg.Callback)
+    end
+    function ButtonFunc:FireSub()
+        if SubWrapper then SafeCall(cfg.SubCallback) end
+    end
+    function ButtonFunc:SetTitle(text)
+        cfg.Title = tostring(text or "Confirm")
+        MainTitle.Text = cfg.Title
+    end
+    function ButtonFunc:SetSubTitle(text)
+        cfg.SubTitle = tostring(text or "")
+        if SubTitle then SubTitle.Text = cfg.SubTitle end
+    end
+    function ButtonFunc:SetVariant(variant)
+        -- Ganti variant tidak rebuild layer, hanya ubah warna Squircle & teks
+        cfg.Variant = variant
+        local sq = MainWrapper:FindFirstChild("Squircle")
+        local hl = MainWrapper:FindFirstChild("HoverLayer")
+        local accentColor = GuiConfig and GuiConfig.Color or Color3.fromRGB(140, 80, 255)
+        if sq then
+            sq.BackgroundColor3 = variant == "White" and Color3.fromRGB(255,255,255)
+                                   or variant == "Primary" and accentColor
+                                   or Color3.fromRGB(255,255,255)
+            sq.BackgroundTransparency = variant == "Secondary" and 1 or 0
+        end
+    end
+    function ButtonFunc:SetCallback(fn)
+        cfg.Callback = typeof(fn) == "function" and fn or function() end
+    end
+    function ButtonFunc:SetSubCallback(fn)
+        cfg.SubCallback = typeof(fn) == "function" and fn or function() end
+    end
     function ButtonFunc:SetLocked(state) LockFunc:SetLocked(state) end
     function ButtonFunc:GetLocked() return LockFunc:GetLocked() end
     function ButtonFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
+
     return ButtonFunc
 end
 
@@ -1560,6 +1727,16 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     return ToggleFunc
 end
 
+-- ============================================================
+--  CreateSlider  ★ UPGRADE: Wind UI style
+--  + RenderStepped (smooth), thumb animasi Quint
+--  + Disable scroll saat drag
+--  + IsSliderHolding mutex global
+--  + Tooltip opsional (cfg.Tooltip = true)
+--  + Icon From/To opsional (cfg.IconFrom, cfg.IconTo = rbxassetid)
+-- ============================================================
+local _IsSliderHolding = false  -- mutex global antar slider
+
 function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
     cfg.Title     = cfg.Title     or "Slider"
@@ -1571,60 +1748,72 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     cfg.Callback  = cfg.Callback  or function() end
     cfg.Badge     = cfg.Badge     or nil
     cfg.Locked    = cfg.Locked    or false
+    cfg.Tooltip   = cfg.Tooltip   or false   -- tampilkan tooltip nilai di atas thumb
+    cfg.IconFrom  = cfg.IconFrom  or nil     -- rbxassetid icon kiri
+    cfg.IconTo    = cfg.IconTo    or nil     -- rbxassetid icon kanan
+    -- ScrollingFrame parent untuk disable scroll saat drag
+    -- caller bisa pass cfg.ScrollParent; kalau nil dicari otomatis
+    cfg.ScrollParent = cfg.ScrollParent or nil
+
     if cfg.Min >= cfg.Max then cfg.Max = cfg.Min + 1 end
     if cfg.Increment <= 0 then cfg.Increment = 1 end
+
     local configKey = ResolveKey("Slider", cfg)
     if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
-    local SliderFunc = { Value = cfg.Default }
-    local Slider          = Instance.new("Frame")
-    local UICorner15      = Instance.new("UICorner")
-    local SliderTitle     = Instance.new("TextLabel")
-    local SliderContent   = Instance.new("TextLabel")
-    local SliderInput     = Instance.new("Frame")
-    local UICorner16      = Instance.new("UICorner")
-    local TextBox         = Instance.new("TextBox")
-    local SliderFrame     = Instance.new("Frame")
-    local UICorner17      = Instance.new("UICorner")
-    local SliderDraggable = Instance.new("Frame")
-    local UICorner18      = Instance.new("UICorner")
-    local SliderCircle    = Instance.new("Frame")
-    local UICorner19      = Instance.new("UICorner")
-    local UIStroke6       = Instance.new("UIStroke")
-    Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+
+    local IsFloat = cfg.Increment % 1 ~= 0
+    local LastValue = cfg.Default
+    local _settingFromCode = false
+
+    local function FormatValue(val)
+        if IsFloat then
+            return tonumber(string.format("%.2f", val)) or val
+        end
+        return math.floor(val + 0.5)
+    end
+
+    local SliderFunc = { Value = FormatValue(cfg.Default) }
+
+    -- ── Root frame ────────────────────────────────────────────────────────
+    local Slider = Instance.new("Frame")
+    Slider.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
     Slider.BackgroundTransparency = 0.935
-    Slider.BorderSizePixel = 0
-    Slider.LayoutOrder = countItem
-    Slider.Size = UDim2.new(1, 0, 0, 46)
-    Slider.Name = "Slider"
-    Slider.Parent = parent
-    UICorner15.CornerRadius = UDim.new(0, 4)
-    UICorner15.Parent = Slider
+    Slider.BorderSizePixel        = 0
+    Slider.LayoutOrder            = countItem
+    Slider.Name                   = "Slider"
+    Slider.Parent                 = parent
+    Instance.new("UICorner", Slider).CornerRadius = UDim.new(0, 4)
     if cfg.Badge then CreateBadge(Slider, cfg.Badge) end
-    SliderTitle.Font = Enum.Font.GothamBold
-    SliderTitle.Text = cfg.Title
-    SliderTitle.TextColor3 = Color3.fromRGB(231, 231, 231)
-    SliderTitle.TextSize = 13
-    SliderTitle.TextXAlignment = Enum.TextXAlignment.Left
-    SliderTitle.TextYAlignment = Enum.TextYAlignment.Top
+
+    -- ── Title ─────────────────────────────────────────────────────────────
+    local SliderTitle = Instance.new("TextLabel")
+    SliderTitle.Font               = Enum.Font.GothamBold
+    SliderTitle.Text               = cfg.Title
+    SliderTitle.TextColor3         = Color3.fromRGB(231, 231, 231)
+    SliderTitle.TextSize           = 13
+    SliderTitle.TextXAlignment     = Enum.TextXAlignment.Left
+    SliderTitle.TextYAlignment     = Enum.TextYAlignment.Top
     SliderTitle.BackgroundTransparency = 1
-    SliderTitle.Position = UDim2.new(0, 10, 0, 10)
-    SliderTitle.Size = UDim2.new(1, -180, 0, 13)
-    SliderTitle.Name = "SliderTitle"
-    SliderTitle.Parent = Slider
-    SliderContent.Font = Enum.Font.GothamBold
-    SliderContent.Text = cfg.Content
-    SliderContent.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SliderContent.TextSize = 12
+    SliderTitle.Position           = UDim2.new(0, 10, 0, 10)
+    SliderTitle.Size               = UDim2.new(1, -180, 0, 13)
+    SliderTitle.Name               = "SliderTitle"
+    SliderTitle.Parent             = Slider
+
+    -- ── Content ───────────────────────────────────────────────────────────
+    local SliderContent = Instance.new("TextLabel")
+    SliderContent.Font             = Enum.Font.GothamBold
+    SliderContent.Text             = cfg.Content
+    SliderContent.TextColor3       = Color3.fromRGB(255, 255, 255)
+    SliderContent.TextSize         = 12
     SliderContent.TextTransparency = 0.6
-    SliderContent.TextXAlignment = Enum.TextXAlignment.Left
-    SliderContent.TextYAlignment = Enum.TextYAlignment.Bottom
+    SliderContent.TextXAlignment   = Enum.TextXAlignment.Left
+    SliderContent.TextYAlignment   = Enum.TextYAlignment.Bottom
     SliderContent.BackgroundTransparency = 1
-    SliderContent.Position = UDim2.new(0, 10, 0, 25)
-    SliderContent.Size = UDim2.new(1, -180, 0, 12)
-    SliderContent.Name = "SliderContent"
-    SliderContent.Parent = Slider
+    SliderContent.Position         = UDim2.new(0, 10, 0, 25)
+    SliderContent.TextWrapped      = true
+    SliderContent.Name             = "SliderContent"
+    SliderContent.Parent           = Slider
     SliderContent.Size = UDim2.new(1, -180, 0, 12 + (12 * (SliderContent.TextBounds.X // math.max(1, SliderContent.AbsoluteSize.X))))
-    SliderContent.TextWrapped = true
     Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 33)
     SliderContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
         SliderContent.TextWrapped = false
@@ -1633,118 +1822,368 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         SliderContent.TextWrapped = true
         if updateSectionSize then updateSectionSize() end
     end)
-    SliderInput.AnchorPoint = Vector2.new(0, 0.5)
-    SliderInput.BackgroundColor3 = GuiConfig.Color
-    SliderInput.BackgroundTransparency = 1
-    SliderInput.BorderSizePixel = 0
-    SliderInput.Position = UDim2.new(1, -155, 0.5, 0)
-    SliderInput.Size = UDim2.new(0, 28, 0, 20)
-    SliderInput.Name = "SliderInput"
-    SliderInput.Parent = Slider
-    UICorner16.CornerRadius = UDim.new(0, 2)
-    UICorner16.Parent = SliderInput
-    TextBox.Font = Enum.Font.GothamBold
-    TextBox.Text = tostring(cfg.Default)
-    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextBox.TextSize = 13
-    TextBox.TextWrapped = true
+
+    -- ── Kontainer kanan (icon + track + textbox) ──────────────────────────
+    local RightContainer = Instance.new("Frame")
+    RightContainer.Name               = "RightContainer"
+    RightContainer.AnchorPoint        = Vector2.new(1, 0.5)
+    RightContainer.Position           = UDim2.new(1, -8, 0.5, 0)
+    RightContainer.BackgroundTransparency = 1
+    RightContainer.BorderSizePixel    = 0
+    RightContainer.AutomaticSize      = Enum.AutomaticSize.X
+    RightContainer.Size               = UDim2.new(0, 0, 0, 26)
+    RightContainer.Parent             = Slider
+    local RightLayout = Instance.new("UIListLayout")
+    RightLayout.FillDirection         = Enum.FillDirection.Horizontal
+    RightLayout.VerticalAlignment     = Enum.VerticalAlignment.Center
+    RightLayout.HorizontalAlignment   = Enum.HorizontalAlignment.Right
+    RightLayout.Padding               = UDim.new(0, 6)
+    RightLayout.SortOrder             = Enum.SortOrder.LayoutOrder
+    RightLayout.Parent                = RightContainer
+
+    -- Icon From (kiri track) — support rbxassetid, angka, URL, lucide/solar
+    if cfg.IconFrom and cfg.IconFrom ~= "" then
+        local IconFromImg = Instance.new("ImageLabel")
+        IconFromImg.Size               = UDim2.new(0, 18, 0, 18)
+        IconFromImg.BackgroundTransparency = 1
+        IconFromImg.ScaleType          = Enum.ScaleType.Fit
+        IconFromImg.Image              = GetIconId(cfg.IconFrom)
+        IconFromImg.ImageColor3        = Color3.fromRGB(180, 180, 180)
+        IconFromImg.ImageTransparency  = 0.3
+        IconFromImg.LayoutOrder        = 1
+        IconFromImg.Name               = "IconFrom"
+        IconFromImg.Parent             = RightContainer
+    end
+
+    -- ── Track (background + fill + thumb) ────────────────────────────────
+    local TrackWidth = 100
+    local TrackBg = Instance.new("Frame")
+    TrackBg.Name               = "TrackBg"
+    TrackBg.Size               = UDim2.new(0, TrackWidth, 0, 4)
+    TrackBg.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
+    TrackBg.BackgroundTransparency = 0.82
+    TrackBg.BorderSizePixel    = 0
+    TrackBg.LayoutOrder        = 2
+    TrackBg.Parent             = RightContainer
+    Instance.new("UICorner", TrackBg).CornerRadius = UDim.new(1, 0)
+
+    local initDelta = math.clamp((cfg.Default - cfg.Min) / (cfg.Max - cfg.Min), 0, 1)
+
+    -- Fill (lebar ngikut nilai)
+    local TrackFill = Instance.new("Frame")
+    TrackFill.Name               = "TrackFill"
+    TrackFill.Size               = UDim2.new(initDelta, 0, 1, 0)
+    TrackFill.BackgroundColor3   = GuiConfig.Color
+    TrackFill.BackgroundTransparency = 0.1
+    TrackFill.BorderSizePixel    = 0
+    TrackFill.AnchorPoint        = Vector2.new(0, 0.5)
+    TrackFill.Position           = UDim2.new(0, 0, 0.5, 0)
+    TrackFill.Parent             = TrackBg
+    Instance.new("UICorner", TrackFill).CornerRadius = UDim.new(1, 0)
+
+    -- Thumb (di ujung fill)
+    local THUMB_W = 14
+    local THUMB_H = 18
+    local Thumb = Instance.new("Frame")
+    Thumb.Name               = "Thumb"
+    Thumb.Size               = UDim2.new(0, THUMB_W, 0, THUMB_H)
+    Thumb.AnchorPoint        = Vector2.new(0.5, 0.5)
+    Thumb.Position           = UDim2.new(1, 0, 0.5, 0)
+    Thumb.BackgroundColor3   = GuiConfig.Color
+    Thumb.BackgroundTransparency = 0
+    Thumb.BorderSizePixel    = 0
+    Thumb.ZIndex             = 2
+    Thumb.Parent             = TrackFill
+    Instance.new("UICorner", Thumb).CornerRadius = UDim.new(1, 0)
+    -- Highlight glass di atas thumb
+    local ThumbHighlight = Instance.new("Frame")
+    ThumbHighlight.Name               = "Highlight"
+    ThumbHighlight.Size               = UDim2.new(1, 0, 1, 0)
+    ThumbHighlight.BackgroundColor3   = Color3.fromRGB(255, 255, 255)
+    ThumbHighlight.BackgroundTransparency = 0.6
+    ThumbHighlight.BorderSizePixel    = 0
+    ThumbHighlight.ZIndex             = 3
+    ThumbHighlight.Parent             = Thumb
+    Instance.new("UICorner", ThumbHighlight).CornerRadius = UDim.new(1, 0)
+
+    -- Icon To (kanan track) — support rbxassetid, angka, URL, lucide/solar
+    if cfg.IconTo and cfg.IconTo ~= "" then
+        local IconToImg = Instance.new("ImageLabel")
+        IconToImg.Size               = UDim2.new(0, 18, 0, 18)
+        IconToImg.BackgroundTransparency = 1
+        IconToImg.ScaleType          = Enum.ScaleType.Fit
+        IconToImg.Image              = GetIconId(cfg.IconTo)
+        IconToImg.ImageColor3        = Color3.fromRGB(220, 220, 220)
+        IconToImg.ImageTransparency  = 0.1
+        IconToImg.LayoutOrder        = 3
+        IconToImg.Name               = "IconTo"
+        IconToImg.Parent             = RightContainer
+    end
+
+    -- TextBox nilai
+    local TextBox = Instance.new("TextBox")
+    TextBox.Font               = Enum.Font.GothamBold
+    TextBox.Text               = tostring(FormatValue(cfg.Default))
+    TextBox.TextColor3         = Color3.fromRGB(255, 255, 255)
+    TextBox.TextTransparency   = 0.4
+    TextBox.TextSize           = 13
+    TextBox.TextXAlignment     = Enum.TextXAlignment.Left
     TextBox.BackgroundTransparency = 1
-    TextBox.BorderSizePixel = 0
-    TextBox.Position = UDim2.new(0, -1, 0, 0)
-    TextBox.Size = UDim2.new(1, 0, 1, 0)
-    TextBox.ClearTextOnFocus = false
-    TextBox.Parent = SliderInput
-    SliderFrame.AnchorPoint = Vector2.new(1, 0.5)
-    SliderFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    SliderFrame.BackgroundTransparency = 0.8
-    SliderFrame.BorderSizePixel = 0
-    SliderFrame.Position = UDim2.new(1, -20, 0.5, 0)
-    SliderFrame.Size = UDim2.new(0, 100, 0, 3)
-    SliderFrame.Name = "SliderFrame"
-    SliderFrame.Parent = Slider
-    UICorner17.Parent = SliderFrame
-    SliderDraggable.AnchorPoint = Vector2.new(0, 0.5)
-    SliderDraggable.BackgroundColor3 = GuiConfig.Color
-    SliderDraggable.BorderSizePixel = 0
-    SliderDraggable.Position = UDim2.new(0, 0, 0.5, 0)
-    SliderDraggable.Size = UDim2.new(0.9, 0, 0, 1)
-    SliderDraggable.Name = "SliderDraggable"
-    SliderDraggable.Parent = SliderFrame
-    UICorner18.Parent = SliderDraggable
-    SliderCircle.AnchorPoint = Vector2.new(1, 0.5)
-    SliderCircle.BackgroundColor3 = GuiConfig.Color
-    SliderCircle.BorderSizePixel = 0
-    SliderCircle.Position = UDim2.new(1, 4, 0.5, 0)
-    SliderCircle.Size = UDim2.new(0, 8, 0, 8)
-    SliderCircle.Name = "SliderCircle"
-    SliderCircle.Parent = SliderDraggable
-    UICorner19.Parent = SliderCircle
-    UIStroke6.Color = GuiConfig.Color
-    UIStroke6.Parent = SliderCircle
+    TextBox.BorderSizePixel    = 0
+    TextBox.ClearTextOnFocus   = false
+    TextBox.Size               = UDim2.new(0, 30, 0, 20)
+    TextBox.LayoutOrder        = 4
+    TextBox.Name               = "TextBox"
+    TextBox.Parent             = RightContainer
+
+    -- ── Tooltip Wind UI style (opsional) ────────────────────────────────
+    local TooltipFrame   = nil
+    local TooltipLabel   = nil
+    local TooltipScale   = nil
+    local TooltipBg      = nil
+    local TooltipArrow   = nil
+
+    if cfg.Tooltip then
+        TooltipFrame = Instance.new("Frame")
+        TooltipFrame.Name               = "Tooltip"
+        TooltipFrame.AnchorPoint        = Vector2.new(0.5, 1)
+        TooltipFrame.Position           = UDim2.new(0.5, 0, 0, -4)
+        TooltipFrame.AutomaticSize      = Enum.AutomaticSize.XY
+        TooltipFrame.BackgroundTransparency = 1
+        TooltipFrame.ZIndex             = 20
+        TooltipFrame.Visible            = false
+        TooltipFrame.ClipsDescendants   = false
+        TooltipFrame.Parent             = Thumb
+
+        local TipList = Instance.new("UIListLayout")
+        TipList.FillDirection           = Enum.FillDirection.Vertical
+        TipList.HorizontalAlignment     = Enum.HorizontalAlignment.Center
+        TipList.VerticalAlignment       = Enum.VerticalAlignment.Center
+        TipList.Padding                 = UDim.new(0, 0)
+        TipList.Parent                  = TooltipFrame
+
+        TooltipScale = Instance.new("UIScale")
+        TooltipScale.Scale              = 0.85
+        TooltipScale.Parent             = TooltipFrame
+
+        TooltipBg = Instance.new("Frame")
+        TooltipBg.Name                  = "Background"
+        TooltipBg.AutomaticSize         = Enum.AutomaticSize.XY
+        TooltipBg.BackgroundColor3      = Color3.fromRGB(28, 28, 32)
+        TooltipBg.BackgroundTransparency = 1
+        TooltipBg.BorderSizePixel       = 0
+        TooltipBg.ZIndex                = 21
+        TooltipBg.LayoutOrder           = 1
+        TooltipBg.Parent                = TooltipFrame
+        Instance.new("UICorner", TooltipBg).CornerRadius = UDim.new(1, 0)
+        local BgPad = Instance.new("UIPadding")
+        BgPad.PaddingLeft   = UDim.new(0, 10)
+        BgPad.PaddingRight  = UDim.new(0, 10)
+        BgPad.PaddingTop    = UDim.new(0, 5)
+        BgPad.PaddingBottom = UDim.new(0, 5)
+        BgPad.Parent        = TooltipBg
+
+        TooltipLabel = Instance.new("TextLabel")
+        TooltipLabel.Name               = "Label"
+        TooltipLabel.AutomaticSize      = Enum.AutomaticSize.XY
+        TooltipLabel.BackgroundTransparency = 1
+        TooltipLabel.Font               = Enum.Font.GothamBold
+        TooltipLabel.Text               = tostring(FormatValue(cfg.Default))
+        TooltipLabel.TextColor3         = Color3.fromRGB(255, 255, 255)
+        TooltipLabel.TextTransparency   = 1
+        TooltipLabel.TextSize           = 13
+        TooltipLabel.ZIndex             = 22
+        TooltipLabel.Parent             = TooltipBg
+
+        TooltipArrow = Instance.new("Frame")
+        TooltipArrow.Name               = "Arrow"
+        TooltipArrow.Size               = UDim2.new(0, 10, 0, 5)
+        TooltipArrow.BackgroundColor3   = Color3.fromRGB(28, 28, 32)
+        TooltipArrow.BackgroundTransparency = 1
+        TooltipArrow.BorderSizePixel    = 0
+        TooltipArrow.ZIndex             = 21
+        TooltipArrow.LayoutOrder        = 2
+        TooltipArrow.Parent             = TooltipFrame
+        local ArrowGrad = Instance.new("UIGradient")
+        ArrowGrad.Rotation              = 45
+        ArrowGrad.Transparency          = NumberSequence.new({
+            NumberSequenceKeypoint.new(0,   0),
+            NumberSequenceKeypoint.new(0.5, 0),
+            NumberSequenceKeypoint.new(0.5, 1),
+            NumberSequenceKeypoint.new(1,   1),
+        })
+        ArrowGrad.Parent                = TooltipArrow
+    end
+
+    local function OpenTooltip()
+        if not TooltipFrame then return end
+        TooltipFrame.Visible = true
+        TweenService:Create(TooltipBg,    TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
+        TweenService:Create(TooltipArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
+        TweenService:Create(TooltipLabel, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
+        TweenService:Create(TooltipScale, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+    end
+
+    local function CloseTooltip()
+        if not TooltipFrame then return end
+        TweenService:Create(TooltipBg,    TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(TooltipArrow, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+        TweenService:Create(TooltipLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { TextTransparency = 1 }):Play()
+        TweenService:Create(TooltipScale, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Scale = 0.85 }):Play()
+        task.delay(0.35, function()
+            CloseTooltip()
+        end)
+    end
+
+    -- ── Hitbox transparan di atas track (area klik lebih lebar) ──────────
     local SliderHitbox = Instance.new("TextButton")
-    SliderHitbox.Text = ""
+    SliderHitbox.Text              = ""
     SliderHitbox.BackgroundTransparency = 1
-    SliderHitbox.AutoButtonColor = false
-    SliderHitbox.AnchorPoint = Vector2.new(1, 0.5)
-    SliderHitbox.Position = UDim2.new(1, -20, 0.5, 0)
-    SliderHitbox.Size = UDim2.new(0, 100, 0, 44)
-    SliderHitbox.ZIndex = 5
-    SliderHitbox.Name = "SliderHitbox"
-    SliderHitbox.Parent = Slider
+    SliderHitbox.AutoButtonColor   = false
+    SliderHitbox.Size              = UDim2.new(1, 8, 0, 40)
+    SliderHitbox.AnchorPoint       = Vector2.new(0.5, 0.5)
+    SliderHitbox.Position          = UDim2.new(0.5, 0, 0.5, 0)
+    SliderHitbox.ZIndex            = 5
+    SliderHitbox.Name              = "SliderHitbox"
+    SliderHitbox.Parent            = TrackBg
+
+    -- ── Logika drag ───────────────────────────────────────────────────────
     local Dragging = false
-    local _settingFromCode = false
-    local function GetScaleFromInput(inputX)
+    local moveConn, releaseConn
+    local RunService = game:GetService("RunService")
+
+    local function GetDelta(inputX)
         return math.clamp(
-            (inputX - SliderFrame.AbsolutePosition.X) / SliderFrame.AbsoluteSize.X,
+            (inputX - TrackBg.AbsolutePosition.X) / TrackBg.AbsoluteSize.X,
             0, 1
         )
     end
+
+    local function UpdateVisual(delta)
+        TweenService:Create(TrackFill, TweenInfo.new(0.05), { Size = UDim2.new(delta, 0, 1, 0) }):Play()
+    end
+
+    -- cari ScrollingFrame terdekat untuk disable scroll saat drag
+    local function FindScrollParent()
+        if cfg.ScrollParent then return cfg.ScrollParent end
+        local p = Slider.Parent
+        for _ = 1, 10 do
+            if not p then break end
+            if p:IsA("ScrollingFrame") then return p end
+            p = p.Parent
+        end
+        return nil
+    end
+
     function SliderFunc:Set(Value, SkipCallback)
-        Value = math.clamp(RoundToFactor(tonumber(Value) or cfg.Min, cfg.Increment), cfg.Min, cfg.Max)
-        SliderFunc.Value = Value
+        Value = math.clamp(
+            RoundToFactor(tonumber(Value) or cfg.Min, cfg.Increment),
+            cfg.Min, cfg.Max
+        )
+        local formatted = FormatValue(Value)
+        if formatted == LastValue and not SkipCallback then return end
+        SliderFunc.Value = formatted
+        LastValue = formatted
         _settingFromCode = true
-        TextBox.Text = tostring(Value)
+        TextBox.Text = tostring(formatted)
         _settingFromCode = false
-        local scale = (Value - cfg.Min) / (cfg.Max - cfg.Min)
-        TweenService:Create(SliderDraggable, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromScale(scale, 1) }):Play()
+        if TooltipLabel then
+            TooltipLabel.Text = tostring(formatted)
+        end
+        local delta = (Value - cfg.Min) / (cfg.Max - cfg.Min)
+        UpdateVisual(delta)
         if not SkipCallback then
-            SafeCall(cfg.Callback, Value)
-            ConfigData[configKey] = Value
+            SafeCall(cfg.Callback, formatted)
+            ConfigData[configKey] = formatted
             SaveConfig()
         end
     end
+
     function SliderFunc:GetValue() return SliderFunc.Value end
+
     function SliderFunc:SetMin(min)
         cfg.Min = tonumber(min) or cfg.Min
         if cfg.Min >= cfg.Max then cfg.Max = cfg.Min + 1 end
-        SliderFunc:Set(SliderFunc.Value)
+        SliderFunc:Set(math.max(SliderFunc.Value, cfg.Min), true)
     end
+
     function SliderFunc:SetMax(max)
         cfg.Max = tonumber(max) or cfg.Max
         if cfg.Max <= cfg.Min then cfg.Min = cfg.Max - 1 end
-        SliderFunc:Set(SliderFunc.Value)
+        SliderFunc:Set(math.min(SliderFunc.Value, cfg.Max), true)
     end
-    SliderHitbox.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-            Dragging = true
-            TweenService:Create(SliderCircle, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 14, 0, 14) }):Play()
-            SliderFunc:Set(cfg.Min + ((cfg.Max - cfg.Min) * GetScaleFromInput(Input.Position.X)))
+
+    -- InputBegan: mulai drag
+    SliderHitbox.InputBegan:Connect(function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1
+        and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        if _IsSliderHolding then return end
+
+        Dragging = true
+        _IsSliderHolding = true
+
+        -- Disable scroll saat drag
+        local scrollP = FindScrollParent()
+        if scrollP then scrollP.ScrollingEnabled = false end
+
+        -- Thumb membesar (animasi Wind UI)
+        TweenService:Create(Thumb,
+            TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+            { Size = UDim2.new(0, THUMB_W + 6, 0, THUMB_H + 6),
+              BackgroundTransparency = 0.15 }):Play()
+
+        OpenTooltip()
+
+        -- Set nilai di posisi klik
+        local isTouch = input.UserInputType == Enum.UserInputType.Touch
+        local function GetX()
+            return isTouch and input.Position.X or UserInputService:GetMouseLocation().X
         end
-    end)
-    UserInputService.InputEnded:Connect(function(Input)
-        if Dragging and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
+        SliderFunc:Set(cfg.Min + (cfg.Max - cfg.Min) * GetDelta(GetX()))
+
+        -- RenderStepped: update smooth setiap frame
+        if moveConn then moveConn:Disconnect() end
+        moveConn = RunService.Heartbeat:Connect(function()
+            if not Dragging then return end
+            local x = isTouch and input.Position.X or UserInputService:GetMouseLocation().X
+            SliderFunc:Set(cfg.Min + (cfg.Max - cfg.Min) * GetDelta(x))
+        end)
+
+        -- InputEnded: selesai drag
+        if releaseConn then releaseConn:Disconnect() end
+        releaseConn = UserInputService.InputEnded:Connect(function(endInput)
+            if endInput.UserInputType ~= Enum.UserInputType.MouseButton1
+            and endInput.UserInputType ~= Enum.UserInputType.Touch then return end
+
             Dragging = false
-            TweenService:Create(SliderCircle, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 8, 0, 8) }):Play()
-        end
+            _IsSliderHolding = false
+            if moveConn then moveConn:Disconnect(); moveConn = nil end
+            if releaseConn then releaseConn:Disconnect(); releaseConn = nil end
+
+            -- Re-enable scroll
+            if scrollP then scrollP.ScrollingEnabled = true end
+
+            -- Thumb kembali ke ukuran normal (Quint)
+            TweenService:Create(Thumb,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut),
+                { Size = UDim2.new(0, THUMB_W, 0, THUMB_H),
+                  BackgroundTransparency = 0 }):Play()
+
+            CloseTooltip()
+        end)
     end)
-    UserInputService.InputChanged:Connect(function(Input)
-        if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
-            SliderFunc:Set(cfg.Min + ((cfg.Max - cfg.Min) * GetScaleFromInput(Input.Position.X)))
-        end
-    end)
-    TextBox.FocusLost:Connect(function()
+
+    -- TextBox manual input
+    TextBox.FocusLost:Connect(function(enterPressed)
         if _settingFromCode then return end
-        local raw = TextBox.Text:gsub("[^%d%-%.]+", "")
+        if not enterPressed then
+            -- Kembalikan teks ke nilai terakhir kalau tidak enter
+            _settingFromCode = true
+            TextBox.Text = tostring(SliderFunc.Value)
+            _settingFromCode = false
+            return
+        end
+        local raw = TextBox.Text:gsub("[^%d%-%.]", "")
         local num = tonumber(raw)
         if num then
             SliderFunc:Set(num)
@@ -1754,10 +2193,12 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
             _settingFromCode = false
         end
     end)
+
     local LockFunc = ApplyLock(Slider, cfg.Locked)
     function SliderFunc:SetLocked(state) LockFunc:SetLocked(state) end
     function SliderFunc:GetLocked() return LockFunc:GetLocked() end
     function SliderFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
+
     SliderFunc:Set(cfg.Default, true)
     Elements_Table[configKey] = SliderFunc
     _registeredElements[configKey] = SliderFunc
