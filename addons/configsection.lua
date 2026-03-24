@@ -13,16 +13,28 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
         local CURRENT_VERSION = getCURRENT_VERSION()
         local ConfigData      = getConfigData()
 
-        local sectionName, sectionIcon
+        local sectionName, sectionIcon, customFolderName
         if type(SectionConfig) == "string" then
-            sectionName = SectionConfig
-            sectionIcon = ""
+            sectionName      = SectionConfig
+            sectionIcon      = ""
+            customFolderName = nil
         elseif type(SectionConfig) == "table" then
-            sectionName = SectionConfig.Name or "Configuration"
-            sectionIcon = SectionConfig.Icon or ""
+            sectionName      = SectionConfig.Name       or "Configuration"
+            sectionIcon      = SectionConfig.Icon       or ""
+            customFolderName = SectionConfig.FolderName or nil  -- ✅ NEW: custom folder name
         else
-            sectionName = "Configuration"
-            sectionIcon = ""
+            sectionName      = "Configuration"
+            sectionIcon      = ""
+            customFolderName = nil
+        end
+
+        -- ✅ NEW: jika FolderName disediakan, override ConfigFolder base-nya
+        if customFolderName and customFolderName ~= "" then
+            -- sanitize: hanya izinkan karakter aman untuk nama folder
+            local sanitized = customFolderName:match("^%s*(.-)%s*$"):gsub("[^%w_%-]", "_")
+            if sanitized ~= "" then
+                ConfigFolder = sanitized
+            end
         end
 
         local cfgFolder = ConfigFolder .. "/Config"
@@ -70,7 +82,6 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             end)
             if ok and type(data) == "table" then
                 if data._version == CURRENT_VERSION then
-                    -- update ConfigData in-place
                     for k in pairs(ConfigData) do
                         ConfigData[k] = nil
                     end
@@ -79,15 +90,11 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
                     end
                     ConfigData._version = CURRENT_VERSION
 
-                    -- ✅ FIX: hanya fire callback untuk key yang ADA di file
-                    -- key yang tidak ada di file = tidak pernah di-save = callback tidak fire
                     local Elements = getElements()
                     for key, element in pairs(Elements) do
                         if data[key] ~= nil and element.Set then
-                            -- key ada di file → set nilai + fire callback
                             element:Set(data[key], false)
                         elseif element.Set then
-                            -- key tidak ada di file → silent, callback tidak fire
                             element:Set(element.Value, true)
                         end
                     end
@@ -282,7 +289,6 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             Content = currentAutoload ~= "" and currentAutoload or "none",
         })
 
-        -- ✅ FIX: hanya autoload kalau AUTO_LOAD = true di GuiConfig
         local _autoLoadEnabled = (getAutoLoad == nil) or (type(getAutoLoad) == "function" and getAutoLoad() == true)
         if currentAutoload ~= "" and _autoLoadEnabled then
             task.defer(function()
