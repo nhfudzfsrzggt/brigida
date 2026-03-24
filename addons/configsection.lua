@@ -1,6 +1,6 @@
 -- // configsection.lua | VelarisUI AddConfigSection Module
 
-return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getElements, LoadConfigElements, SaveConfig, Nt)
+return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getElements, LoadConfigElements, SaveConfig, Nt, getAutoLoad)
 
     local HttpService = game:GetService("HttpService")
 
@@ -282,7 +282,9 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             Content = currentAutoload ~= "" and currentAutoload or "none",
         })
 
-        if currentAutoload ~= "" then
+        -- ✅ FIX: hanya autoload kalau AUTO_LOAD = true di GuiConfig
+        local _autoLoadEnabled = (getAutoLoad == nil) or (type(getAutoLoad) == "function" and getAutoLoad() == true)
+        if currentAutoload ~= "" and _autoLoadEnabled then
             task.defer(function()
                 task.wait(0.5)
                 if loadConfig(currentAutoload) then
