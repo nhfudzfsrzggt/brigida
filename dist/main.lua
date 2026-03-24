@@ -655,7 +655,6 @@ _ConfigSectionSetup(
             Delay       = delay or 4,
         })
     end,
-    -- FIX: pass AUTO_LOAD getter agar configsection cek sebelum autoload
     function() return AUTO_LOAD end
 )
 
@@ -701,7 +700,16 @@ function Chloex:Window(GuiConfig)
     gameName = gameName:gsub("%s+", "_")
     ConfigFile = ConfigFolder .. "/Config/CHX_" .. gameName .. ".json"
 
-    if AUTO_LOAD then LoadConfigFromFile() end
+    -- ✅ FIX: kalau AUTO_LOAD = false, bersihkan ConfigData supaya elemen
+    -- tidak baca nilai lama dari file saat dibuat (pakai Default masing-masing)
+    if AUTO_LOAD then
+        LoadConfigFromFile()
+    else
+        for k in pairs(ConfigData) do
+            ConfigData[k] = nil
+        end
+        ConfigData._version = CURRENT_VERSION
+    end
 
     ElementsModule:Initialize(GuiConfig, SaveConfig, ConfigData, Icons)
 
