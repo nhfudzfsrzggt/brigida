@@ -62,7 +62,6 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             return ok
         end
 
-        -- ✅ FIX: update ConfigData in-place agar semua referensi Element ikut ter-update
         local function loadConfig(name)
             local path = toPath(name)
             if not (isfile and isfile(path)) then return false end
@@ -71,17 +70,27 @@ return function(Chloex, getConfigFolder, getCURRENT_VERSION, getConfigData, getE
             end)
             if ok and type(data) == "table" then
                 if data._version == CURRENT_VERSION then
-                    -- Hapus semua key lama
+                    -- update ConfigData in-place
                     for k in pairs(ConfigData) do
                         ConfigData[k] = nil
                     end
-                    -- Isi ulang dengan data baru (in-place, bukan replace reference)
                     for k, v in pairs(data) do
                         ConfigData[k] = v
                     end
                     ConfigData._version = CURRENT_VERSION
-                    -- Terapkan ke semua element
-                    LoadConfigElements()
+
+                    -- ✅ FIX: hanya fire callback untuk key yang ADA di file
+                    -- key yang tidak ada di file = tidak pernah di-save = callback tidak fire
+                    local Elements = getElements()
+                    for key, element in pairs(Elements) do
+                        if data[key] ~= nil and element.Set then
+                            -- key ada di file → set nilai + fire callback
+                            element:Set(data[key], false)
+                        elseif element.Set then
+                            -- key tidak ada di file → silent, callback tidak fire
+                            element:Set(element.Value, true)
+                        end
+                    end
                     return true
                 else
                     notify("Version mismatch on '" .. name .. "'!", 3, Color3.fromRGB(255, 165, 0))
