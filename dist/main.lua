@@ -642,7 +642,6 @@ _ConfigSectionSetup(
     Chloex,
     function() return ConfigFolder end,
     function() return CURRENT_VERSION end,
-    -- ✅ FIX: selalu return referensi ConfigData yang sama (bukan copy)
     function() return ConfigData end,
     function() return Elements end,
     LoadConfigElements,
@@ -655,7 +654,9 @@ _ConfigSectionSetup(
             Color       = color or Color3.fromRGB(0, 208, 255),
             Delay       = delay or 4,
         })
-    end
+    end,
+    -- FIX: pass AUTO_LOAD getter agar configsection cek sebelum autoload
+    function() return AUTO_LOAD end
 )
 
 
