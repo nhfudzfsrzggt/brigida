@@ -1,4 +1,4 @@
--- // VilarisUi | Version : 0.2.3 | | Main.lua
+-- // VilarisUi | Version : 0.2.2 | Fixed Animation Title & Footer | Main.lua
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
@@ -118,7 +118,7 @@ end
 function LoadConfigElements()
     for key, element in pairs(Elements) do
         if ConfigData[key] ~= nil and element.Set then
-            element:Set(ConfigData[key], true)
+            element:Set(ConfigData[key], false)  -- false = callback ikut dipanggil saat load
         end
     end
 end
