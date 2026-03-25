@@ -61,67 +61,7 @@ local function getColor(colorInput)
     return ColorModule["Default"] or Color3.fromRGB(0, 208, 255)
 end
 
-local ConfigFolder = "Velaris UI"
-local ConfigFile = ""
-local ConfigData = {}
 local Elements = {}
-local CURRENT_VERSION = nil
-local AUTO_SAVE = false
-local AUTO_LOAD = false
-
-function SaveConfig()
-    if writefile and ConfigFile ~= "" then
-        ConfigData._version = CURRENT_VERSION
-        writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
-    end
-end
-
--- ✅ FIX: update ConfigData in-place agar semua referensi element tidak stale
-function LoadConfigFromFile()
-    if not CURRENT_VERSION or ConfigFile == "" then return end
-    if isfile and isfile(ConfigFile) then
-        local success, result = pcall(function()
-            return HttpService:JSONDecode(readfile(ConfigFile))
-        end)
-        if success and type(result) == "table" then
-            if result._version == CURRENT_VERSION then
-                -- Hapus semua key lama dulu
-                for k in pairs(ConfigData) do
-                    ConfigData[k] = nil
-                end
-                -- Isi ulang in-place (bukan ganti referensi tabel)
-                for k, v in pairs(result) do
-                    ConfigData[k] = v
-                end
-                ConfigData._version = CURRENT_VERSION
-            else
-                -- Version beda: reset bersih
-                for k in pairs(ConfigData) do
-                    ConfigData[k] = nil
-                end
-                ConfigData._version = CURRENT_VERSION
-            end
-        else
-            for k in pairs(ConfigData) do
-                ConfigData[k] = nil
-            end
-            ConfigData._version = CURRENT_VERSION
-        end
-    else
-        for k in pairs(ConfigData) do
-            ConfigData[k] = nil
-        end
-        ConfigData._version = CURRENT_VERSION
-    end
-end
-
-function LoadConfigElements()
-    for key, element in pairs(Elements) do
-        if ConfigData[key] ~= nil and element.Set then
-            element:Set(ConfigData[key], false)  -- false = callback ikut dipanggil saat load
-        end
-    end
-end
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -308,7 +248,7 @@ local function _InitColorpicker(AccentColor, MainDropShadow)
     if _ColorpickerModule then return end
     _ColorpickerModule = _ColorpickerSetup(
         TweenService, UserInputService, CoreGui,
-        getIconId, ConfigData, AUTO_SAVE, SaveConfig, ElementsModule
+        getIconId, {}, false, function() end, ElementsModule
     )
 end
 
@@ -623,7 +563,7 @@ end
 
 function Nt(msg, delay, color, title, desc)
     return Chloex:MakeNotify({
-        Title       = title or ConfigFolder,
+        Title       = title or "VelarisUI",
         Description = desc or "Notification",
         Content     = msg or "Content",
         Color       = color or Color3.fromRGB(0, 208, 255),
@@ -637,28 +577,6 @@ function Chloex:Dialog(DialogConfig)
     return DialogModule(DialogConfig)
 end
 
-local _ConfigSectionSetup = loadUrl("https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/addons/configsection.lua")
-_ConfigSectionSetup(
-    Chloex,
-    function() return ConfigFolder end,
-    function() return CURRENT_VERSION end,
-    function() return ConfigData end,
-    function() return Elements end,
-    LoadConfigElements,
-    SaveConfig,
-    function(msg, delay, color, title, desc)
-        Chloex:MakeNotify({
-            Title       = title or ConfigFolder,
-            Description = desc or "Notification",
-            Content     = msg or "",
-            Color       = color or Color3.fromRGB(0, 208, 255),
-            Delay       = delay or 4,
-        })
-    end,
-    function() return AUTO_LOAD end
-)
-
-
 function Chloex:Window(GuiConfig)
     GuiConfig               = GuiConfig or {}
     GuiConfig.Title         = GuiConfig.Title or "Chloe X"
@@ -667,11 +585,9 @@ function Chloex:Window(GuiConfig)
     GuiConfig.ShowUser      = GuiConfig.ShowUser or false
     GuiConfig.Color         = getColor(GuiConfig.Color or "Default")
     GuiConfig["Tab Width"]  = GuiConfig["Tab Width"] or 120
-    GuiConfig.Version       = GuiConfig.Version or 1
     GuiConfig.Uitransparent = GuiConfig.Uitransparent or 0.15
     GuiConfig.Image         = GuiConfig.Image or "70884221600423"
     GuiConfig.Icon          = GuiConfig.Icon or "rbxassetid://103875081318049"
-    GuiConfig.Configname    = GuiConfig.Configname or "Velaris UI"
     GuiConfig.Size          = GuiConfig.Size or UDim2.fromOffset(640, 400)
     GuiConfig.Search        = GuiConfig.Search ~= nil and GuiConfig.Search or false
 
@@ -682,36 +598,7 @@ function Chloex:Window(GuiConfig)
     GuiConfig.DiscordSet.Link   = GuiConfig.DiscordSet.Link or ""
     GuiConfig.DiscordSet.Icon   = GuiConfig.DiscordSet.Icon or ""
 
-    GuiConfig.Config = GuiConfig.Config or {}
-    GuiConfig.Config.AutoSave = GuiConfig.Config.AutoSave ~= nil and GuiConfig.Config.AutoSave or true
-    GuiConfig.Config.AutoLoad = GuiConfig.Config.AutoLoad ~= nil and GuiConfig.Config.AutoLoad or true
-
-    CURRENT_VERSION = GuiConfig.Version
-    AUTO_SAVE       = GuiConfig.Config.AutoSave
-    AUTO_LOAD       = GuiConfig.Config.AutoLoad
-
-    ConfigFolder = GuiConfig.Configname
-
-    if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
-    if not isfolder(ConfigFolder .. "/Config") then makefolder(ConfigFolder .. "/Config") end
-
-    local gameName = tostring(game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name)
-    gameName = gameName:gsub("[^%w_ ]", "")
-    gameName = gameName:gsub("%s+", "_")
-    ConfigFile = ConfigFolder .. "/Config/CHX_" .. gameName .. ".json"
-
-    -- ✅ FIX: kalau AUTO_LOAD = false, bersihkan ConfigData supaya elemen
-    -- tidak baca nilai lama dari file saat dibuat (pakai Default masing-masing)
-    if AUTO_LOAD then
-        LoadConfigFromFile()
-    else
-        for k in pairs(ConfigData) do
-            ConfigData[k] = nil
-        end
-        ConfigData._version = CURRENT_VERSION
-    end
-
-    ElementsModule:Initialize(GuiConfig, SaveConfig, ConfigData, Icons)
+    ElementsModule:Initialize(GuiConfig, function() end, {}, Icons)
 
     local ks = GuiConfig.KeySystem
     if ks then
@@ -1624,7 +1511,7 @@ function Chloex:Window(GuiConfig)
     Close.Activated:Connect(function()
         CircleClick(Close, Mouse.X, Mouse.Y)
         Chloex:Dialog({
-            Title = GuiConfig.Configname .. " Window",
+            Title = "Window",
             Content = "Do you want to close this window?\nYou will not be able to open it again",
             Buttons = {
                 {
@@ -1885,8 +1772,8 @@ function Chloex:Window(GuiConfig)
         TweenService,
         getIconId,
         CircleClick,
-        SaveConfig,
-        ConfigData
+        function() end,
+        {}
     )
 
     for k, v in pairs(Tabs) do
