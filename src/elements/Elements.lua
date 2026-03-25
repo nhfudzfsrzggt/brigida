@@ -1,6 +1,7 @@
 -- // vilarisUi | Elements.lua
 -- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
 -- Upgrade: CreateToggle & CreateCheckbox support cfg.Icon di dalam knob/checkbox
+-- Fix: Flag wajib ada untuk config save — tanpa Flag element tetap jalan tapi tidak disimpan
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -31,11 +32,27 @@ function Elements:GetIconId(iconName)
     return GetIconId(iconName)
 end
 
-local function ResolveKey(prefix, cfg)
-    if cfg.Flag and cfg.Flag ~= "" then
-        return cfg.Flag
+-- ══════════════════════════════════════════════════════════════
+-- Flag wajib untuk config save
+-- Kalau tidak ada Flag → return nil → skip config read/write/save
+-- ══════════════════════════════════════════════════════════════
+local function ResolveKey(cfg)
+    if cfg and cfg.Flag and tostring(cfg.Flag) ~= "" then
+        return tostring(cfg.Flag)
     end
-    return prefix .. "_" .. cfg.Title
+    return nil  -- tidak ada Flag = tidak disimpan ke config
+end
+
+local function ReadConfig(key, default)
+    if not key then return default end
+    local saved = ConfigData[key]
+    return saved ~= nil and saved or default
+end
+
+local function WriteConfig(key, value)
+    if not key then return end
+    ConfigData[key] = value
+    SaveConfig()
 end
 
 local BADGE_CONFIG = {
@@ -750,8 +767,9 @@ function Elements:CreateEditableParagraph(parent, config, countItem)
     cfg.Default     = cfg.Default     or ""
     cfg.Badge       = cfg.Badge       or nil
     cfg.Locked      = cfg.Locked      or false
-    local configKey = ResolveKey("EditableParagraph", cfg)
-    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
+    -- Flag required
+    local configKey = ResolveKey(cfg)
+    cfg.Default = ReadConfig(configKey, cfg.Default)
     local ParagraphFunc = { Value = cfg.Default }
     local Paragraph        = Instance.new("Frame")
     local UICorner         = Instance.new("UICorner")
@@ -851,8 +869,7 @@ function Elements:CreateEditableParagraph(parent, config, countItem)
     ParagraphTextBox:GetPropertyChangedSignal("Text"):Connect(function()
         UpdateSize()
         ParagraphFunc.Value = ParagraphTextBox.Text
-        ConfigData[configKey] = ParagraphTextBox.Text
-        SaveConfig()
+        WriteConfig(configKey, ParagraphTextBox.Text)
         SafeCall(cfg.Callback, ParagraphTextBox.Text)
     end)
     ParagraphTextBox:GetPropertyChangedSignal("TextBounds"):Connect(UpdateSize)
@@ -880,8 +897,9 @@ function Elements:CreatePanel(parent, config, countItem)
     cfg.SubButtonCallback = cfg.SubCallback    or cfg.SubButtonCallback or function() end
     cfg.Badge             = cfg.Badge          or nil
     cfg.Locked            = cfg.Locked         or false
-    local configKey = ResolveKey("Panel", cfg)
-    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
+    -- Flag required
+    local configKey = ResolveKey(cfg)
+    cfg.Default = ReadConfig(configKey, cfg.Default)
     local PanelFunc = { Value = cfg.Default }
     local baseHeight = 50
     if cfg.Placeholder then baseHeight = baseHeight + 40 end
@@ -998,8 +1016,7 @@ function Elements:CreatePanel(parent, config, countItem)
     if InputBox then
         InputBox.FocusLost:Connect(function()
             PanelFunc.Value = InputBox.Text
-            ConfigData[configKey] = InputBox.Text
-            SaveConfig()
+            WriteConfig(configKey, InputBox.Text)
         end)
     end
     local LockFunc = ApplyLock(Panel, cfg.Locked)
@@ -1220,8 +1237,7 @@ function Elements:CreateButton(parent, config, countItem)
 end
 
 -- ============================================================
---  CreateToggle  ★ UPGRADE: Drag horizontal + scroll guard
---               ★ UPGRADE: cfg.Icon support (Toggle & Checkbox)
+--  CreateToggle
 -- ============================================================
 function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Elements_Table)
     local cfg = config or {}
@@ -1233,11 +1249,12 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     cfg.Badge    = cfg.Badge    or nil
     cfg.Locked   = cfg.Locked   or false
     cfg.Type     = cfg.Type     or "Toggle"
-    cfg.Icon     = cfg.Icon     or nil   -- rbxassetid / lucide / solar / angka / URL
-    local configKey = ResolveKey("Toggle", cfg)
-    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
+    cfg.Icon     = cfg.Icon     or nil
+    -- Flag required — tanpa Flag tidak disimpan
+    local configKey = ResolveKey(cfg)
+    cfg.Default = ReadConfig(configKey, cfg.Default)
     if typeof(cfg.Default) ~= "boolean" then cfg.Default = cfg.Default and true or false end
-    local ToggleFunc = { Value = cfg.Default }
+    local ToggleFunc = { Value = cfg.Default, Flag = configKey }
 
     local Toggle        = Instance.new("Frame")
     local UICorner20    = Instance.new("UICorner")
@@ -1326,7 +1343,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     ToggleButton.Name = "ToggleButton"
     ToggleButton.Parent = Toggle
 
-    -- ── Komponen visual ──────────────────────────────────────────
     local FeatureFrame, ToggleCircle, UIStroke8
     local CheckboxFrame, CheckMark
     local CircleScale = nil
@@ -1334,11 +1350,10 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     local TRACK_W  = 30
     local CIRCLE_W = 14
     local DRAG_MIN = 0
-    local DRAG_MAX = TRACK_W - CIRCLE_W  -- = 16
+    local DRAG_MAX = TRACK_W - CIRCLE_W
 
-    -- Icon references (dipakai di Set())
-    local ToggleIcon   = nil  -- untuk tipe Toggle
-    local CheckboxIcon = nil  -- untuk tipe Checkbox
+    local ToggleIcon   = nil
+    local CheckboxIcon = nil
 
     if cfg.Type == "Checkbox" then
         CheckboxFrame = Instance.new("Frame")
@@ -1369,10 +1384,8 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         CheckMark.ImageTransparency = 1
         CheckMark.ZIndex = 2
         CheckMark.Parent = CheckboxFrame
-
-        -- ★ Icon di dalam CheckboxFrame (menggantikan CheckMark jika ada Icon)
         if cfg.Icon and cfg.Icon ~= "" then
-            CheckMark.Visible = false  -- sembunyikan checkmark default
+            CheckMark.Visible = false
             CheckboxIcon = Instance.new("ImageLabel")
             CheckboxIcon.Name                   = "CheckboxIcon"
             CheckboxIcon.AnchorPoint            = Vector2.new(0.5, 0.5)
@@ -1411,8 +1424,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         CircleScale = Instance.new("UIScale")
         CircleScale.Scale  = 1
         CircleScale.Parent = ToggleCircle
-
-        -- ★ Icon di dalam ToggleCircle (fade in saat ON)
         if cfg.Icon and cfg.Icon ~= "" then
             ToggleIcon = Instance.new("ImageLabel")
             ToggleIcon.Name                   = "ToggleIcon"
@@ -1423,19 +1434,18 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
             ToggleIcon.ScaleType              = Enum.ScaleType.Fit
             ToggleIcon.Image                  = GetIconId(cfg.Icon)
             ToggleIcon.ImageColor3            = Color3.fromRGB(255, 255, 255)
-            ToggleIcon.ImageTransparency      = 1   -- mulai hidden
+            ToggleIcon.ImageTransparency      = 1
             ToggleIcon.ZIndex                 = 3
             ToggleIcon.Parent                 = ToggleCircle
         end
     end
 
-    -- ── ToggleFunc:Set ────────────────────────────────────────────
     function ToggleFunc:Set(Value, SkipCallback)
         Value = Value and true or false
         ToggleFunc.Value = Value
-        ConfigData[configKey] = Value
+        -- hanya simpan kalau ada Flag
         if not SkipCallback then
-            SaveConfig()
+            WriteConfig(configKey, Value)
             SafeCall(cfg.Callback, Value)
         end
         if cfg.Type == "Checkbox" then
@@ -1444,7 +1454,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 TweenService:Create(ToggleTitle,   TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
                 TweenService:Create(CheckboxFrame, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
                 if cbStroke then TweenService:Create(cbStroke, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play() end
-                -- icon atau checkmark
                 if CheckboxIcon then
                     TweenService:Create(CheckboxIcon, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { ImageTransparency = 0 }):Play()
                 else
@@ -1481,7 +1490,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
         end
     end
 
-    -- ── Drag + Scroll Guard (hanya untuk tipe Toggle, bukan Checkbox) ──
     if cfg.Type ~= "Checkbox" then
         local isDragging   = false
         local isScrolling  = false
@@ -1541,7 +1549,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                 if dY > dX and dY > 8 then
                     isScrolling = true
                     isDragging  = false
-
                     TweenService:Create(ToggleCircle,
                         TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                         { Position = UDim2.new(0, startCircleX, 0, 0),
@@ -1552,7 +1559,6 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
                             { Scale = 1 }):Play()
                     end
                     currentCircleX = startCircleX
-
                     if dragConn then dragConn:Disconnect(); dragConn = nil end
                     if endConn  then endConn:Disconnect();  endConn  = nil end
                     return
@@ -1610,13 +1616,14 @@ function Elements:CreateToggle(parent, config, countItem, updateSectionSize, Ele
     function ToggleFunc:GetLocked() return LockFunc:GetLocked() end
     function ToggleFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     ToggleFunc:Set(ToggleFunc.Value, true)
-    Elements_Table[configKey] = ToggleFunc
-    _registeredElements[configKey] = ToggleFunc
+    -- hanya register ke Elements_Table kalau ada Flag
+    if configKey and Elements_Table then Elements_Table[configKey] = ToggleFunc end
+    if configKey then _registeredElements[configKey] = ToggleFunc end
     return ToggleFunc
 end
 
 -- ============================================================
---  CreateSlider  ★ UPGRADE: Wind UI style
+--  CreateSlider
 -- ============================================================
 local _IsSliderHolding = false
 
@@ -1639,8 +1646,9 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     if cfg.Min >= cfg.Max then cfg.Max = cfg.Min + 1 end
     if cfg.Increment <= 0 then cfg.Increment = 1 end
 
-    local configKey = ResolveKey("Slider", cfg)
-    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
+    -- Flag required
+    local configKey = ResolveKey(cfg)
+    cfg.Default = ReadConfig(configKey, cfg.Default)
 
     local IsFloat = cfg.Increment % 1 ~= 0
     local LastValue = cfg.Default
@@ -1653,7 +1661,7 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         return math.floor(val + 0.5)
     end
 
-    local SliderFunc = { Value = FormatValue(cfg.Default) }
+    local SliderFunc = { Value = FormatValue(cfg.Default), Flag = configKey }
 
     local Slider = Instance.new("Frame")
     Slider.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
@@ -1974,8 +1982,7 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
         UpdateVisual(delta)
         if not SkipCallback then
             SafeCall(cfg.Callback, formatted)
-            ConfigData[configKey] = formatted
-            SaveConfig()
+            WriteConfig(configKey, formatted)
         end
     end
 
@@ -2068,8 +2075,8 @@ function Elements:CreateSlider(parent, config, countItem, updateSectionSize, Ele
     function SliderFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
 
     SliderFunc:Set(cfg.Default, true)
-    Elements_Table[configKey] = SliderFunc
-    _registeredElements[configKey] = SliderFunc
+    if configKey and Elements_Table then Elements_Table[configKey] = SliderFunc end
+    if configKey then _registeredElements[configKey] = SliderFunc end
     return SliderFunc
 end
 
@@ -2084,9 +2091,10 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
     cfg.Type        = cfg.Type        or "Input"
     cfg.Placeholder = cfg.Placeholder or (cfg.Type == "Textarea" and "Type here..." or "Input Here")
     cfg.TextHeight  = cfg.TextHeight  or 60
-    local configKey = ResolveKey("Input", cfg)
-    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
-    local InputFunc = { Value = cfg.Default }
+    -- Flag required
+    local configKey = ResolveKey(cfg)
+    cfg.Default = ReadConfig(configKey, cfg.Default)
+    local InputFunc = { Value = cfg.Default, Flag = configKey }
     local Input      = Instance.new("Frame")
     local InputTitle = Instance.new("TextLabel")
     local InputTextBox
@@ -2257,8 +2265,7 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
         InputFunc.Value = Value
         InputTextBox.Text = Value
         if not SkipCallback then
-            ConfigData[configKey] = Value
-            SaveConfig()
+            WriteConfig(configKey, Value)
             SafeCall(cfg.Callback, Value)
         end
     end
@@ -2271,8 +2278,8 @@ function Elements:CreateInput(parent, config, countItem, updateSectionSize, Elem
     function InputFunc:GetLocked() return LockFunc:GetLocked() end
     function InputFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     InputFunc:Set(InputFunc.Value, true)
-    Elements_Table[configKey] = InputFunc
-    _registeredElements[configKey] = InputFunc
+    if configKey and Elements_Table then Elements_Table[configKey] = InputFunc end
+    if configKey then _registeredElements[configKey] = InputFunc end
     return InputFunc
 end
 
@@ -2287,9 +2294,10 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
     cfg.Badge          = cfg.Badge    or nil
     cfg.Locked         = cfg.Locked   or false
     cfg.DisabledValues = cfg.DisabledValues or {}
-    local configKey = ResolveKey("Dropdown", cfg)
-    if ConfigData[configKey] ~= nil then cfg.Default = ConfigData[configKey] end
-    local DropdownFunc = { Value = cfg.Default, Options = {} }
+    -- Flag required
+    local configKey = ResolveKey(cfg)
+    cfg.Default = ReadConfig(configKey, cfg.Default)
+    local DropdownFunc = { Value = cfg.Default, Options = {}, Flag = configKey }
     local Dropdown           = Instance.new("Frame")
     local DropdownButton     = Instance.new("TextButton")
     local UICorner10         = Instance.new("UICorner")
@@ -2594,7 +2602,7 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
             if type(Value) == "table" then DropdownFunc.Value = Value[1]
             else DropdownFunc.Value = Value end
         end
-        if not SkipCallback then ConfigData[configKey] = DropdownFunc.Value; SaveConfig() end
+        if not SkipCallback then WriteConfig(configKey, DropdownFunc.Value) end
         local texts = {}
         for _, Drop in ScrollSelect:GetChildren() do
             if Drop.Name == "Option" and Drop:FindFirstChild("OptionText") then
@@ -2679,8 +2687,8 @@ function Elements:CreateDropdown(parent, config, countItem, countDropdown, Dropd
     function DropdownFunc:GetLocked() return LockFunc:GetLocked() end
     function DropdownFunc:SetLockMessage(text) LockFunc:SetMessage(text) end
     DropdownFunc:SetValues(cfg.Options, cfg.Default)
-    Elements_Table[configKey] = DropdownFunc
-    _registeredElements[configKey] = DropdownFunc
+    if configKey and Elements_Table then Elements_Table[configKey] = DropdownFunc end
+    if configKey then _registeredElements[configKey] = DropdownFunc end
     return DropdownFunc
 end
 
