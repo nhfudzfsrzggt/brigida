@@ -622,6 +622,12 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Icon          = GuiConfig.Icon or "rbxassetid://103875081318049"
     GuiConfig.Size          = GuiConfig.Size or UDim2.fromOffset(640, 400)
     GuiConfig.Search        = GuiConfig.Search ~= nil and GuiConfig.Search or false
+    GuiConfig.Version       = GuiConfig.Version or "1.0"
+    GuiConfig.Config        = GuiConfig.Config or {}
+    GuiConfig.Config.ConfigFolder = GuiConfig.Config.ConfigFolder or "VelarisUI/Config/"
+    GuiConfig.Config.AutoSaveFile = GuiConfig.Config.AutoSaveFile or "Default"
+    GuiConfig.Config.AutoSave     = GuiConfig.Config.AutoSave ~= nil and GuiConfig.Config.AutoSave or false
+    GuiConfig.Config.AutoLoad     = GuiConfig.Config.AutoLoad ~= nil and GuiConfig.Config.AutoLoad or false
 
     -- DiscordSet defaults
     GuiConfig.DiscordSet        = GuiConfig.DiscordSet or {}
@@ -650,6 +656,117 @@ function Chloex:Window(GuiConfig)
     end
 
     local GuiFunc = {}
+
+    -- ══════════════════════════════════════════════════════════════
+    -- Config System (like LexsHub)
+    -- ══════════════════════════════════════════════════════════════
+    local _ConfigData     = {}
+    local _ConfigElements = {}
+    local _cfgFolder      = GuiConfig.Config.ConfigFolder
+
+    local function _checkFolders()
+        pcall(function()
+            local parts = _cfgFolder:split("/")
+            local path = ""
+            for _, p in ipairs(parts) do
+                if p ~= "" then
+                    path = path == "" and p or (path .. "/" .. p)
+                    if not isfolder(path) then makefolder(path) end
+                end
+            end
+        end)
+    end
+
+    local function _cfgFile(name)
+        return _cfgFolder .. (name or "Default") .. ".json"
+    end
+
+    -- Simpan config ke file
+    function GuiFunc:SaveConfig(name)
+        if not writefile then
+            warn("[VelarisUI] writefile tidak tersedia")
+            return false
+        end
+        _checkFolders()
+        _ConfigData._version = GuiConfig.Version
+        local ok, err = pcall(function()
+            writefile(_cfgFile(name), HttpService:JSONEncode(_ConfigData))
+        end)
+        if not ok then warn("[VelarisUI] SaveConfig error:", err) end
+        return ok
+    end
+
+    -- Load config dari file dan apply ke semua element
+    function GuiFunc:LoadConfig(name)
+        if not isfile or not readfile then
+            warn("[VelarisUI] isfile/readfile tidak tersedia")
+            return false
+        end
+        _checkFolders()
+        local f = _cfgFile(name)
+        if not isfile(f) then return false end
+        local ok, result = pcall(function()
+            return HttpService:JSONDecode(readfile(f))
+        end)
+        if not (ok and type(result) == "table") then return false end
+        _ConfigData = result
+        for key, elem in pairs(_ConfigElements) do
+            local val = _ConfigData[key]
+            if val ~= nil and elem.Set then
+                pcall(function() elem:Set(val) end)
+            end
+        end
+        return true
+    end
+
+    -- Hapus file config
+    function GuiFunc:DeleteConfig(name)
+        if not isfile or not delfile then return false end
+        local f = _cfgFile(name)
+        if isfile(f) then
+            pcall(delfile, f)
+            return true
+        end
+        return false
+    end
+
+    -- List semua nama config yang ada
+    function GuiFunc:ListConfigs()
+        local list = {}
+        if not listfiles then return list end
+        _checkFolders()
+        local ok, files = pcall(listfiles, _cfgFolder)
+        if not ok then return list end
+        for _, path in ipairs(files) do
+            local name = path:match("([^/\\]+)%.json$")
+            if name then table.insert(list, name) end
+        end
+        return list
+    end
+
+    -- Reset semua element ke default (hapus ConfigData)
+    function GuiFunc:ResetConfig(name)
+        _ConfigData = {}
+        for key, elem in pairs(_ConfigElements) do
+            if elem.Set then
+                if elem.Type == "Toggle" then
+                    pcall(function() elem:Set(false) end)
+                elseif elem.Type == "Slider" then
+                    pcall(function() elem:Set(elem.Default or 0) end)
+                elseif elem.Type == "Dropdown" then
+                    pcall(function() elem:Set(elem.Default or (elem.Multi and {} or nil)) end)
+                elseif elem.Type == "Input" then
+                    pcall(function() elem:Set("") end)
+                end
+            end
+        end
+        if name then GuiFunc:DeleteConfig(name) end
+    end
+
+    -- Akses langsung ConfigData & Elements (optional)
+    GuiFunc.ConfigData     = _ConfigData
+    GuiFunc.ConfigElements = _ConfigElements
+    -- ══════════════════════════════════════════════════════════════
 
     local Chloeex           = Instance.new("ScreenGui")
     local DropShadowHolder  = Instance.new("Frame")
@@ -1812,8 +1929,15 @@ function Chloex:Window(GuiConfig)
         GuiFunc[k] = v
     end
 
+    -- AutoLoad: load config otomatis setelah window siap
+    if GuiConfig.Config.AutoLoad then
+        task.defer(function()
+            GuiFunc:LoadConfig(GuiConfig.Config.AutoSaveFile)
+        end)
+    end
+
     -- ══════════════════════════════════════════════════════════════
-    -- Inject AddColorpicker
+    -- Inject AddColorpicker + Config System Element Wrapping
     -- ══════════════════════════════════════════════════════════════
     local origAddTab = GuiFunc.AddTab
     GuiFunc.AddTab = function(self, TabConfig)
@@ -1824,6 +1948,7 @@ function Chloex:Window(GuiConfig)
 
             local _itemCount = 0
 
+            -- ── AddColorpicker ────────────────────────────────────
             function Items:AddColorpicker(Config)
                 local sa = rawget(self, "_sectionAdd") or (type(self) == "table" and self._sectionAdd)
                 local ci = (type(self) == "table" and rawget(self, "_getCountItem") and self._getCountItem()) or _itemCount
@@ -1858,9 +1983,7 @@ function Chloex:Window(GuiConfig)
                     end
                 end
 
-                if not sa then
-                    return {}
-                end
+                if not sa then return {} end
 
                 local api = _MakeColorPicker(Config, sa, ci, GuiConfig.Color, DropShadowHolder)
                 _itemCount = _itemCount + 1
@@ -1868,6 +1991,93 @@ function Chloex:Window(GuiConfig)
             end
 
             Items.AddColorPicker = Items.AddColorpicker
+
+            -- ── Config wrapping helpers ───────────────────────────
+            -- Flag wajib ada, kalau tidak ada skip config wrapping
+            local function _wrapElem(elem, Cfg, elemType, defaultVal)
+                if not elem then return elem end
+                if not Cfg.Flag or Cfg.Flag == "" then return elem end
+
+                local key = tostring(Cfg.Flag)
+                elem.Type    = elem.Type or elemType
+                elem.Default = defaultVal
+                elem.Flag    = key
+                -- apply saved value if exists
+                local saved = _ConfigData[key]
+                if saved ~= nil and elem.Set then
+                    pcall(function() elem:Set(saved) end)
+                end
+                -- wrap Set to auto-save to _ConfigData
+                local origSet = elem.Set
+                if origSet then
+                    elem.Set = function(self_e, val)
+                        origSet(self_e, val)
+                        _ConfigData[key] = val
+                        if GuiConfig.Config.AutoSave then
+                            GuiFunc:SaveConfig(GuiConfig.Config.AutoSaveFile)
+                        end
+                    end
+                end
+                _ConfigElements[key] = elem
+                return elem
+            end
+
+            -- ── AddToggle ─────────────────────────────────────────
+            local origAddToggle = Items.AddToggle
+            if origAddToggle then
+                Items.AddToggle = function(self3, Cfg)
+                    Cfg = Cfg or {}
+                    if Cfg.Flag and Cfg.Flag ~= "" then
+                        local saved = _ConfigData[tostring(Cfg.Flag)]
+                        if saved ~= nil then Cfg.Default = saved end
+                    end
+                    local elem = origAddToggle(self3, Cfg)
+                    return _wrapElem(elem, Cfg, "Toggle", Cfg.Default or false)
+                end
+            end
+
+            -- ── AddSlider ─────────────────────────────────────────
+            local origAddSlider = Items.AddSlider
+            if origAddSlider then
+                Items.AddSlider = function(self3, Cfg)
+                    Cfg = Cfg or {}
+                    if Cfg.Flag and Cfg.Flag ~= "" then
+                        local saved = _ConfigData[tostring(Cfg.Flag)]
+                        if saved ~= nil then Cfg.Default = saved end
+                    end
+                    local elem = origAddSlider(self3, Cfg)
+                    return _wrapElem(elem, Cfg, "Slider", Cfg.Default or 0)
+                end
+            end
+
+            -- ── AddDropdown ───────────────────────────────────────
+            local origAddDropdown = Items.AddDropdown
+            if origAddDropdown then
+                Items.AddDropdown = function(self3, Cfg)
+                    Cfg = Cfg or {}
+                    if Cfg.Flag and Cfg.Flag ~= "" then
+                        local saved = _ConfigData[tostring(Cfg.Flag)]
+                        if saved ~= nil then Cfg.Default = saved end
+                    end
+                    local elem = origAddDropdown(self3, Cfg)
+                    return _wrapElem(elem, Cfg, "Dropdown", Cfg.Default)
+                end
+            end
+
+            -- ── AddInput ──────────────────────────────────────────
+            local origAddInput = Items.AddInput
+            if origAddInput then
+                Items.AddInput = function(self3, Cfg)
+                    Cfg = Cfg or {}
+                    if Cfg.Flag and Cfg.Flag ~= "" then
+                        local saved = _ConfigData[tostring(Cfg.Flag)]
+                        if saved ~= nil then Cfg.Default = saved end
+                    end
+                    local elem = origAddInput(self3, Cfg)
+                    return _wrapElem(elem, Cfg, "Input", Cfg.Default or "")
+                end
+            end
+
             return Items
         end
         return Sections
