@@ -383,7 +383,6 @@ function Chloex:MakeNotify(NotifyConfig)
         TitleLabel.Size = UDim2.new(1, -titleOffsetX - 10, 0, 16)
         TitleLabel.Parent = NotifyFrameReal
 
-        local descY = 10
         if NotifyConfig.Description ~= "" then
             local DescLabel = Instance.new("TextLabel")
             DescLabel.Font = Enum.Font.GothamMedium
@@ -398,7 +397,9 @@ function Chloex:MakeNotify(NotifyConfig)
             DescLabel.Parent = NotifyFrameReal
         end
 
-        local contentY = 30
+        -- ══════════════════════════════════════════════════════
+        -- FIX: Content text panjang tidak terpotong
+        -- ══════════════════════════════════════════════════════
         if NotifyConfig.Content ~= "" then
             local ContentLabel = Instance.new("TextLabel")
             ContentLabel.Font = Enum.Font.Gotham
@@ -408,17 +409,44 @@ function Chloex:MakeNotify(NotifyConfig)
             ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
             ContentLabel.TextYAlignment = Enum.TextYAlignment.Top
             ContentLabel.BackgroundTransparency = 1
-            ContentLabel.Position = UDim2.new(0, titleOffsetX, 0, contentY)
-            ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 14)
             ContentLabel.TextWrapped = true
+            ContentLabel.Position = UDim2.new(0, titleOffsetX, 0, 30)
+            ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 14)
             ContentLabel.Parent = NotifyFrameReal
-            local lines_count = math.max(1, math.ceil(ContentLabel.TextBounds.X / math.max(ContentLabel.AbsoluteSize.X, 1)))
-            ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 14 * lines_count)
-            contentY = contentY + 14 * lines_count + 4
+
+            task.defer(function()
+                if not ContentLabel or not ContentLabel.Parent then return end
+
+                local lineH = 14
+                local maxW  = ContentLabel.AbsoluteSize.X
+                local lines = 1
+                if maxW > 0 then
+                    lines = math.max(1, math.ceil(ContentLabel.TextBounds.X / maxW))
+                end
+                local contentH = lineH * lines
+                ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, contentH)
+
+                task.wait()
+                if not NotifyFrame or not NotifyFrame.Parent then return end
+
+                local totalH = 30 + contentH + 12
+                if hasButtons then
+                    -- buttons akan di-handle setelah ini, kasih ruang default
+                    NotifyFrame.Size = UDim2.new(1, 0, 0, math.max(70, totalH))
+                else
+                    NotifyFrame.Size = UDim2.new(1, 0, 0, math.max(70, totalH))
+                end
+            end)
         end
+        -- ══════════════════════════════════════════════════════
 
         if hasButtons then
-            local btnAreaY = contentY + 4
+            -- hitung posisi Y setelah content
+            local contentEstH = 14
+            if NotifyConfig.Content ~= "" then
+                contentEstH = 30
+            end
+            local btnAreaY = 30 + contentEstH + 4
             local gap = 6
             local btnCount = #NotifyConfig.Buttons
             local totalGap = gap * (btnCount - 1)
@@ -509,9 +537,13 @@ function Chloex:MakeNotify(NotifyConfig)
                 end)
             end
 
-            NotifyFrame.Size = UDim2.new(1, 0, 0, btnAreaY + 28 + 12)
-        else
-            NotifyFrame.Size = UDim2.new(1, 0, 0, contentY + 12)
+            -- update frame size setelah defer content selesai
+            task.defer(function()
+                task.wait()
+                if not NotifyFrame or not NotifyFrame.Parent then return end
+                NotifyFrame.Size = UDim2.new(1, 0, 0, btnAreaY + 28 + 12)
+                BtnRow.Position = UDim2.new(0, 12, 0, btnAreaY)
+            end)
         end
 
         local CloseBtn = Instance.new("TextButton")
@@ -1842,7 +1874,7 @@ function Chloex:Window(GuiConfig)
     end
 
     -- ══════════════════════════════════════════════════════════════
-    -- Notification
+    -- Notification (GuiFunc:Notify) - FIXED content wrapping
     -- ══════════════════════════════════════════════════════════════
     function GuiFunc:Notify(Config)
         Config = Config or {}
@@ -1882,7 +1914,7 @@ function Chloex:Window(GuiConfig)
         Card.BorderSizePixel = 0
         Card.Size = UDim2.new(1, 0, 0, 0)
         Card.AutomaticSize = Enum.AutomaticSize.Y
-        Card.ClipsDescendants = true
+        Card.ClipsDescendants = false  -- PENTING: jangan clip dulu biar AutomaticSize ngitung bener
         Card.Parent = Container
 
         Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
@@ -1914,6 +1946,7 @@ function Chloex:Window(GuiConfig)
         Accent.Parent = Card
         Instance.new("UICorner", Accent).CornerRadius = UDim.new(1, 0)
 
+        -- Title
         local TitleLabel = Instance.new("TextLabel")
         TitleLabel.Text = Config.Title
         TitleLabel.Font = Enum.Font.GothamBold
@@ -1921,12 +1954,18 @@ function Chloex:Window(GuiConfig)
         TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
         TitleLabel.BackgroundTransparency = 1
-        TitleLabel.Size = UDim2.new(1, 0, 0, 0)
-        TitleLabel.AutomaticSize = Enum.AutomaticSize.Y
         TitleLabel.TextWrapped = true
+        TitleLabel.Size = UDim2.new(1, 0, 0, 16)
         TitleLabel.LayoutOrder = 0
         TitleLabel.Parent = Card
 
+        task.defer(function()
+            if TitleLabel and TitleLabel.Parent then
+                TitleLabel.Size = UDim2.new(1, 0, 0, TitleLabel.TextBounds.Y)
+            end
+        end)
+
+        -- Content
         if Config.Content ~= "" then
             local ContentLabel = Instance.new("TextLabel")
             ContentLabel.Text = Config.Content
@@ -1935,13 +1974,24 @@ function Chloex:Window(GuiConfig)
             ContentLabel.TextColor3 = Color3.fromRGB(170, 170, 185)
             ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
             ContentLabel.BackgroundTransparency = 1
-            ContentLabel.Size = UDim2.new(1, 0, 0, 0)
-            ContentLabel.AutomaticSize = Enum.AutomaticSize.Y
             ContentLabel.TextWrapped = true
+            ContentLabel.Size = UDim2.new(1, 0, 0, 14)
             ContentLabel.LayoutOrder = 1
             ContentLabel.Parent = Card
+
+            task.defer(function()
+                if not ContentLabel or not ContentLabel.Parent then return end
+                local lineH = 14
+                local maxW  = ContentLabel.AbsoluteSize.X
+                local lines = 1
+                if maxW > 0 then
+                    lines = math.max(1, math.ceil(ContentLabel.TextBounds.X / maxW))
+                end
+                ContentLabel.Size = UDim2.new(1, 0, 0, lineH * lines + 2)
+            end)
         end
 
+        -- Buttons
         if #Config.Buttons > 0 then
             local BtnRow = Instance.new("Frame")
             BtnRow.BackgroundTransparency = 1
@@ -1991,6 +2041,7 @@ function Chloex:Window(GuiConfig)
             end
         end
 
+        -- Progress bar
         if Config.Duration > 0 and #Config.Buttons == 0 then
             local ProgressBg = Instance.new("Frame")
             ProgressBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
@@ -2016,10 +2067,19 @@ function Chloex:Window(GuiConfig)
             end)
         end
 
+        -- Slide in animation
         Card.Position = UDim2.new(1, 300, 0, 0)
         TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
             Position = UDim2.new(0, 0, 0, 0)
         }):Play()
+
+        -- Enable clip setelah layout settle
+        task.defer(function()
+            task.wait()
+            if Card and Card.Parent then
+                Card.ClipsDescendants = true
+            end
+        end)
     end
     -- ══════════════════════════════════════════════════════════════
 
