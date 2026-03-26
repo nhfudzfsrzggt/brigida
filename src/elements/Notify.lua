@@ -1,4 +1,4 @@
--- // VelarisUi | Notify.lua | Standalone Notify Module 
+-- // VelarisUi | Notify.lua | Standalone Notify Module |
 
 local function MakeNotifyModule(TweenService, CoreGui, getIconId)
 
@@ -120,6 +120,9 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 end
             end
 
+            -- [FIX] Tentukan apakah ada Description untuk atur posisi Title
+            local hasDesc = NotifyConfig.Description ~= ""
+
             local TitleLabel = Instance.new("TextLabel")
             TitleLabel.Font = Enum.Font.GothamBold
             TitleLabel.Text = NotifyConfig.Title
@@ -127,22 +130,51 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             TitleLabel.TextSize = 13
             TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
             TitleLabel.BackgroundTransparency = 1
-            TitleLabel.Position = UDim2.new(0, titleOffsetX, 0, 10)
-            TitleLabel.Size = UDim2.new(1, -titleOffsetX - 10, 0, 16)
+            TitleLabel.AutomaticSize = Enum.AutomaticSize.X
+            -- [FIX] Jika ada desc, title naik sedikit agar desc muat di bawahnya dalam area yang sama
+            TitleLabel.Position = hasDesc and UDim2.new(0, titleOffsetX, 0, 8) or UDim2.new(0, titleOffsetX, 0, 10)
+            TitleLabel.Size = UDim2.new(0, 0, 0, 16)
             TitleLabel.Parent = NotifyFrameReal
 
-            if NotifyConfig.Description ~= "" then
-                local DescLabel = Instance.new("TextLabel")
-                DescLabel.Font = Enum.Font.GothamMedium
-                DescLabel.Text = NotifyConfig.Description
-                DescLabel.TextColor3 = NotifyConfig.Color
-                DescLabel.TextSize = 11
-                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-                DescLabel.BackgroundTransparency = 1
-                DescLabel.Position = UDim2.new(0, titleOffsetX + TitleLabel.TextBounds.X + 6, 0, 11)
-                DescLabel.Size = UDim2.new(1, -(titleOffsetX + TitleLabel.TextBounds.X + 16), 0, 14)
-                DescLabel.TextTruncate = Enum.TextTruncate.AtEnd
-                DescLabel.Parent = NotifyFrameReal
+            if hasDesc then
+                -- [FIX] DescLabel sejajar kanan Title di baris yang sama
+                -- Pakai task.defer agar TextBounds Title sudah terhitung
+                task.defer(function()
+                    if not TitleLabel or not TitleLabel.Parent then return end
+                    task.wait()
+                    if not TitleLabel or not TitleLabel.Parent then return end
+
+                    local titleW = TitleLabel.TextBounds.X
+                    local descOffsetX = titleOffsetX + titleW + 6
+                    -- Sisa width yang tersedia untuk desc (dikurangi tombol close 24px)
+                    local availableW = 300 - descOffsetX - 24
+
+                    local DescLabel = Instance.new("TextLabel")
+                    DescLabel.Font = Enum.Font.GothamMedium
+                    DescLabel.Text = NotifyConfig.Description
+                    DescLabel.TextColor3 = NotifyConfig.Color
+                    DescLabel.TextSize = 11
+                    DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    DescLabel.TextYAlignment = Enum.TextYAlignment.Center
+                    DescLabel.BackgroundTransparency = 1
+                    DescLabel.TextTruncate = Enum.TextTruncate.AtEnd
+                    DescLabel.Parent = NotifyFrameReal
+
+                    if availableW >= 30 then
+                        -- Cukup tempat: taruh sejajar kanan title
+                        DescLabel.Position = UDim2.new(0, descOffsetX, 0, 9)
+                        DescLabel.Size = UDim2.new(0, availableW, 0, 14)
+                    else
+                        -- [FALLBACK] Tidak cukup tempat: taruh di bawah title
+                        DescLabel.Position = UDim2.new(0, titleOffsetX, 0, 24)
+                        DescLabel.Size = UDim2.new(1, -(titleOffsetX + 24), 0, 14)
+                        -- Geser ContentLabel & frame ke bawah agar tidak overlap
+                        local ContentLabel = NotifyFrameReal:FindFirstChild("ContentLabel")
+                        if ContentLabel then
+                            ContentLabel.Position = UDim2.new(0, titleOffsetX, 0, 42)
+                        end
+                    end
+                end)
             end
 
             -- [FIX] Multi-line content support
@@ -157,9 +189,10 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 ContentLabel.TextYAlignment = Enum.TextYAlignment.Top
                 ContentLabel.BackgroundTransparency = 1
                 ContentLabel.TextWrapped = true
-                -- [FIX] Size awal dibuat tinggi agar TextBounds.Y bisa terhitung dengan benar
-                ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 400)
+                -- [FIX] Kurangi width lebih besar: hindari close button (18px) + margin kanan (16px) = 34px
+                ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 34), 0, 400)
                 ContentLabel.Position = UDim2.new(0, titleOffsetX, 0, 30)
+                ContentLabel.Name = "ContentLabel"
                 ContentLabel.Parent = NotifyFrameReal
                 contentLabelRef = ContentLabel
 
@@ -174,8 +207,8 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                     local contentH = ContentLabel.TextBounds.Y
                     if contentH <= 0 then contentH = 14 end
 
-                    -- Resize ContentLabel sesuai konten sebenarnya
-                    ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, contentH)
+                    -- Resize ContentLabel sesuai konten sebenarnya (width tetap hindari close button)
+                    ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 34), 0, contentH)
 
                     task.wait() -- tunggu 1 frame lagi setelah label di-resize
                     if not NotifyFrame or not NotifyFrame.Parent then return end
