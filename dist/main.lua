@@ -233,10 +233,6 @@ function CircleClick(Button, X, Y)
     end)
 end
 
--- ╔══════════════════════════════════════════════════════════════════╗
--- ║   FLOATING COLOR PICKER                                         ║
--- ╚══════════════════════════════════════════════════════════════════╝
-
 local _CPGui          = nil
 local _CPPanel        = nil
 local _CPPanelButtons = nil
@@ -264,270 +260,188 @@ end
 local Chloex = {}
 
 function Chloex:MakeNotify(NotifyConfig)
-    NotifyConfig = NotifyConfig or {}
-    NotifyConfig.Title       = NotifyConfig.Title or "Velaris UI"
-    NotifyConfig.Description = NotifyConfig.Description or ""
-    NotifyConfig.Content     = NotifyConfig.Content or ""
-    NotifyConfig.Color       = getColor(NotifyConfig.Color or Color3.fromRGB(0, 208, 255))
-    NotifyConfig.Time        = NotifyConfig.Time or 0.5
-    NotifyConfig.Delay       = NotifyConfig.Delay or 5
-    NotifyConfig.Buttons     = NotifyConfig.Buttons or {}
+    NotifyConfig              = NotifyConfig or {}
+    NotifyConfig.Title        = NotifyConfig.Title or "Velaris UI"
+    NotifyConfig.Description  = NotifyConfig.Description or ""
+    NotifyConfig.Content      = NotifyConfig.Content or ""
+    NotifyConfig.Color        = getColor(NotifyConfig.Color or Color3.fromRGB(0, 208, 255))
+    NotifyConfig.Time         = NotifyConfig.Time or 0.5
+    NotifyConfig.Delay        = NotifyConfig.Delay or 5
+    NotifyConfig.Buttons      = NotifyConfig.Buttons or {}
 
     local NotifyFunction = {}
+    local _closed = false
 
-    spawn(function()
+    task.spawn(function()
         if not CoreGui:FindFirstChild("NotifyGui") then
-            local NotifyGui = Instance.new("ScreenGui")
-            NotifyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-            NotifyGui.Name = "NotifyGui"
-            NotifyGui.Parent = CoreGui
+            local ng = Instance.new("ScreenGui")
+            ng.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            ng.Name = "NotifyGui"
+            ng.Parent = CoreGui
         end
 
-        if not CoreGui.NotifyGui:FindFirstChild("NotifyLayout") then
-            local NotifyLayout = Instance.new("Frame")
-            NotifyLayout.AnchorPoint = Vector2.new(1, 1)
-            NotifyLayout.BackgroundTransparency = 1
-            NotifyLayout.BorderSizePixel = 0
-            NotifyLayout.Position = UDim2.new(1, -16, 1, -16)
-            NotifyLayout.Size = UDim2.new(0, 300, 1, 0)
-            NotifyLayout.Name = "NotifyLayout"
-            NotifyLayout.Parent = CoreGui.NotifyGui
+        local NotifyGui = CoreGui.NotifyGui
 
-            local Count = 0
-            CoreGui.NotifyGui.NotifyLayout.ChildRemoved:Connect(function()
-                Count = 0
-                for _, v in CoreGui.NotifyGui.NotifyLayout:GetChildren() do
-                    if v:IsA("Frame") then
-                        TweenService:Create(v, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
-                            Position = UDim2.new(0, 0, 1, -((v.Size.Y.Offset + 10) * Count))
-                        }):Play()
-                        Count = Count + 1
-                    end
-                end
-            end)
+        if not NotifyGui:FindFirstChild("NotifyHolder") then
+            local holder = Instance.new("Frame")
+            holder.Name              = "NotifyHolder"
+            holder.AnchorPoint       = Vector2.new(1, 1)
+            holder.BackgroundTransparency = 1
+            holder.BorderSizePixel   = 0
+            holder.Position          = UDim2.new(1, -16, 1, -16)
+            holder.Size              = UDim2.new(0, 310, 1, -32)
+            holder.Parent            = NotifyGui
+
+            local list = Instance.new("UIListLayout")
+            list.SortOrder          = Enum.SortOrder.LayoutOrder
+            list.VerticalAlignment  = Enum.VerticalAlignment.Bottom
+            list.HorizontalAlignment = Enum.HorizontalAlignment.Right
+            list.Padding            = UDim.new(0, 8)
+            list.Parent             = holder
         end
 
-        local NotifyPosHeigh = 0
-        for _, v in CoreGui.NotifyGui.NotifyLayout:GetChildren() do
-            if v:IsA("Frame") then
-                NotifyPosHeigh = -(v.Position.Y.Offset) + v.Size.Y.Offset + 10
-            end
-        end
-
-        local NotifyFrame = Instance.new("Frame")
-        NotifyFrame.BackgroundTransparency = 1
-        NotifyFrame.BorderSizePixel = 0
-        NotifyFrame.Size = UDim2.new(1, 0, 0, 70)
-        NotifyFrame.AnchorPoint = Vector2.new(0, 1)
-        NotifyFrame.Position = UDim2.new(0, 0, 1, -NotifyPosHeigh)
-        NotifyFrame.Parent = CoreGui.NotifyGui.NotifyLayout
-
-        local NotifyFrameReal = Instance.new("Frame")
-        NotifyFrameReal.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-        NotifyFrameReal.BorderSizePixel = 0
-        NotifyFrameReal.Position = UDim2.new(0, 320, 0, 0)
-        NotifyFrameReal.Size = UDim2.new(1, 0, 1, 0)
-        NotifyFrameReal.ClipsDescendants = false
-        NotifyFrameReal.Parent = NotifyFrame
-        Instance.new("UICorner", NotifyFrameReal).CornerRadius = UDim.new(0, 10)
+        local Holder = NotifyGui.NotifyHolder
+        local MainContainer = Instance.new("Frame")
+        MainContainer.BackgroundTransparency = 1
+        MainContainer.BorderSizePixel        = 0
+        MainContainer.Size                   = UDim2.new(1, 0, 0, 0)
+        MainContainer.ClipsDescendants       = false
+        MainContainer.Parent                 = Holder
+        local Card = Instance.new("Frame")
+        Card.Name                  = "NotifyCard"
+        Card.BackgroundColor3      = Color3.fromRGB(22, 22, 28)
+        Card.BorderSizePixel       = 0
+        Card.AnchorPoint           = Vector2.new(0, 1)
+        Card.Position              = UDim2.new(1, 320, 1, 0)
+        Card.Size                  = UDim2.new(1, 0, 0, 0)
+        Card.AutomaticSize         = Enum.AutomaticSize.Y
+        Card.ClipsDescendants      = false
+        Card.Parent                = MainContainer
+        Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 10)
 
         local CardStroke = Instance.new("UIStroke")
-        CardStroke.Color = Color3.fromRGB(50, 50, 62)
-        CardStroke.Thickness = 1
+        CardStroke.Color           = Color3.fromRGB(50, 50, 62)
+        CardStroke.Thickness       = 1
         CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        CardStroke.Parent = NotifyFrameReal
+        CardStroke.Parent          = Card
+        local Accent = Instance.new("Frame")
+        Accent.BackgroundColor3  = NotifyConfig.Color
+        Accent.BorderSizePixel   = 0
+        Accent.Size              = UDim2.new(0, 3, 1, 0)
+        Accent.Position          = UDim2.new(0, 0, 0, 0)
+        Accent.ZIndex            = 3
+        Accent.Parent            = Card
+        Instance.new("UICorner", Accent).CornerRadius = UDim.new(0, 10)
 
-        local iconId = getIconId(NotifyConfig.Icon or "")
-        local hasIcon = iconId ~= ""
-        local hasButtons = #NotifyConfig.Buttons > 0
-
-        local titleOffsetX = 12
-
-        if hasIcon then
-            if hasButtons then
-                local IconImg = Instance.new("ImageLabel")
-                IconImg.BackgroundTransparency = 1
-                IconImg.BorderSizePixel = 0
-                IconImg.AnchorPoint = Vector2.new(0, 0)
-                IconImg.Position = UDim2.new(0, 12, 0, 10)
-                IconImg.Size = UDim2.new(0, 17, 0, 17)
-                IconImg.Image = iconId
-                IconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                IconImg.ScaleType = Enum.ScaleType.Fit
-                IconImg.Parent = NotifyFrameReal
-                titleOffsetX = 12 + 17 + 5
-            else
-                local LeftIcon = Instance.new("ImageLabel")
-                LeftIcon.Image = iconId
-                LeftIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                LeftIcon.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
-                LeftIcon.BackgroundTransparency = 0
-                LeftIcon.BorderSizePixel = 0
-                LeftIcon.Position = UDim2.new(0, 0, 0, 0)
-                LeftIcon.Size = UDim2.new(0, 50, 1, 0)
-                LeftIcon.ScaleType = Enum.ScaleType.Fit
-                LeftIcon.Parent = NotifyFrameReal
-                Instance.new("UICorner", LeftIcon).CornerRadius = UDim.new(0, 10)
-                titleOffsetX = 58
-            end
-        end
+        local CardPad = Instance.new("UIPadding")
+        CardPad.PaddingTop    = UDim.new(0, 10)
+        CardPad.PaddingBottom = UDim.new(0, 10)
+        CardPad.PaddingLeft   = UDim.new(0, 14)
+        CardPad.PaddingRight  = UDim.new(0, 12)
+        CardPad.Parent        = Card
+        local CardList = Instance.new("UIListLayout")
+        CardList.SortOrder         = Enum.SortOrder.LayoutOrder
+        CardList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+        CardList.Padding           = UDim.new(0, 5)
+        CardList.Parent            = Card
+        local TitleRow = Instance.new("Frame")
+        TitleRow.BackgroundTransparency = 1
+        TitleRow.BorderSizePixel        = 0
+        TitleRow.Size                   = UDim2.new(1, -22, 0, 0)
+        TitleRow.AutomaticSize          = Enum.AutomaticSize.Y
+        TitleRow.LayoutOrder            = 0
+        TitleRow.Parent                 = Card
 
         local TitleLabel = Instance.new("TextLabel")
-        TitleLabel.Font = Enum.Font.GothamBold
-        TitleLabel.Text = NotifyConfig.Title
-        TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 245)
-        TitleLabel.TextSize = 13
-        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.Font                = Enum.Font.GothamBold
+        TitleLabel.Text                = NotifyConfig.Title
+        TitleLabel.TextColor3          = Color3.fromRGB(240, 240, 245)
+        TitleLabel.TextSize            = 13
+        TitleLabel.TextXAlignment      = Enum.TextXAlignment.Left
         TitleLabel.BackgroundTransparency = 1
-        TitleLabel.Position = UDim2.new(0, titleOffsetX, 0, 10)
-        TitleLabel.Size = UDim2.new(1, -titleOffsetX - 10, 0, 16)
-        TitleLabel.Parent = NotifyFrameReal
+        TitleLabel.AutomaticSize       = Enum.AutomaticSize.XY
+        TitleLabel.Size                = UDim2.new(0, 0, 0, 0)
+        TitleLabel.Parent              = TitleRow
 
-        if NotifyConfig.Description ~= "" then
+        if NotifyConfig.Description and NotifyConfig.Description ~= "" then
             local DescLabel = Instance.new("TextLabel")
-            DescLabel.Font = Enum.Font.GothamMedium
-            DescLabel.Text = NotifyConfig.Description
-            DescLabel.TextColor3 = NotifyConfig.Color
-            DescLabel.TextSize = 11
-            DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+            DescLabel.Font                = Enum.Font.GothamMedium
+            DescLabel.Text                = NotifyConfig.Description
+            DescLabel.TextColor3          = NotifyConfig.Color
+            DescLabel.TextSize            = 11
+            DescLabel.TextXAlignment      = Enum.TextXAlignment.Left
             DescLabel.BackgroundTransparency = 1
-            DescLabel.Position = UDim2.new(0, titleOffsetX + TitleLabel.TextBounds.X + 6, 0, 11)
-            DescLabel.Size = UDim2.new(1, -(titleOffsetX + TitleLabel.TextBounds.X + 16), 0, 14)
-            DescLabel.TextTruncate = Enum.TextTruncate.AtEnd
-            DescLabel.Parent = NotifyFrameReal
-        end
+            DescLabel.AutomaticSize       = Enum.AutomaticSize.XY
+            DescLabel.Size                = UDim2.new(0, 0, 0, 0)
+            DescLabel.AnchorPoint         = Vector2.new(0, 0)
 
-        -- ══════════════════════════════════════════════════════
-        -- FIX: Content text panjang tidak terpotong
-        -- ══════════════════════════════════════════════════════
-        if NotifyConfig.Content ~= "" then
-            local ContentLabel = Instance.new("TextLabel")
-            ContentLabel.Font = Enum.Font.Gotham
-            ContentLabel.TextColor3 = Color3.fromRGB(160, 160, 172)
-            ContentLabel.TextSize = 12
-            ContentLabel.Text = NotifyConfig.Content
-            ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
-            ContentLabel.TextYAlignment = Enum.TextYAlignment.Top
-            ContentLabel.BackgroundTransparency = 1
-            ContentLabel.TextWrapped = true
-            ContentLabel.Position = UDim2.new(0, titleOffsetX, 0, 30)
-            ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 14)
-            ContentLabel.Parent = NotifyFrameReal
-
-            task.defer(function()
-                if not ContentLabel or not ContentLabel.Parent then return end
-
-                local lineH = 14
-                local maxW  = ContentLabel.AbsoluteSize.X
-                local lines = 1
-                if maxW > 0 then
-                    lines = math.max(1, math.ceil(ContentLabel.TextBounds.X / maxW))
-                end
-                local contentH = lineH * lines
-                ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, contentH)
-
+            task.spawn(function()
                 task.wait()
-                if not NotifyFrame or not NotifyFrame.Parent then return end
-
-                local totalH = 30 + contentH + 12
-                if hasButtons then
-                    -- buttons akan di-handle setelah ini, kasih ruang default
-                    NotifyFrame.Size = UDim2.new(1, 0, 0, math.max(70, totalH))
-                else
-                    NotifyFrame.Size = UDim2.new(1, 0, 0, math.max(70, totalH))
-                end
+                DescLabel.Position = UDim2.new(0, TitleLabel.AbsoluteSize.X + 7, 0, 2)
+                DescLabel.Parent   = TitleRow
             end)
         end
-        -- ══════════════════════════════════════════════════════
-
+        if NotifyConfig.Content and NotifyConfig.Content ~= "" then
+            local ContentLabel = Instance.new("TextLabel")
+            ContentLabel.Font                = Enum.Font.Gotham
+            ContentLabel.Text                = NotifyConfig.Content
+            ContentLabel.TextColor3          = Color3.fromRGB(160, 160, 172)
+            ContentLabel.TextSize            = 12
+            ContentLabel.TextXAlignment      = Enum.TextXAlignment.Left
+            ContentLabel.TextYAlignment      = Enum.TextYAlignment.Top
+            ContentLabel.BackgroundTransparency = 1
+            ContentLabel.TextWrapped         = true
+            ContentLabel.AutomaticSize       = Enum.AutomaticSize.Y
+            ContentLabel.Size                = UDim2.new(1, -22, 0, 0)
+            ContentLabel.LayoutOrder         = 1
+            ContentLabel.Parent              = Card
+        end
+        local hasButtons = #NotifyConfig.Buttons > 0
         if hasButtons then
-            -- hitung posisi Y setelah content
-            local contentEstH = 14
-            if NotifyConfig.Content ~= "" then
-                contentEstH = 30
-            end
-            local btnAreaY = 30 + contentEstH + 4
-            local gap = 6
-            local btnCount = #NotifyConfig.Buttons
-            local totalGap = gap * (btnCount - 1)
-
             local BtnRow = Instance.new("Frame")
             BtnRow.BackgroundTransparency = 1
-            BtnRow.BorderSizePixel = 0
-            BtnRow.Position = UDim2.new(0, 12, 0, btnAreaY)
-            BtnRow.Size = UDim2.new(1, -24, 0, 28)
-            BtnRow.Parent = NotifyFrameReal
+            BtnRow.BorderSizePixel        = 0
+            BtnRow.Size                   = UDim2.new(1, 0, 0, 28)
+            BtnRow.LayoutOrder            = 2
+            BtnRow.Parent                 = Card
 
             local BtnList = Instance.new("UIListLayout")
-            BtnList.FillDirection = Enum.FillDirection.Horizontal
-            BtnList.HorizontalAlignment = Enum.HorizontalAlignment.Left
-            BtnList.VerticalAlignment = Enum.VerticalAlignment.Center
-            BtnList.Padding = UDim.new(0, gap)
-            BtnList.Parent = BtnRow
+            BtnList.FillDirection         = Enum.FillDirection.Horizontal
+            BtnList.HorizontalAlignment   = Enum.HorizontalAlignment.Right
+            BtnList.VerticalAlignment     = Enum.VerticalAlignment.Center
+            BtnList.Padding               = UDim.new(0, 6)
+            BtnList.Parent                = BtnRow
 
             for idx, btnCfg in ipairs(NotifyConfig.Buttons) do
                 local Btn = Instance.new("TextButton")
-                Btn.Font = Enum.Font.GothamBold
-                Btn.TextSize = 11
-                Btn.Text = ""
-                Btn.AutomaticSize = Enum.AutomaticSize.None
-                Btn.Size = UDim2.new(1/btnCount, -(totalGap/btnCount), 1, 0)
+                Btn.Font           = Enum.Font.GothamBold
+                Btn.TextSize       = 11
+                Btn.Text           = btnCfg.Name or ("Btn" .. idx)
+                Btn.AutomaticSize  = Enum.AutomaticSize.X
+                Btn.Size           = UDim2.new(0, 0, 1, 0)
                 Btn.BorderSizePixel = 0
-                Btn.LayoutOrder = idx
+                Btn.LayoutOrder    = idx
 
                 local isPrimary = btnCfg.Primary == true
-                if isPrimary then
-                    Btn.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
-                    Btn.TextColor3 = Color3.fromRGB(220, 220, 230)
-                else
-                    Btn.BackgroundColor3 = Color3.fromRGB(33, 33, 42)
-                    Btn.TextColor3 = Color3.fromRGB(160, 160, 175)
-                end
-
-                Instance.new("UICorner", Btn).CornerRadius = UDim.new(1, 0)
+                Btn.BackgroundColor3 = isPrimary
+                    and Color3.fromRGB(45, 45, 58)
+                    or  Color3.fromRGB(33, 33, 42)
+                Btn.TextColor3 = isPrimary
+                    and Color3.fromRGB(220, 220, 230)
+                    or  Color3.fromRGB(160, 160, 175)
+                Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
 
                 local BtnStroke = Instance.new("UIStroke")
-                BtnStroke.Color = isPrimary and Color3.fromRGB(70, 70, 88) or Color3.fromRGB(50, 50, 62)
+                BtnStroke.Color     = isPrimary
+                    and Color3.fromRGB(70, 70, 88)
+                    or  Color3.fromRGB(50, 50, 62)
                 BtnStroke.Thickness = 1
-                BtnStroke.Parent = Btn
+                BtnStroke.Parent    = Btn
 
-                local BtnInner = Instance.new("Frame")
-                BtnInner.BackgroundTransparency = 1
-                BtnInner.AutomaticSize = Enum.AutomaticSize.X
-                BtnInner.AnchorPoint = Vector2.new(0.5, 0.5)
-                BtnInner.Position = UDim2.new(0.5, 0, 0.5, 0)
-                BtnInner.Size = UDim2.new(0, 0, 1, 0)
-                BtnInner.Parent = Btn
-
-                local BtnInnerList = Instance.new("UIListLayout")
-                BtnInnerList.FillDirection = Enum.FillDirection.Horizontal
-                BtnInnerList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-                BtnInnerList.VerticalAlignment = Enum.VerticalAlignment.Center
-                BtnInnerList.Padding = UDim.new(0, 4)
-                BtnInnerList.Parent = BtnInner
-
-                local btnIconId = getIconId(btnCfg.Icon or "")
-                if btnIconId ~= "" then
-                    local BtnIcon = Instance.new("ImageLabel")
-                    BtnIcon.BackgroundTransparency = 1
-                    BtnIcon.Size = UDim2.new(0, 11, 0, 11)
-                    BtnIcon.Image = btnIconId
-                    BtnIcon.ImageColor3 = isPrimary and Color3.fromRGB(220,220,230) or Color3.fromRGB(160,160,175)
-                    BtnIcon.ScaleType = Enum.ScaleType.Fit
-                    BtnIcon.LayoutOrder = 0
-                    BtnIcon.Parent = BtnInner
-                end
-
-                local BtnLabel = Instance.new("TextLabel")
-                BtnLabel.Font = Enum.Font.GothamBold
-                BtnLabel.Text = btnCfg.Name or ("Btn" .. idx)
-                BtnLabel.TextSize = 11
-                BtnLabel.TextColor3 = isPrimary and Color3.fromRGB(220,220,230) or Color3.fromRGB(160,160,175)
-                BtnLabel.BackgroundTransparency = 1
-                BtnLabel.AutomaticSize = Enum.AutomaticSize.X
-                BtnLabel.Size = UDim2.new(0, 0, 1, 0)
-                BtnLabel.LayoutOrder = 1
-                BtnLabel.Parent = BtnInner
+                local BtnPad = Instance.new("UIPadding")
+                BtnPad.PaddingLeft  = UDim.new(0, 10)
+                BtnPad.PaddingRight = UDim.new(0, 10)
+                BtnPad.Parent       = Btn
 
                 Btn.Parent = BtnRow
 
@@ -536,61 +450,292 @@ function Chloex:MakeNotify(NotifyConfig)
                     NotifyFunction:Close()
                 end)
             end
-
-            -- update frame size setelah defer content selesai
-            task.defer(function()
-                task.wait()
-                if not NotifyFrame or not NotifyFrame.Parent then return end
-                NotifyFrame.Size = UDim2.new(1, 0, 0, btnAreaY + 28 + 12)
-                BtnRow.Position = UDim2.new(0, 12, 0, btnAreaY)
-            end)
         end
+        if not hasButtons then
+            local ProgBg = Instance.new("Frame")
+            ProgBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            ProgBg.BorderSizePixel  = 0
+            ProgBg.Size             = UDim2.new(1, 0, 0, 3)
+            ProgBg.LayoutOrder      = 3
+            ProgBg.Parent           = Card
+            Instance.new("UICorner", ProgBg).CornerRadius = UDim.new(1, 0)
 
+            local ProgBar = Instance.new("Frame")
+            ProgBar.BackgroundColor3 = NotifyConfig.Color
+            ProgBar.BorderSizePixel  = 0
+            ProgBar.Size             = UDim2.new(1, 0, 1, 0)
+            ProgBar.Parent           = ProgBg
+            Instance.new("UICorner", ProgBar).CornerRadius = UDim.new(1, 0)
+
+            local delay = tonumber(NotifyConfig.Delay) or 5
+            TweenService:Create(ProgBar, TweenInfo.new(delay, Enum.EasingStyle.Linear), {
+                Size = UDim2.new(0, 0, 1, 0)
+            }):Play()
+        end
         local CloseBtn = Instance.new("TextButton")
-        CloseBtn.Text = ""
-        CloseBtn.AnchorPoint = Vector2.new(1, 0)
+        CloseBtn.Text               = ""
+        CloseBtn.AnchorPoint        = Vector2.new(1, 0)
         CloseBtn.BackgroundTransparency = 1
-        CloseBtn.Position = UDim2.new(1, -6, 0, 6)
-        CloseBtn.Size = UDim2.new(0, 18, 0, 18)
-        CloseBtn.Parent = NotifyFrameReal
+        CloseBtn.Position           = UDim2.new(1, -4, 0, 4)
+        CloseBtn.Size               = UDim2.new(0, 18, 0, 18)
+        CloseBtn.ZIndex             = 10
+        CloseBtn.Parent             = Card
 
         local CloseImg = Instance.new("ImageLabel")
-        CloseImg.Image = "rbxassetid://9886659671"
-        CloseImg.ImageColor3 = Color3.fromRGB(120, 120, 135)
-        CloseImg.AnchorPoint = Vector2.new(0.5, 0.5)
+        CloseImg.Image              = "rbxassetid://9886659671"
+        CloseImg.ImageColor3        = Color3.fromRGB(120, 120, 135)
+        CloseImg.AnchorPoint        = Vector2.new(0.5, 0.5)
         CloseImg.BackgroundTransparency = 1
-        CloseImg.Position = UDim2.new(0.5, 0, 0.5, 0)
-        CloseImg.Size = UDim2.new(1, 0, 1, 0)
-        CloseImg.Parent = CloseBtn
-
-        local waitbruh = false
+        CloseImg.Position           = UDim2.new(0.5, 0, 0.5, 0)
+        CloseImg.Size               = UDim2.new(1, -2, 1, -2)
+        CloseImg.Parent             = CloseBtn
         function NotifyFunction:Close()
-            if waitbruh then return false end
-            waitbruh = true
-            TweenService:Create(NotifyFrameReal, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-                Position = UDim2.new(0, 320, 0, 0)
+            if _closed then return end
+            _closed = true
+            TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+                Position = UDim2.new(1, 320, 1, 0)
             }):Play()
-            task.wait(0.3)
-            NotifyFrame:Destroy()
+            TweenService:Create(MainContainer, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+                Size = UDim2.new(1, 0, 0, 0)
+            }):Play()
+            task.wait(0.45)
+            if MainContainer and MainContainer.Parent then
+                MainContainer:Destroy()
+            end
         end
 
         CloseBtn.Activated:Connect(function() NotifyFunction:Close() end)
+        task.spawn(function()
+            task.wait()
 
-        TweenService:Create(NotifyFrameReal, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0, 0, 0, 0)
-        }):Play()
-
-        local delay = tonumber(NotifyConfig.Delay) or 0
-        if not hasButtons then
-            task.wait(delay)
-            NotifyFunction:Close()
-        elseif delay > 0 then
-            task.wait(delay)
-            NotifyFunction:Close()
-        end
+            local finalH = Card.AbsoluteSize.Y
+            if finalH <= 0 then
+                task.wait(0.05)
+                finalH = Card.AbsoluteSize.Y
+            end
+            TweenService:Create(MainContainer, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, finalH + 2)
+            }):Play()
+            TweenService:Create(Card, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 0, 1, 0)
+            }):Play()
+            local delay = tonumber(NotifyConfig.Delay) or 5
+            if not hasButtons then
+                task.wait(delay)
+                NotifyFunction:Close()
+            elseif delay > 0 then
+                task.wait(delay)
+                NotifyFunction:Close()
+            end
+        end)
     end)
 
     return NotifyFunction
+end
+function GuiFunc:Notify(Config)
+    Config          = Config or {}
+    Config.Title    = Config.Title   or "Notification"
+    Config.Content  = Config.Content or ""
+    Config.Duration = Config.Duration or 5
+    Config.Buttons  = Config.Buttons or {}
+    local NotifGui = CoreGui:FindFirstChild("VelarisUI_Notifs")
+    if not NotifGui then
+        NotifGui = Instance.new("ScreenGui")
+        NotifGui.Name           = "VelarisUI_Notifs"
+        NotifGui.ResetOnSpawn   = false
+        NotifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        NotifGui.Parent         = CoreGui
+
+        local Container = Instance.new("Frame")
+        Container.Name              = "Container"
+        Container.BackgroundTransparency = 1
+        Container.AnchorPoint       = Vector2.new(1, 1)
+        Container.Position          = UDim2.new(1, -16, 1, -16)
+        Container.Size              = UDim2.new(0, 310, 1, -32)
+        Container.Parent            = NotifGui
+
+        local List = Instance.new("UIListLayout")
+        List.SortOrder          = Enum.SortOrder.LayoutOrder
+        List.VerticalAlignment  = Enum.VerticalAlignment.Bottom
+        List.HorizontalAlignment = Enum.HorizontalAlignment.Right
+        List.Padding            = UDim.new(0, 8)
+        List.Parent             = Container
+    end
+
+    local Container = NotifGui:FindFirstChild("Container")
+    local _closed   = false
+    local MainContainer = Instance.new("Frame")
+    MainContainer.BackgroundTransparency = 1
+    MainContainer.BorderSizePixel        = 0
+    MainContainer.Size                   = UDim2.new(1, 0, 0, 0)
+    MainContainer.ClipsDescendants       = false
+    MainContainer.Parent                 = Container
+    local Card = Instance.new("Frame")
+    Card.Name             = "NotifCard"
+    Card.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+    Card.BorderSizePixel  = 0
+    Card.AnchorPoint      = Vector2.new(0, 1)
+    Card.Position         = UDim2.new(1, 320, 1, 0)
+    Card.Size             = UDim2.new(1, 0, 0, 0)
+    Card.AutomaticSize    = Enum.AutomaticSize.Y
+    Card.ClipsDescendants = false
+    Card.Parent           = MainContainer
+    Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
+
+    local CardStroke = Instance.new("UIStroke")
+    CardStroke.Color           = GuiConfig.Color
+    CardStroke.Thickness       = 1
+    CardStroke.Transparency    = 0.6
+    CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    CardStroke.Parent          = Card
+    local Accent = Instance.new("Frame")
+    Accent.BackgroundColor3 = GuiConfig.Color
+    Accent.BorderSizePixel  = 0
+    Accent.Size             = UDim2.new(0, 3, 1, 0)
+    Accent.ZIndex           = 2
+    Accent.Parent           = Card
+    Instance.new("UICorner", Accent).CornerRadius = UDim.new(1, 0)
+
+    local CardPad = Instance.new("UIPadding")
+    CardPad.PaddingTop    = UDim.new(0, 10)
+    CardPad.PaddingBottom = UDim.new(0, 10)
+    CardPad.PaddingLeft   = UDim.new(0, 14)
+    CardPad.PaddingRight  = UDim.new(0, 12)
+    CardPad.Parent        = Card
+    local CardList = Instance.new("UIListLayout")
+    CardList.SortOrder           = Enum.SortOrder.LayoutOrder
+    CardList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    CardList.Padding             = UDim.new(0, 6)
+    CardList.Parent              = Card
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Text              = Config.Title
+    TitleLabel.Font              = Enum.Font.GothamBold
+    TitleLabel.TextSize          = 13
+    TitleLabel.TextColor3        = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextXAlignment    = Enum.TextXAlignment.Left
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.TextWrapped       = true
+    TitleLabel.AutomaticSize     = Enum.AutomaticSize.Y
+    TitleLabel.Size              = UDim2.new(1, -20, 0, 0)
+    TitleLabel.LayoutOrder       = 0
+    TitleLabel.Parent            = Card
+    if Config.Content ~= "" then
+        local ContentLabel = Instance.new("TextLabel")
+        ContentLabel.Text             = Config.Content
+        ContentLabel.Font             = Enum.Font.Gotham
+        ContentLabel.TextSize         = 11
+        ContentLabel.TextColor3       = Color3.fromRGB(170, 170, 185)
+        ContentLabel.TextXAlignment   = Enum.TextXAlignment.Left
+        ContentLabel.BackgroundTransparency = 1
+        ContentLabel.TextWrapped      = true
+        ContentLabel.AutomaticSize    = Enum.AutomaticSize.Y
+        ContentLabel.Size             = UDim2.new(1, 0, 0, 0)
+        ContentLabel.LayoutOrder      = 1
+        ContentLabel.Parent           = Card
+    end
+    local hasButtons = #Config.Buttons > 0
+    if hasButtons then
+        local BtnRow = Instance.new("Frame")
+        BtnRow.BackgroundTransparency = 1
+        BtnRow.Size        = UDim2.new(1, 0, 0, 28)
+        BtnRow.LayoutOrder = 2
+        BtnRow.Parent      = Card
+
+        local BtnList = Instance.new("UIListLayout")
+        BtnList.FillDirection       = Enum.FillDirection.Horizontal
+        BtnList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+        BtnList.VerticalAlignment   = Enum.VerticalAlignment.Center
+        BtnList.Padding             = UDim.new(0, 6)
+        BtnList.Parent              = BtnRow
+
+        for idx, btnCfg in ipairs(Config.Buttons) do
+            local Btn = Instance.new("TextButton")
+            Btn.Text          = btnCfg.Name or ("Btn" .. idx)
+            Btn.Font          = Enum.Font.GothamBold
+            Btn.TextSize      = 11
+            Btn.AutomaticSize = Enum.AutomaticSize.X
+            Btn.Size          = UDim2.new(0, 0, 1, 0)
+            Btn.BorderSizePixel = 0
+            Btn.LayoutOrder   = idx
+
+            local isPrimary = btnCfg.Primary == true or idx == 1
+            Btn.BackgroundColor3 = isPrimary and GuiConfig.Color or Color3.fromRGB(40, 40, 50)
+            Btn.TextColor3       = isPrimary and Color3.fromRGB(255,255,255) or Color3.fromRGB(180,180,195)
+            Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
+
+            local BtnPad = Instance.new("UIPadding")
+            BtnPad.PaddingLeft  = UDim.new(0, 10)
+            BtnPad.PaddingRight = UDim.new(0, 10)
+            BtnPad.Parent       = Btn
+
+            Btn.Parent = BtnRow
+
+            Btn.MouseButton1Click:Connect(function()
+                if btnCfg.Callback then pcall(btnCfg.Callback) end
+                Card:Destroy()
+                MainContainer:Destroy()
+            end)
+        end
+    end
+    if Config.Duration > 0 and not hasButtons then
+        local ProgBg = Instance.new("Frame")
+        ProgBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        ProgBg.BorderSizePixel  = 0
+        ProgBg.Size             = UDim2.new(1, 0, 0, 3)
+        ProgBg.LayoutOrder      = 3
+        ProgBg.Parent           = Card
+        Instance.new("UICorner", ProgBg).CornerRadius = UDim.new(1, 0)
+
+        local ProgBar = Instance.new("Frame")
+        ProgBar.BackgroundColor3 = GuiConfig.Color
+        ProgBar.BorderSizePixel  = 0
+        ProgBar.Size             = UDim2.new(1, 0, 1, 0)
+        ProgBar.Parent           = ProgBg
+        Instance.new("UICorner", ProgBar).CornerRadius = UDim.new(1, 0)
+
+        TweenService:Create(ProgBar, TweenInfo.new(Config.Duration, Enum.EasingStyle.Linear), {
+            Size = UDim2.new(0, 0, 1, 0)
+        }):Play()
+    end
+    task.spawn(function()
+        task.wait()
+
+        local finalH = Card.AbsoluteSize.Y
+        if finalH <= 0 then
+            task.wait(0.05)
+            finalH = Card.AbsoluteSize.Y
+        end
+        TweenService:Create(MainContainer,
+            TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+            { Size = UDim2.new(1, 0, 0, finalH + 2) }
+        ):Play()
+        TweenService:Create(Card,
+            TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+            { Position = UDim2.new(0, 0, 1, 0) }
+        ):Play()
+        task.wait(0.5)
+        if Card and Card.Parent then
+            Card.ClipsDescendants = true
+        end
+        if Config.Duration > 0 and not hasButtons then
+            task.wait(Config.Duration - 0.5)
+            if not _closed and Card and Card.Parent then
+                _closed = true
+                TweenService:Create(Card,
+                    TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.In),
+                    { Position = UDim2.new(1, 320, 1, 0) }
+                ):Play()
+                TweenService:Create(MainContainer,
+                    TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.In),
+                    { Size = UDim2.new(1, 0, 0, 0) }
+                ):Play()
+                task.wait(0.45)
+                if MainContainer and MainContainer.Parent then
+                    MainContainer:Destroy()
+                end
+            end
+        end
+    end)
 end
 
 function Nt(msg, delay, color, title, desc)
@@ -629,7 +774,6 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Config.AutoSave     = GuiConfig.Config.AutoSave ~= nil and GuiConfig.Config.AutoSave or false
     GuiConfig.Config.AutoLoad     = GuiConfig.Config.AutoLoad ~= nil and GuiConfig.Config.AutoLoad or false
 
-    -- DiscordSet defaults
     GuiConfig.DiscordSet        = GuiConfig.DiscordSet or {}
     GuiConfig.DiscordSet.Enable = GuiConfig.DiscordSet.Enable ~= nil and GuiConfig.DiscordSet.Enable or false
     GuiConfig.DiscordSet.Title  = GuiConfig.DiscordSet.Title or "DISCORD"
@@ -657,9 +801,6 @@ function Chloex:Window(GuiConfig)
 
     local GuiFunc = {}
 
-    -- ══════════════════════════════════════════════════════════════
-    -- Config System (like LexsHub)
-    -- ══════════════════════════════════════════════════════════════
     local _ConfigData     = {}
     local _ConfigElements = {}
     local _cfgFolder      = GuiConfig.Config.ConfigFolder
@@ -681,7 +822,6 @@ function Chloex:Window(GuiConfig)
         return _cfgFolder .. (name or "Default") .. ".json"
     end
 
-    -- Simpan config ke file
     function GuiFunc:SaveConfig(name)
         if not writefile then
             warn("[VelarisUI] writefile tidak tersedia")
@@ -696,7 +836,6 @@ function Chloex:Window(GuiConfig)
         return ok
     end
 
-    -- Load config dari file dan apply ke semua element
     function GuiFunc:LoadConfig(name)
         if not isfile or not readfile then
             warn("[VelarisUI] isfile/readfile tidak tersedia")
@@ -719,7 +858,6 @@ function Chloex:Window(GuiConfig)
         return true
     end
 
-    -- Hapus file config
     function GuiFunc:DeleteConfig(name)
         if not isfile or not delfile then return false end
         local f = _cfgFile(name)
@@ -730,7 +868,6 @@ function Chloex:Window(GuiConfig)
         return false
     end
 
-    -- List semua nama config yang ada
     function GuiFunc:ListConfigs()
         local list = {}
         if not listfiles then return list end
@@ -744,7 +881,6 @@ function Chloex:Window(GuiConfig)
         return list
     end
 
-    -- Reset semua element ke default (hapus ConfigData)
     function GuiFunc:ResetConfig(name)
         _ConfigData = {}
         for key, elem in pairs(_ConfigElements) do
@@ -763,10 +899,8 @@ function Chloex:Window(GuiConfig)
         if name then GuiFunc:DeleteConfig(name) end
     end
 
-    -- Akses langsung ConfigData & Elements (optional)
     GuiFunc.ConfigData     = _ConfigData
     GuiFunc.ConfigElements = _ConfigElements
-    -- ══════════════════════════════════════════════════════════════
 
     local Chloeex           = Instance.new("ScreenGui")
     local DropShadowHolder  = Instance.new("Frame")
@@ -893,7 +1027,6 @@ function Chloex:Window(GuiConfig)
     })
     ThemeGradient.Parent = ThemeImage
 
-    -- ── Background Video ──────────────────────────────────────────────
     if GuiConfig.BackgroundVideo and GuiConfig.BackgroundVideo ~= "" then
         task.spawn(function()
             local videoInput = GuiConfig.BackgroundVideo
@@ -983,7 +1116,6 @@ function Chloex:Window(GuiConfig)
             end
         end)
     end
-    -- ─────────────────────────────────────────────────────────────────
 
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Top.BackgroundTransparency = 0.999
@@ -1250,9 +1382,6 @@ function Chloex:Window(GuiConfig)
         SearchModule(GuiConfig, LayersTab, LayersFolder, LayersPageLayout, TweenService, searchOffset)
     end
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  DISCORD BUTTON                                                 ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
     local ds = GuiConfig.DiscordSet
     local DISCORD_H      = 28
     local DISCORD_MARGIN = 3
@@ -1370,7 +1499,6 @@ function Chloex:Window(GuiConfig)
             _copied = false
         end)
     end
-    -- ══════════════════════════════════════════════════════════════════
 
     if GuiConfig.ShowUser then
         ScrollTab.Position = UDim2.new(0, 0, 0, searchOffset)
@@ -1929,16 +2057,12 @@ function Chloex:Window(GuiConfig)
         GuiFunc[k] = v
     end
 
-    -- AutoLoad: load config otomatis setelah window siap
     if GuiConfig.Config.AutoLoad then
         task.defer(function()
             GuiFunc:LoadConfig(GuiConfig.Config.AutoSaveFile)
         end)
     end
 
-    -- ══════════════════════════════════════════════════════════════
-    -- Inject AddColorpicker + Config System Element Wrapping
-    -- ══════════════════════════════════════════════════════════════
     local origAddTab = GuiFunc.AddTab
     GuiFunc.AddTab = function(self, TabConfig)
         local Sections = origAddTab(self, TabConfig)
@@ -1948,7 +2072,6 @@ function Chloex:Window(GuiConfig)
 
             local _itemCount = 0
 
-            -- ── AddColorpicker ────────────────────────────────────
             function Items:AddColorpicker(Config)
                 local sa = rawget(self, "_sectionAdd") or (type(self) == "table" and self._sectionAdd)
                 local ci = (type(self) == "table" and rawget(self, "_getCountItem") and self._getCountItem()) or _itemCount
@@ -1992,8 +2115,6 @@ function Chloex:Window(GuiConfig)
 
             Items.AddColorPicker = Items.AddColorpicker
 
-            -- ── Config wrapping helpers ───────────────────────────
-            -- Flag wajib ada, kalau tidak ada skip config wrapping
             local function _wrapElem(elem, Cfg, elemType, defaultVal)
                 if not elem then return elem end
                 if not Cfg.Flag or Cfg.Flag == "" then return elem end
@@ -2002,12 +2123,10 @@ function Chloex:Window(GuiConfig)
                 elem.Type    = elem.Type or elemType
                 elem.Default = defaultVal
                 elem.Flag    = key
-                -- apply saved value if exists
                 local saved = _ConfigData[key]
                 if saved ~= nil and elem.Set then
                     pcall(function() elem:Set(saved) end)
                 end
-                -- wrap Set to auto-save to _ConfigData
                 local origSet = elem.Set
                 if origSet then
                     elem.Set = function(self_e, val)
@@ -2022,7 +2141,6 @@ function Chloex:Window(GuiConfig)
                 return elem
             end
 
-            -- ── AddToggle ─────────────────────────────────────────
             local origAddToggle = Items.AddToggle
             if origAddToggle then
                 Items.AddToggle = function(self3, Cfg)
@@ -2036,7 +2154,6 @@ function Chloex:Window(GuiConfig)
                 end
             end
 
-            -- ── AddSlider ─────────────────────────────────────────
             local origAddSlider = Items.AddSlider
             if origAddSlider then
                 Items.AddSlider = function(self3, Cfg)
@@ -2050,7 +2167,6 @@ function Chloex:Window(GuiConfig)
                 end
             end
 
-            -- ── AddDropdown ───────────────────────────────────────
             local origAddDropdown = Items.AddDropdown
             if origAddDropdown then
                 Items.AddDropdown = function(self3, Cfg)
@@ -2064,7 +2180,6 @@ function Chloex:Window(GuiConfig)
                 end
             end
 
-            -- ── AddInput ──────────────────────────────────────────
             local origAddInput = Items.AddInput
             if origAddInput then
                 Items.AddInput = function(self3, Cfg)
@@ -2082,216 +2197,6 @@ function Chloex:Window(GuiConfig)
         end
         return Sections
     end
-
-    -- ══════════════════════════════════════════════════════════════
-    -- Notification (GuiFunc:Notify) - FIXED content wrapping
-    -- ══════════════════════════════════════════════════════════════
-    function GuiFunc:Notify(Config)
-        Config = Config or {}
-        Config.Title    = Config.Title   or "Notification"
-        Config.Content  = Config.Content or ""
-        Config.Duration = Config.Duration or 5
-        Config.Buttons  = Config.Buttons or {}
-
-        local NotifGui = CoreGui:FindFirstChild("VelarisUI_Notifs")
-        if not NotifGui then
-            NotifGui = Instance.new("ScreenGui")
-            NotifGui.Name = "VelarisUI_Notifs"
-            NotifGui.ResetOnSpawn = false
-            NotifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-            NotifGui.Parent = CoreGui
-
-            local Container = Instance.new("Frame")
-            Container.Name = "Container"
-            Container.BackgroundTransparency = 1
-            Container.AnchorPoint = Vector2.new(1, 1)
-            Container.Position = UDim2.new(1, -16, 1, -16)
-            Container.Size = UDim2.new(0, 280, 1, -32)
-            Container.Parent = NotifGui
-
-            local List = Instance.new("UIListLayout")
-            List.SortOrder = Enum.SortOrder.LayoutOrder
-            List.VerticalAlignment = Enum.VerticalAlignment.Bottom
-            List.Padding = UDim.new(0, 8)
-            List.Parent = Container
-        end
-
-        local Container = NotifGui:FindFirstChild("Container")
-
-        local Card = Instance.new("Frame")
-        Card.Name = "NotifCard"
-        Card.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-        Card.BorderSizePixel = 0
-        Card.Size = UDim2.new(1, 0, 0, 0)
-        Card.AutomaticSize = Enum.AutomaticSize.Y
-        Card.ClipsDescendants = false  -- PENTING: jangan clip dulu biar AutomaticSize ngitung bener
-        Card.Parent = Container
-
-        Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
-
-        local CardStroke = Instance.new("UIStroke")
-        CardStroke.Color = GuiConfig.Color
-        CardStroke.Thickness = 1
-        CardStroke.Transparency = 0.6
-        CardStroke.Parent = Card
-
-        local CardPad = Instance.new("UIPadding")
-        CardPad.PaddingTop    = UDim.new(0, 10)
-        CardPad.PaddingBottom = UDim.new(0, 10)
-        CardPad.PaddingLeft   = UDim.new(0, 14)
-        CardPad.PaddingRight  = UDim.new(0, 12)
-        CardPad.Parent = Card
-
-        local CardList = Instance.new("UIListLayout")
-        CardList.SortOrder = Enum.SortOrder.LayoutOrder
-        CardList.Padding = UDim.new(0, 6)
-        CardList.Parent = Card
-
-        local Accent = Instance.new("Frame")
-        Accent.BackgroundColor3 = GuiConfig.Color
-        Accent.BorderSizePixel = 0
-        Accent.Size = UDim2.new(0, 3, 1, 0)
-        Accent.Position = UDim2.new(0, 0, 0, 0)
-        Accent.ZIndex = 2
-        Accent.Parent = Card
-        Instance.new("UICorner", Accent).CornerRadius = UDim.new(1, 0)
-
-        -- Title
-        local TitleLabel = Instance.new("TextLabel")
-        TitleLabel.Text = Config.Title
-        TitleLabel.Font = Enum.Font.GothamBold
-        TitleLabel.TextSize = 13
-        TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        TitleLabel.BackgroundTransparency = 1
-        TitleLabel.TextWrapped = true
-        TitleLabel.Size = UDim2.new(1, 0, 0, 16)
-        TitleLabel.LayoutOrder = 0
-        TitleLabel.Parent = Card
-
-        task.defer(function()
-            if TitleLabel and TitleLabel.Parent then
-                TitleLabel.Size = UDim2.new(1, 0, 0, TitleLabel.TextBounds.Y)
-            end
-        end)
-
-        -- Content
-        if Config.Content ~= "" then
-            local ContentLabel = Instance.new("TextLabel")
-            ContentLabel.Text = Config.Content
-            ContentLabel.Font = Enum.Font.Gotham
-            ContentLabel.TextSize = 11
-            ContentLabel.TextColor3 = Color3.fromRGB(170, 170, 185)
-            ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
-            ContentLabel.BackgroundTransparency = 1
-            ContentLabel.TextWrapped = true
-            ContentLabel.Size = UDim2.new(1, 0, 0, 14)
-            ContentLabel.LayoutOrder = 1
-            ContentLabel.Parent = Card
-
-            task.defer(function()
-                if not ContentLabel or not ContentLabel.Parent then return end
-                local lineH = 14
-                local maxW  = ContentLabel.AbsoluteSize.X
-                local lines = 1
-                if maxW > 0 then
-                    lines = math.max(1, math.ceil(ContentLabel.TextBounds.X / maxW))
-                end
-                ContentLabel.Size = UDim2.new(1, 0, 0, lineH * lines + 2)
-            end)
-        end
-
-        -- Buttons
-        if #Config.Buttons > 0 then
-            local BtnRow = Instance.new("Frame")
-            BtnRow.BackgroundTransparency = 1
-            BtnRow.Size = UDim2.new(1, 0, 0, 28)
-            BtnRow.LayoutOrder = 2
-            BtnRow.Parent = Card
-
-            local BtnList = Instance.new("UIListLayout")
-            BtnList.FillDirection = Enum.FillDirection.Horizontal
-            BtnList.HorizontalAlignment = Enum.HorizontalAlignment.Right
-            BtnList.VerticalAlignment = Enum.VerticalAlignment.Center
-            BtnList.Padding = UDim.new(0, 6)
-            BtnList.Parent = BtnRow
-
-            for idx, btnCfg in ipairs(Config.Buttons) do
-                local Btn = Instance.new("TextButton")
-                Btn.Text = btnCfg.Name or ("Button" .. idx)
-                Btn.Font = Enum.Font.GothamBold
-                Btn.TextSize = 11
-                Btn.AutomaticSize = Enum.AutomaticSize.X
-                Btn.Size = UDim2.new(0, 0, 1, 0)
-                Btn.BorderSizePixel = 0
-                Btn.LayoutOrder = idx
-
-                local isPrimary = btnCfg.Primary == true or idx == 1
-                if isPrimary then
-                    Btn.BackgroundColor3 = GuiConfig.Color
-                    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                else
-                    Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-                    Btn.TextColor3 = Color3.fromRGB(180, 180, 195)
-                end
-
-                Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
-
-                local BtnPad = Instance.new("UIPadding")
-                BtnPad.PaddingLeft  = UDim.new(0, 10)
-                BtnPad.PaddingRight = UDim.new(0, 10)
-                BtnPad.Parent = Btn
-
-                Btn.Parent = BtnRow
-
-                Btn.MouseButton1Click:Connect(function()
-                    if btnCfg.Callback then pcall(btnCfg.Callback) end
-                    Card:Destroy()
-                end)
-            end
-        end
-
-        -- Progress bar
-        if Config.Duration > 0 and #Config.Buttons == 0 then
-            local ProgressBg = Instance.new("Frame")
-            ProgressBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-            ProgressBg.BorderSizePixel = 0
-            ProgressBg.Size = UDim2.new(1, 0, 0, 3)
-            ProgressBg.LayoutOrder = 3
-            ProgressBg.Parent = Card
-            Instance.new("UICorner", ProgressBg).CornerRadius = UDim.new(1, 0)
-
-            local ProgressBar = Instance.new("Frame")
-            ProgressBar.BackgroundColor3 = GuiConfig.Color
-            ProgressBar.BorderSizePixel = 0
-            ProgressBar.Size = UDim2.new(1, 0, 1, 0)
-            ProgressBar.Parent = ProgressBg
-            Instance.new("UICorner", ProgressBar).CornerRadius = UDim.new(1, 0)
-
-            TweenService:Create(ProgressBar, TweenInfo.new(Config.Duration, Enum.EasingStyle.Linear), {
-                Size = UDim2.new(0, 0, 1, 0)
-            }):Play()
-
-            task.delay(Config.Duration, function()
-                if Card and Card.Parent then Card:Destroy() end
-            end)
-        end
-
-        -- Slide in animation
-        Card.Position = UDim2.new(1, 300, 0, 0)
-        TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0, 0, 0, 0)
-        }):Play()
-
-        -- Enable clip setelah layout settle
-        task.defer(function()
-            task.wait()
-            if Card and Card.Parent then
-                Card.ClipsDescendants = true
-            end
-        end)
-    end
-    -- ══════════════════════════════════════════════════════════════
 
     return GuiFunc
 end
