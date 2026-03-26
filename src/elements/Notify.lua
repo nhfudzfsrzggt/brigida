@@ -1,4 +1,4 @@
--- // VilarisUi | Notify.lua | Standalone Notify Module
+-- // VilarisUi | Notify.lua | Standalone Notify Module 
 
 local function MakeNotifyModule(TweenService, CoreGui, getIconId)
 
@@ -9,7 +9,12 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
         NotifyConfig.Title       = NotifyConfig.Title or "Velaris UI"
         NotifyConfig.Description = NotifyConfig.Description or ""
         NotifyConfig.Content     = NotifyConfig.Content or ""
-        NotifyConfig.Color       = NotifyConfig.Color or Color3.fromRGB(0, 208, 255)
+        
+        -- [FIX] Validasi Color: Cek apakah input adalah Color3, jika tidak gunakan default
+        if typeof(NotifyConfig.Color) ~= "Color3" then
+            NotifyConfig.Color = Color3.fromRGB(0, 208, 255)
+        end
+        
         NotifyConfig.Time        = NotifyConfig.Time or 0.5
         NotifyConfig.Delay       = NotifyConfig.Delay or 5
         NotifyConfig.Buttons     = NotifyConfig.Buttons or {}
@@ -22,6 +27,8 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 NotifyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
                 NotifyGui.Name = "NotifyGui"
                 NotifyGui.Parent = CoreGui
+                -- [FIX] Agar notifikasi tidak hilang saat respawn
+                NotifyGui.ResetOnSpawn = false 
             end
 
             if not CoreGui.NotifyGui:FindFirstChild("NotifyLayout") then
@@ -128,6 +135,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 local DescLabel = Instance.new("TextLabel")
                 DescLabel.Font = Enum.Font.GothamMedium
                 DescLabel.Text = NotifyConfig.Description
+                -- [SAFE] NotifyConfig.Color sudah divalidasi di atas, jadi ini pasti Color3
                 DescLabel.TextColor3 = NotifyConfig.Color
                 DescLabel.TextSize = 11
                 DescLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -326,6 +334,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             Title       = title or "VelarisUI",
             Description = desc or "Notification",
             Content     = msg or "Content",
+            -- [FIX] Pastikan parameter 'color' divalidasi di dalam MakeNotify
             Color       = color or Color3.fromRGB(0, 208, 255),
             Delay       = delay or 4,
         })
