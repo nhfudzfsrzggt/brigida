@@ -1,4 +1,4 @@
--- // VelarisUi | Notify.lua 
+-- // VelarisUi | Notify.lua | Lexs Style (Fixed & Enhanced)
 
 local function MakeNotifyModule(TweenService, CoreGui, getIconId)
 
@@ -22,7 +22,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
         local isClosing = false
 
         spawn(function()
-            -- [FIX] ScreenGui Setup
+            -- [FIX] Buat ScreenGui dengan error handling
             local notifyGui = CoreGui:FindFirstChild("NotifyGui")
             if not notifyGui then
                 notifyGui = Instance.new("ScreenGui")
@@ -32,7 +32,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 notifyGui.Parent = CoreGui
             end
 
-            -- [FIX] Layout Management
+            -- [FIX] Buat NotifyLayout dengan pengecekan yang lebih aman
             local notifyLayout = notifyGui:FindFirstChild("NotifyLayout")
             if not notifyLayout then
                 notifyLayout = Instance.new("Frame")
@@ -44,10 +44,13 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 notifyLayout.Name = "NotifyLayout"
                 notifyLayout.Parent = notifyGui
 
+                -- [ENHANCED] Stack management yang lebih reliable
                 local function reorganizeStack()
                     task.wait()
+                    local children = notifyLayout:GetChildren()
                     local frames = {}
-                    for _, v in ipairs(notifyLayout:GetChildren()) do
+                    
+                    for _, v in ipairs(children) do
                         if v:IsA("Frame") and v.Name == "NotifyFrame" then
                             table.insert(frames, v)
                         end
@@ -57,15 +60,12 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                         return a.LayoutOrder < b.LayoutOrder
                     end)
                     
-                    local currentY = 0
                     for i, frame in ipairs(frames) do
                         if frame and frame.Parent then
-                            -- Gunakan AbsoluteSize untuk akurasi stack
-                            local h = frame.AbsoluteSize.Y > 0 and frame.AbsoluteSize.Y or 70
+                            local targetY = -((70 + 12) * (i - 1))
                             TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
-                                Position = UDim2.new(0, 0, 1, -(currentY + h + 12))
+                                Position = UDim2.new(0, 0, 1, targetY)
                             }):Play()
-                            currentY = currentY + h + 12
                         end
                     end
                 end
@@ -74,19 +74,33 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 notifyLayout.ChildAdded:Connect(reorganizeStack)
             end
 
+            -- [FIX] Hitung posisi stack dengan lebih akurat
+            local function getStackHeight()
+                local height = 0
+                for _, v in ipairs(notifyLayout:GetChildren()) do
+                    if v:IsA("Frame") and v.Name == "NotifyFrame" and v ~= notifyFrame then
+                        height = height + v.Size.Y.Offset + 12
+                    end
+                end
+                return height
+            end
+
             -- ========================
-            -- FRAME UTAMA
+            -- FRAME UTAMA (wrapper)
             -- ========================
             local notifyFrame = Instance.new("Frame")
             notifyFrame.BackgroundTransparency = 1
             notifyFrame.BorderSizePixel = 0
-            notifyFrame.Size = UDim2.new(1, 0, 0, 70) -- Awal, akan di-resize
+            notifyFrame.Size = UDim2.new(1, 0, 0, 70)
             notifyFrame.AnchorPoint = Vector2.new(0, 1)
-            notifyFrame.Position = UDim2.new(0, 0, 1, 0) -- Spawn dari luar bawah
+            notifyFrame.Position = UDim2.new(0, 0, 1, -getStackHeight())
             notifyFrame.Name = "NotifyFrame"
-            notifyFrame.LayoutOrder = tick()
+            notifyFrame.LayoutOrder = tick() -- [ENHANCED] Untuk sorting yang konsisten
             notifyFrame.Parent = notifyLayout
 
+            -- ========================
+            -- FRAME REAL (background card)
+            -- ========================
             local notifyFrameReal = Instance.new("Frame")
             notifyFrameReal.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
             notifyFrameReal.BorderSizePixel = 0
@@ -105,7 +119,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             cardStroke.Parent = notifyFrameReal
 
             -- ========================
-            -- ICON
+            -- LEFT ICON (panel penuh sisi kiri)
             -- ========================
             local iconId = getIconId(NotifyConfig.Icon)
             local hasIcon = iconId ~= ""
@@ -116,24 +130,17 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             leftIcon.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
             leftIcon.BackgroundTransparency = 0
             leftIcon.BorderSizePixel = 0
-            leftIcon.Size = UDim2.new(0, 55, 1, 0) -- Full Height
+            leftIcon.Position = UDim2.new(0, 0, 0, 0)
+            leftIcon.Size = UDim2.new(0, 55, 1, 0)
             leftIcon.ScaleType = Enum.ScaleType.Fit
             leftIcon.Name = "LeftIcon"
             leftIcon.Parent = notifyFrameReal
             
             local iconCorner = Instance.new("UICorner", leftIcon)
             iconCorner.CornerRadius = UDim.new(0, 10)
-            
-            -- Fix overlap corner kiri bawah/atas
-            local iconFixer = Instance.new("Frame")
-            iconFixer.BackgroundTransparency = 1
-            iconFixer.Size = UDim2.new(0, 10, 1, 0)
-            iconFixer.Position = UDim2.new(1, -10, 0, 0)
-            iconFixer.Name = "IconFix"
-            iconFixer.Parent = leftIcon
 
             -- ========================
-            -- CONTENT FRAME
+            -- CONTENT FRAME (area kanan icon)
             -- ========================
             local contentFrame = Instance.new("Frame")
             contentFrame.BackgroundTransparency = 1
@@ -144,7 +151,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             contentFrame.Parent = notifyFrameReal
 
             -- ========================
-            -- TOP BAR (Title + Desc)
+            -- TOP BAR (title + desc + close)
             -- ========================
             local topBar = Instance.new("Frame")
             topBar.BackgroundTransparency = 1
@@ -165,6 +172,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             titleLabel.Name = "TitleLabel"
             titleLabel.Parent = topBar
 
+            -- [FIX] Description dengan positioning yang lebih reliable
             local descLabel = nil
             if NotifyConfig.Description ~= "" then
                 descLabel = Instance.new("TextLabel")
@@ -178,6 +186,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 descLabel.Name = "DescLabel"
                 descLabel.Parent = topBar
                 
+                -- [FIX] Update posisi desc setelah TextBounds tersedia
                 task.defer(function()
                     if titleLabel and titleLabel.Parent then
                         task.wait()
@@ -188,7 +197,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 end)
             end
 
-            -- Close Button
+            -- Tombol Close
             local closeBtn = Instance.new("TextButton")
             closeBtn.Text = ""
             closeBtn.AnchorPoint = Vector2.new(1, 0.5)
@@ -208,17 +217,12 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             closeImg.Parent = closeBtn
 
             -- ========================
-            -- CONTENT TEXT & RESIZE LOGIC
+            -- CONTENT TEXT (MAJOR FIX)
             -- ========================
             local hasButtons = #NotifyConfig.Buttons > 0
             local contentHeight = 0
             local textLabel = nil
-            
-            -- Konstanta Ukuran
-            local PADDING_Y = 10 -- Padding atas/bawah symmetrical
-            local MIN_HEIGHT = 55 -- Tinggi minimal (lebih kecil agar simetris)
-            local TOPBAR_H = 36
-            
+
             if NotifyConfig.Content ~= "" then
                 textLabel = Instance.new("TextLabel")
                 textLabel.Font = Enum.Font.Gotham
@@ -229,20 +233,77 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                 textLabel.TextYAlignment = Enum.TextYAlignment.Top
                 textLabel.BackgroundTransparency = 1
                 textLabel.TextWrapped = true
-                textLabel.Size = UDim2.new(1, -20, 0, 1000)
-                textLabel.Position = UDim2.new(0, 10, 0, TOPBAR_H) -- Sementara
+                textLabel.Size = UDim2.new(1, -20, 0, 1000) -- Height besar untuk measurement
+                textLabel.Position = UDim2.new(0, 10, 0, 36)
                 textLabel.Name = "ContentText"
                 textLabel.Parent = contentFrame
+
+                -- [FIX] Sistem resize yang lebih robust menggunakan Heartbeat
+                local function updateContentSize()
+                    if not textLabel or not textLabel.Parent then return end
+                    
+                    -- Force layout update dengan Heartbeat wait
+                    game:GetService("RunService").Heartbeat:Wait()
+                    
+                    -- Get actual text bounds
+                    local bounds = textLabel.TextBounds
+                    contentHeight = math.max(bounds.Y, 13)
+                    
+                    -- Apply correct size
+                    textLabel.Size = UDim2.new(1, -20, 0, contentHeight)
+                    
+                    return contentHeight
+                end
+
+                -- [FIX] Multiple attempts dengan Heartbeat untuk memastikan TextBounds valid
+                task.defer(function()
+                    local attempts = 0
+                    local maxAttempts = 5
+                    
+                    while attempts < maxAttempts do
+                        if not textLabel or not textLabel.Parent then return end
+                        
+                        local height = updateContentSize()
+                        
+                        if height > 0 and height < 500 then
+                            break
+                        end
+                        
+                        attempts = attempts + 1
+                    end
+                    
+                    -- Update frame height setelah content size diketahui
+                    if not notifyFrame or not notifyFrame.Parent then return end
+                    
+                    local finalHeight = contentHeight
+                    if hasButtons then
+                        finalHeight = finalHeight + 36 + 4 + 28 + 10 -- top + content + gap + buttons + padding
+                    else
+                        finalHeight = 36 + finalHeight + 12 -- top + content + padding
+                    end
+                    
+                    notifyFrame.Size = UDim2.new(1, 0, 0, math.max(70, finalHeight))
+                    
+                    -- Update button row position jika ada
+                    if hasButtons then
+                        local btnRow = notifyFrameReal:FindFirstChild("BtnRow")
+                        if btnRow then
+                            btnRow.Position = UDim2.new(0, 10, 0, 36 + contentHeight + 4)
+                        end
+                    end
+                end)
             end
 
-            local btnRow = nil
+            -- ========================
+            -- BUTTONS (Enhanced)
+            -- ========================
             if hasButtons then
-                btnRow = Instance.new("Frame")
+                local btnRow = Instance.new("Frame")
                 btnRow.BackgroundTransparency = 1
                 btnRow.BorderSizePixel = 0
                 btnRow.Size = UDim2.new(1, -20, 0, 28)
                 btnRow.Name = "BtnRow"
-                btnRow.Parent = notifyFrameReal -- Note: Parent ke RealFrame agar bisa di-swap posisi
+                btnRow.Parent = notifyFrameReal
 
                 local btnList = Instance.new("UIListLayout")
                 btnList.FillDirection = Enum.FillDirection.Horizontal
@@ -253,6 +314,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
 
                 for idx, btnCfg in ipairs(NotifyConfig.Buttons) do
                     local isPrimary = btnCfg.Primary == true
+
                     local btn = Instance.new("TextButton")
                     btn.Font = Enum.Font.GothamBold
                     btn.Text = btnCfg.Name or ("Button " .. idx)
@@ -277,65 +339,29 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
                         btnStroke.Parent = btn
                     end
 
+                    -- [FIX] Callback dengan error handling
                     btn.MouseButton1Click:Connect(function()
                         if btnCfg.Callback then
-                            pcall(btnCfg.Callback)
+                            local success, err = pcall(btnCfg.Callback)
+                            if not success then
+                                warn("Notify Button Callback Error: " .. tostring(err))
+                            end
                         end
                         NotifyFunction:Close()
                     end)
                 end
+
+                -- [FIX] Position buttons jika tidak ada content
+                if NotifyConfig.Content == "" then
+                    btnRow.Position = UDim2.new(0, 10, 0, 36 + 4)
+                    notifyFrame.Size = UDim2.new(1, 0, 0, 36 + 4 + 28 + 10)
+                else
+                    btnRow.Position = UDim2.new(0, 10, 0, 36 + 28 + 4) -- temporary, akan diupdate
+                end
             end
 
-            -- [FIX] KALKULASI UKURAN FINAL & CENTERING
-            task.defer(function()
-                if not notifyFrame or not notifyFrame.Parent then return end
-                
-                -- 1. Hitung Tinggi Konten
-                local textBounds = textLabel and textLabel.TextBounds.Y or 0
-                contentHeight = math.max(textBounds, 0)
-                
-                -- 2. Hitung Total Tinggi yang Dibutuhkan
-                local neededHeight = TOPBAR_H + contentHeight + PADDING_Y
-                if btnRow then
-                    neededHeight = neededHeight + 4 + 28 -- Gap + Button Height
-                end
-                
-                -- 3. Terapkan Minimal Height (Simetris)
-                local finalHeight = math.max(MIN_HEIGHT, neededHeight)
-                
-                -- 4. Update Frame Size
-                notifyFrame.Size = UDim2.new(1, 0, 0, finalHeight)
-                
-                -- 5. [SYMMENTRY FIX] Posisikan Elemen Secara Dinamis
-                -- Jika tinggi final > yang dibutuhkan (karena min height), kita centerkan konten
-                local extraSpace = finalHeight - neededHeight
-                local topOffset = PADDING_Y + (extraSpace / 2) -- Bagi rata sisa ruang
-                
-                -- Update TopBar Position
-                topBar.Position = UDim2.new(0, 0, 0, topOffset)
-                
-                -- Update Content Position
-                if textLabel then
-                    textLabel.Position = UDim2.new(0, 10, 0, topOffset + TOPBAR_H)
-                end
-                
-                -- Update Button Position
-                if btnRow then
-                    btnRow.Position = UDim2.new(0, 65, 0, topOffset + TOPBAR_H + contentHeight + 4) -- 55 (icon) + 10 (padding)
-                end
-                
-                -- 6. Update Stack (Trigger reorganize)
-                -- Kita bisa paksa update posisi jika sudah ada di stack
-                 local currentChildren = notifyLayout:GetChildren()
-                 local count = 0
-                 for _, v in pairs(currentChildren) do
-                     if v.Name == "NotifyFrame" then count = count + 1 end
-                 end
-                 -- Jika ini notif pertama, posisi handle by ChildAdded, jika tidak perlu manual
-            end)
-
             -- ========================
-            -- CLOSE FUNCTION
+            -- CLOSE FUNCTION (Enhanced)
             -- ========================
             function NotifyFunction:Close()
                 if isClosing then return false end
@@ -363,16 +389,23 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
             closeBtn.Activated:Connect(function() NotifyFunction:Close() end)
 
             -- ========================
-            -- ANIMASI MASUK
+            -- SLIDE IN ANIMASI
             -- ========================
-            TweenService:Create(notifyFrameReal, TweenInfo.new(
+            local openTween = TweenService:Create(notifyFrameReal, TweenInfo.new(
                 tonumber(NotifyConfig.Time) or 0.5,
                 Enum.EasingStyle.Quint,
                 Enum.EasingDirection.Out
-            ), { Position = UDim2.new(0, 0, 0, 0) }):Play()
+            ), { Position = UDim2.new(0, 0, 0, 0) })
+            
+            openTween:Play()
 
-            if tonumber(NotifyConfig.Delay) > 0 then
-                task.delay(NotifyConfig.Delay, function()
+            -- ========================
+            -- AUTO CLOSE (Fixed)
+            -- ========================
+            local delay = tonumber(NotifyConfig.Delay) or 5
+            
+            if delay > 0 then
+                task.delay(delay, function()
                     NotifyFunction:Close()
                 end)
             end
@@ -381,6 +414,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId)
         return NotifyFunction
     end
 
+    -- Shortcut function
     function NotifyModule:Nt(msg, delay, color, title, desc)
         return self:MakeNotify({
             Title       = title or "VelarisUI",
