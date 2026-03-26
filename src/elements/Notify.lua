@@ -1,468 +1,365 @@
--- // VelarisUI | Notify.lua | WindUI-Style Notify Module
+-- // VelarisUi | Notify.lua | Standalone Notify Module 
 
 local function MakeNotifyModule(TweenService, CoreGui, getIconId)
 
     local NotifyModule = {}
 
-    -- ─── Internal helpers ────────────────────────────────────────────────────
-
-    local function validateColor(val)
-        return typeof(val) == "Color3" and val or Color3.fromRGB(0, 208, 255)
-    end
-
-    local function ensureGui()
-        if not CoreGui:FindFirstChild("NotifyGui") then
-            local gui = Instance.new("ScreenGui")
-            gui.Name           = "NotifyGui"
-            gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-            gui.ResetOnSpawn   = false
-            gui.Parent         = CoreGui
+    function NotifyModule:MakeNotify(NotifyConfig)
+        NotifyConfig = NotifyConfig or {}
+        NotifyConfig.Title       = NotifyConfig.Title or "Velaris UI"
+        NotifyConfig.Description = NotifyConfig.Description or ""
+        NotifyConfig.Content     = NotifyConfig.Content or ""
+        
+        -- [FIX] Validasi Color: Cek apakah input adalah Color3, jika tidak gunakan default
+        if typeof(NotifyConfig.Color) ~= "Color3" then
+            NotifyConfig.Color = Color3.fromRGB(0, 208, 255)
         end
+        
+        NotifyConfig.Time        = NotifyConfig.Time or 0.5
+        NotifyConfig.Delay       = NotifyConfig.Delay or 5
+        NotifyConfig.Buttons     = NotifyConfig.Buttons or {}
 
-        if not CoreGui.NotifyGui:FindFirstChild("NotifyHolder") then
-            local holder = Instance.new("Frame")
-            holder.Name                 = "NotifyHolder"
-            holder.AnchorPoint          = Vector2.new(1, 1)
-            holder.BackgroundTransparency = 1
-            holder.BorderSizePixel      = 0
-            holder.Position             = UDim2.new(1, -16, 1, -16)
-            holder.Size                 = UDim2.new(0, 320, 1, 0)
-            holder.Parent               = CoreGui.NotifyGui
+        local NotifyFunction = {}
 
-            -- Auto-restack on child removed
-            holder.ChildRemoved:Connect(function()
-                local count = 0
-                for _, child in holder:GetChildren() do
-                    if child:IsA("Frame") then
-                        TweenService:Create(child, TweenInfo.new(
-                            0.35,
-                            Enum.EasingStyle.Quint,
-                            Enum.EasingDirection.Out
-                        ), {
-                            Position = UDim2.new(0, 0, 1, -((child.Size.Y.Offset + 10) * count))
-                        }):Play()
-                        count += 1
+        spawn(function()
+            if not CoreGui:FindFirstChild("NotifyGui") then
+                local NotifyGui = Instance.new("ScreenGui")
+                NotifyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+                NotifyGui.Name = "NotifyGui"
+                NotifyGui.Parent = CoreGui
+                -- [FIX] Agar notifikasi tidak hilang saat respawn
+                NotifyGui.ResetOnSpawn = false 
+            end
+
+            if not CoreGui.NotifyGui:FindFirstChild("NotifyLayout") then
+                local NotifyLayout = Instance.new("Frame")
+                NotifyLayout.AnchorPoint = Vector2.new(1, 1)
+                NotifyLayout.BackgroundTransparency = 1
+                NotifyLayout.BorderSizePixel = 0
+                NotifyLayout.Position = UDim2.new(1, -16, 1, -16)
+                NotifyLayout.Size = UDim2.new(0, 300, 1, 0)
+                NotifyLayout.Name = "NotifyLayout"
+                NotifyLayout.Parent = CoreGui.NotifyGui
+
+                local Count = 0
+                CoreGui.NotifyGui.NotifyLayout.ChildRemoved:Connect(function()
+                    Count = 0
+                    for _, v in CoreGui.NotifyGui.NotifyLayout:GetChildren() do
+                        if v:IsA("Frame") then
+                            TweenService:Create(v, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+                                Position = UDim2.new(0, 0, 1, -((v.Size.Y.Offset + 10) * Count))
+                            }):Play()
+                            Count = Count + 1
+                        end
                     end
+                end)
+            end
+
+            local NotifyPosHeigh = 0
+            for _, v in CoreGui.NotifyGui.NotifyLayout:GetChildren() do
+                if v:IsA("Frame") then
+                    NotifyPosHeigh = -(v.Position.Y.Offset) + v.Size.Y.Offset + 10
                 end
-            end)
-        end
-    end
-
-    local function getStackOffset()
-        local offset = 0
-        for _, child in CoreGui.NotifyGui.NotifyHolder:GetChildren() do
-            if child:IsA("Frame") then
-                offset = -(child.Position.Y.Offset) + child.Size.Y.Offset + 10
-            end
-        end
-        return offset
-    end
-
-    -- ─── Duration bar ────────────────────────────────────────────────────────
-
-    local function makeDurationBar(parent, accentColor)
-        local barBg = Instance.new("Frame")
-        barBg.Name                  = "DurationBg"
-        barBg.BackgroundColor3      = Color3.fromRGB(30, 30, 38)
-        barBg.BorderSizePixel       = 0
-        barBg.Size                  = UDim2.new(1, 0, 0, 2)
-        barBg.AnchorPoint           = Vector2.new(0, 1)
-        barBg.Position              = UDim2.new(0, 0, 1, 0)
-        barBg.ClipsDescendants      = true
-        barBg.Parent                = parent
-
-        local fill = Instance.new("Frame")
-        fill.Name                   = "Fill"
-        fill.BackgroundColor3       = accentColor
-        fill.BorderSizePixel        = 0
-        fill.Size                   = UDim2.new(1, 0, 1, 0)
-        fill.Parent                 = barBg
-
-        return barBg, fill
-    end
-
-    -- ─── Button row ──────────────────────────────────────────────────────────
-
-    local function makeButtons(parent, buttons, accentColor, onClose)
-        local btnCount = #buttons
-        if btnCount == 0 then return end
-
-        local gap      = 6
-        local totalGap = gap * (btnCount - 1)
-
-        local row = Instance.new("Frame")
-        row.Name                  = "ButtonRow"
-        row.BackgroundTransparency = 1
-        row.BorderSizePixel       = 0
-        row.Size                  = UDim2.new(1, -24, 0, 28)
-        row.Position              = UDim2.new(0, 12, 0, 0)   -- Y set after defer
-        row.Parent                = parent
-
-        local list = Instance.new("UIListLayout")
-        list.FillDirection        = Enum.FillDirection.Horizontal
-        list.HorizontalAlignment  = Enum.HorizontalAlignment.Left
-        list.VerticalAlignment    = Enum.VerticalAlignment.Center
-        list.Padding              = UDim.new(0, gap)
-        list.Parent               = row
-
-        for idx, btnCfg in ipairs(buttons) do
-            local isPrimary = btnCfg.Primary == true
-
-            local btn = Instance.new("TextButton")
-            btn.Text             = ""
-            btn.AutomaticSize    = Enum.AutomaticSize.None
-            btn.Size             = UDim2.new(1 / btnCount, -(totalGap / btnCount), 1, 0)
-            btn.BorderSizePixel  = 0
-            btn.LayoutOrder      = idx
-            btn.BackgroundColor3 = isPrimary
-                and Color3.fromRGB(45, 45, 58)
-                or  Color3.fromRGB(33, 33, 42)
-            btn.Parent = row
-
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-
-            local stroke = Instance.new("UIStroke")
-            stroke.Color     = isPrimary
-                and Color3.fromRGB(70, 70, 88)
-                or  Color3.fromRGB(50, 50, 62)
-            stroke.Thickness = 1
-            stroke.Parent    = btn
-
-            -- Inner content frame (icon + label, centered)
-            local inner = Instance.new("Frame")
-            inner.BackgroundTransparency = 1
-            inner.AutomaticSize          = Enum.AutomaticSize.X
-            inner.AnchorPoint            = Vector2.new(0.5, 0.5)
-            inner.Position               = UDim2.new(0.5, 0, 0.5, 0)
-            inner.Size                   = UDim2.new(0, 0, 1, 0)
-            inner.Parent                 = btn
-
-            local innerList = Instance.new("UIListLayout")
-            innerList.FillDirection      = Enum.FillDirection.Horizontal
-            innerList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-            innerList.VerticalAlignment  = Enum.VerticalAlignment.Center
-            innerList.Padding            = UDim.new(0, 4)
-            innerList.Parent             = inner
-
-            -- Optional icon on button
-            local btnIconId = getIconId(btnCfg.Icon or "")
-            if btnIconId ~= "" then
-                local ic = Instance.new("ImageLabel")
-                ic.BackgroundTransparency = 1
-                ic.Size        = UDim2.new(0, 11, 0, 11)
-                ic.Image       = btnIconId
-                ic.ImageColor3 = isPrimary
-                    and Color3.fromRGB(220, 220, 230)
-                    or  Color3.fromRGB(160, 160, 175)
-                ic.ScaleType   = Enum.ScaleType.Fit
-                ic.LayoutOrder = 0
-                ic.Parent      = inner
             end
 
-            local label = Instance.new("TextLabel")
-            label.Font                = Enum.Font.GothamBold
-            label.Text                = btnCfg.Name or ("Btn" .. idx)
-            label.TextSize            = 11
-            label.TextColor3          = isPrimary
-                and Color3.fromRGB(220, 220, 230)
-                or  Color3.fromRGB(160, 160, 175)
-            label.BackgroundTransparency = 1
-            label.AutomaticSize       = Enum.AutomaticSize.X
-            label.Size                = UDim2.new(0, 0, 1, 0)
-            label.LayoutOrder         = 1
-            label.Parent              = inner
+            local NotifyFrame = Instance.new("Frame")
+            NotifyFrame.BackgroundTransparency = 1
+            NotifyFrame.BorderSizePixel = 0
+            NotifyFrame.Size = UDim2.new(1, 0, 0, 70)
+            NotifyFrame.AnchorPoint = Vector2.new(0, 1)
+            NotifyFrame.Position = UDim2.new(0, 0, 1, -NotifyPosHeigh)
+            NotifyFrame.Parent = CoreGui.NotifyGui.NotifyLayout
 
-            btn.MouseButton1Click:Connect(function()
-                if btnCfg.Callback then pcall(btnCfg.Callback) end
-                onClose()
-            end)
-        end
+            local NotifyFrameReal = Instance.new("Frame")
+            NotifyFrameReal.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+            NotifyFrameReal.BorderSizePixel = 0
+            NotifyFrameReal.Position = UDim2.new(0, 320, 0, 0)
+            NotifyFrameReal.Size = UDim2.new(1, 0, 1, 0)
+            NotifyFrameReal.ClipsDescendants = false
+            NotifyFrameReal.Parent = NotifyFrame
+            Instance.new("UICorner", NotifyFrameReal).CornerRadius = UDim.new(0, 10)
 
-        return row
-    end
+            local CardStroke = Instance.new("UIStroke")
+            CardStroke.Color = Color3.fromRGB(50, 50, 62)
+            CardStroke.Thickness = 1
+            CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            CardStroke.Parent = NotifyFrameReal
 
-    -- ─── Main API ────────────────────────────────────────────────────────────
+            local iconId = getIconId(NotifyConfig.Icon or "")
+            local hasIcon = iconId ~= ""
+            local hasButtons = #NotifyConfig.Buttons > 0
 
-    function NotifyModule:MakeNotify(cfg)
-        cfg             = cfg or {}
-        cfg.Title       = cfg.Title       or "VelarisUI"
-        cfg.Description = cfg.Description or ""
-        cfg.Content     = cfg.Content     or ""
-        cfg.Color       = validateColor(cfg.Color)
-        cfg.Time        = cfg.Time        or 0.45
-        cfg.Delay       = cfg.Delay       or 5
-        cfg.Buttons     = cfg.Buttons     or {}
-
-        local NotifyHandle = {}
-        local closed       = false
-
-        task.spawn(function()
-            ensureGui()
-
-            local stackY   = getStackOffset()
-            local iconId   = getIconId(cfg.Icon or "")
-            local hasIcon  = iconId ~= ""
-            local hasBtns  = #cfg.Buttons > 0
-
-            -- ── Outer container (drives restack layout) ──────────────────
-            local container = Instance.new("Frame")
-            container.BackgroundTransparency = 1
-            container.BorderSizePixel        = 0
-            container.Size                   = UDim2.new(1, 0, 0, 70)
-            container.AnchorPoint            = Vector2.new(0, 1)
-            container.Position               = UDim2.new(0, 0, 1, -stackY)
-            container.Parent                 = CoreGui.NotifyGui.NotifyHolder
-
-            -- ── Card surface ─────────────────────────────────────────────
-            local card = Instance.new("Frame")
-            card.BackgroundColor3  = Color3.fromRGB(24, 24, 30)
-            card.BorderSizePixel   = 0
-            card.ClipsDescendants  = false
-            card.Position          = UDim2.new(0, 340, 0, 0)   -- starts off-screen
-            card.Size              = UDim2.new(1, 0, 1, 0)
-            card.Parent            = container
-            Instance.new("UICorner", card).CornerRadius = UDim.new(0, 12)
-
-            local cardStroke = Instance.new("UIStroke")
-            cardStroke.Color           = Color3.fromRGB(45, 45, 58)
-            cardStroke.Thickness       = 0.8
-            cardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            cardStroke.Parent          = card
-
-            -- ── Icon handling ─────────────────────────────────────────────
             local titleOffsetX = 12
 
             if hasIcon then
-                if hasBtns then
-                    -- Small inline icon beside title
-                    local ic = Instance.new("ImageLabel")
-                    ic.BackgroundTransparency = 1
-                    ic.BorderSizePixel        = 0
-                    ic.AnchorPoint            = Vector2.new(0, 0)
-                    ic.Position               = UDim2.new(0, 12, 0, 12)
-                    ic.Size                   = UDim2.new(0, 16, 0, 16)
-                    ic.Image                  = iconId
-                    ic.ImageColor3            = cfg.Color
-                    ic.ScaleType              = Enum.ScaleType.Fit
-                    ic.Parent                 = card
-                    titleOffsetX = 12 + 16 + 6
+                if hasButtons then
+                    local IconImg = Instance.new("ImageLabel")
+                    IconImg.BackgroundTransparency = 1
+                    IconImg.BorderSizePixel = 0
+                    IconImg.AnchorPoint = Vector2.new(0, 0)
+                    IconImg.Position = UDim2.new(0, 12, 0, 10)
+                    IconImg.Size = UDim2.new(0, 17, 0, 17)
+                    IconImg.Image = iconId
+                    IconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                    IconImg.ScaleType = Enum.ScaleType.Fit
+                    IconImg.Parent = NotifyFrameReal
+                    titleOffsetX = 12 + 17 + 5
                 else
-                    -- Large left-panel icon
-                    local panel = Instance.new("ImageLabel")
-                    panel.BackgroundColor3    = Color3.fromRGB(28, 28, 35)
-                    panel.BackgroundTransparency = 0
-                    panel.BorderSizePixel     = 0
-                    panel.Image               = iconId
-                    panel.ImageColor3         = cfg.Color
-                    panel.ScaleType           = Enum.ScaleType.Fit
-                    panel.Position            = UDim2.new(0, 0, 0, 0)
-                    panel.Size                = UDim2.new(0, 50, 1, 0)
-                    panel.Parent              = card
-                    Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
-                    -- mask right corners of panel so they don't round against card
-                    local mask = Instance.new("Frame")
-                    mask.BackgroundColor3        = Color3.fromRGB(28, 28, 35)
-                    mask.BorderSizePixel         = 0
-                    mask.Size                    = UDim2.new(0, 12, 1, 0)
-                    mask.Position                = UDim2.new(0, 38, 0, 0)
-                    mask.Parent                  = panel
-                    titleOffsetX = 62
+                    local LeftIcon = Instance.new("ImageLabel")
+                    LeftIcon.Image = iconId
+                    LeftIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                    LeftIcon.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+                    LeftIcon.BackgroundTransparency = 0
+                    LeftIcon.BorderSizePixel = 0
+                    LeftIcon.Position = UDim2.new(0, 0, 0, 0)
+                    LeftIcon.Size = UDim2.new(0, 50, 1, 0)
+                    LeftIcon.ScaleType = Enum.ScaleType.Fit
+                    LeftIcon.Parent = NotifyFrameReal
+                    Instance.new("UICorner", LeftIcon).CornerRadius = UDim.new(0, 10)
+                    titleOffsetX = 58
                 end
             end
 
-            -- ── Title ─────────────────────────────────────────────────────
-            local titleLabel = Instance.new("TextLabel")
-            titleLabel.Font              = Enum.Font.GothamBold
-            titleLabel.Text              = cfg.Title
-            titleLabel.TextColor3        = Color3.fromRGB(235, 235, 242)
-            titleLabel.TextSize          = 13
-            titleLabel.TextXAlignment    = Enum.TextXAlignment.Left
-            titleLabel.BackgroundTransparency = 1
-            titleLabel.Position          = UDim2.new(0, titleOffsetX, 0, 11)
-            titleLabel.Size              = UDim2.new(1, -(titleOffsetX + 28), 0, 16)
-            titleLabel.Parent            = card
+            local TitleLabel = Instance.new("TextLabel")
+            TitleLabel.Font = Enum.Font.GothamBold
+            TitleLabel.Text = NotifyConfig.Title
+            TitleLabel.TextColor3 = Color3.fromRGB(240, 240, 245)
+            TitleLabel.TextSize = 13
+            TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            TitleLabel.BackgroundTransparency = 1
+            TitleLabel.Position = UDim2.new(0, titleOffsetX, 0, 10)
+            TitleLabel.Size = UDim2.new(1, -titleOffsetX - 10, 0, 16)
+            TitleLabel.Parent = NotifyFrameReal
 
-            -- ── Description (colored badge text beside title) ─────────────
-            if cfg.Description ~= "" then
-                local descLabel = Instance.new("TextLabel")
-                descLabel.Font           = Enum.Font.GothamMedium
-                descLabel.Text           = cfg.Description
-                descLabel.TextColor3     = cfg.Color
-                descLabel.TextSize       = 11
-                descLabel.TextXAlignment = Enum.TextXAlignment.Left
-                descLabel.BackgroundTransparency = 1
-                descLabel.TextTruncate   = Enum.TextTruncate.AtEnd
-                descLabel.Position       = UDim2.new(
-                    0,
-                    titleOffsetX + titleLabel.TextBounds.X + 6,
-                    0,
-                    12
-                )
-                descLabel.Size = UDim2.new(
-                    1,
-                    -(titleOffsetX + titleLabel.TextBounds.X + 28),
-                    0,
-                    14
-                )
-                descLabel.Parent = card
+            if NotifyConfig.Description ~= "" then
+                local DescLabel = Instance.new("TextLabel")
+                DescLabel.Font = Enum.Font.GothamMedium
+                DescLabel.Text = NotifyConfig.Description
+                DescLabel.TextColor3 = NotifyConfig.Color
+                DescLabel.TextSize = 11
+                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+                DescLabel.BackgroundTransparency = 1
+                DescLabel.Position = UDim2.new(0, titleOffsetX + TitleLabel.TextBounds.X + 6, 0, 11)
+                DescLabel.Size = UDim2.new(1, -(titleOffsetX + TitleLabel.TextBounds.X + 16), 0, 14)
+                DescLabel.TextTruncate = Enum.TextTruncate.AtEnd
+                DescLabel.Parent = NotifyFrameReal
             end
 
-            -- ── Content body ──────────────────────────────────────────────
-            local contentH = 0
-
-            if cfg.Content ~= "" then
-                local contentLabel = Instance.new("TextLabel")
-                contentLabel.Font            = Enum.Font.Gotham
-                contentLabel.Text            = cfg.Content
-                contentLabel.TextColor3      = Color3.fromRGB(155, 155, 168)
-                contentLabel.TextSize        = 12
-                contentLabel.TextXAlignment  = Enum.TextXAlignment.Left
-                contentLabel.TextYAlignment  = Enum.TextYAlignment.Top
-                contentLabel.TextWrapped     = true
-                contentLabel.BackgroundTransparency = 1
-                contentLabel.Position        = UDim2.new(0, titleOffsetX, 0, 32)
-                contentLabel.Size            = UDim2.new(1, -(titleOffsetX + 10), 0, 14)
-                contentLabel.Parent          = card
+            -- [FIX] Multi-line content support
+            local contentLabelRef = nil
+            if NotifyConfig.Content ~= "" then
+                local ContentLabel = Instance.new("TextLabel")
+                ContentLabel.Font = Enum.Font.Gotham
+                ContentLabel.TextColor3 = Color3.fromRGB(160, 160, 172)
+                ContentLabel.TextSize = 12
+                ContentLabel.Text = NotifyConfig.Content
+                ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
+                ContentLabel.TextYAlignment = Enum.TextYAlignment.Top
+                ContentLabel.BackgroundTransparency = 1
+                ContentLabel.TextWrapped = true
+                -- [FIX] Size awal dibuat tinggi agar TextBounds.Y bisa terhitung dengan benar
+                ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, 400)
+                ContentLabel.Position = UDim2.new(0, titleOffsetX, 0, 30)
+                ContentLabel.Parent = NotifyFrameReal
+                contentLabelRef = ContentLabel
 
                 task.defer(function()
-                    if not contentLabel or not contentLabel.Parent then return end
-                    local lineH  = 14
-                    local maxW   = contentLabel.AbsoluteSize.X
-                    local lines  = 1
-                    if maxW > 0 then
-                        lines = math.max(1, math.ceil(contentLabel.TextBounds.X / maxW))
-                    end
-                    contentH = lineH * lines
-                    contentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, contentH)
+                    if not ContentLabel or not ContentLabel.Parent then return end
 
+                    -- Tunggu 1 frame agar AbsoluteSize & TextBounds ter-update oleh engine
                     task.wait()
-                    if not container or not container.Parent then return end
-                    local totalH = 32 + contentH + 14
-                    if not hasBtns then
-                        container.Size = UDim2.new(1, 0, 0, math.max(64, totalH))
+                    if not ContentLabel or not ContentLabel.Parent then return end
+
+                    -- [FIX] Pakai TextBounds.Y langsung — akurat untuk multi-line
+                    local contentH = ContentLabel.TextBounds.Y
+                    if contentH <= 0 then contentH = 14 end
+
+                    -- Resize ContentLabel sesuai konten sebenarnya
+                    ContentLabel.Size = UDim2.new(1, -(titleOffsetX + 10), 0, contentH)
+
+                    task.wait() -- tunggu 1 frame lagi setelah label di-resize
+                    if not NotifyFrame or not NotifyFrame.Parent then return end
+
+                    -- [FIX] Kalau ada buttons, posisi BtnRow juga perlu disesuaikan
+                    if hasButtons then
+                        local BtnRow = NotifyFrameReal:FindFirstChild("BtnRow")
+                        if BtnRow then
+                            local btnAreaY = 30 + contentH + 4
+                            BtnRow.Position = UDim2.new(0, 12, 0, btnAreaY)
+                            NotifyFrame.Size = UDim2.new(1, 0, 0, math.max(70, btnAreaY + 28 + 12))
+                        end
+                    else
+                        -- [FIX] Total tinggi = 30 (posisi awal content) + tinggi konten + 14 (padding bawah)
+                        local totalH = 30 + contentH + 14
+                        NotifyFrame.Size = UDim2.new(1, 0, 0, math.max(70, totalH))
                     end
                 end)
             end
 
-            -- ── Buttons ───────────────────────────────────────────────────
-            local btnRow
+            if hasButtons then
+                -- [FIX] contentEstH akan di-update dinamis setelah TextBounds tersedia
+                local contentEstH = 0
+                if NotifyConfig.Content ~= "" then
+                    -- Estimasi awal, akan dikoreksi oleh task.defer di atas
+                    contentEstH = 28
+                end
+                local btnAreaY   = 30 + contentEstH + 4
+                local gap        = 6
+                local btnCount   = #NotifyConfig.Buttons
+                local totalGap   = gap * (btnCount - 1)
 
-            if hasBtns then
-                local contentEst = (cfg.Content ~= "") and (32 + 14) or 32
-                btnRow = makeButtons(card, cfg.Buttons, cfg.Color, function()
-                    NotifyHandle:Close()
-                end)
+                local BtnRow = Instance.new("Frame")
+                BtnRow.BackgroundTransparency = 1
+                BtnRow.BorderSizePixel = 0
+                BtnRow.Position = UDim2.new(0, 12, 0, btnAreaY)
+                BtnRow.Size = UDim2.new(1, -24, 0, 28)
+                -- [FIX] Beri nama agar bisa dicari oleh task.defer content di atas
+                BtnRow.Name = "BtnRow"
+                BtnRow.Parent = NotifyFrameReal
 
-                task.defer(function()
-                    task.wait()
-                    if not container or not container.Parent then return end
-                    local btnY = contentEst + 6
-                    if btnRow then
-                        btnRow.Position = UDim2.new(0, 12, 0, btnY)
+                local BtnList = Instance.new("UIListLayout")
+                BtnList.FillDirection = Enum.FillDirection.Horizontal
+                BtnList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+                BtnList.VerticalAlignment = Enum.VerticalAlignment.Center
+                BtnList.Padding = UDim.new(0, gap)
+                BtnList.Parent = BtnRow
+
+                for idx, btnCfg in ipairs(NotifyConfig.Buttons) do
+                    local Btn = Instance.new("TextButton")
+                    Btn.Font = Enum.Font.GothamBold
+                    Btn.TextSize = 11
+                    Btn.Text = ""
+                    Btn.AutomaticSize = Enum.AutomaticSize.None
+                    Btn.Size = UDim2.new(1/btnCount, -(totalGap/btnCount), 1, 0)
+                    Btn.BorderSizePixel = 0
+                    Btn.LayoutOrder = idx
+
+                    local isPrimary = btnCfg.Primary == true
+                    if isPrimary then
+                        Btn.BackgroundColor3 = Color3.fromRGB(45, 45, 58)
+                        Btn.TextColor3 = Color3.fromRGB(220, 220, 230)
+                    else
+                        Btn.BackgroundColor3 = Color3.fromRGB(33, 33, 42)
+                        Btn.TextColor3 = Color3.fromRGB(160, 160, 175)
                     end
-                    local totalH = btnY + 28 + 12
-                    container.Size = UDim2.new(1, 0, 0, math.max(72, totalH))
-                end)
-            end
 
-            -- ── Duration bar ──────────────────────────────────────────────
-            local _, durationFill = makeDurationBar(card, cfg.Color)
+                    Instance.new("UICorner", Btn).CornerRadius = UDim.new(1, 0)
 
-            -- ── Close button ──────────────────────────────────────────────
-            local closeBtn = Instance.new("TextButton")
-            closeBtn.Text                   = ""
-            closeBtn.AnchorPoint            = Vector2.new(1, 0)
-            closeBtn.BackgroundTransparency = 1
-            closeBtn.Position               = UDim2.new(1, -6, 0, 5)
-            closeBtn.Size                   = UDim2.new(0, 20, 0, 20)
-            closeBtn.ZIndex                 = 5
-            closeBtn.Parent                 = card
+                    local BtnStroke = Instance.new("UIStroke")
+                    BtnStroke.Color = isPrimary and Color3.fromRGB(70, 70, 88) or Color3.fromRGB(50, 50, 62)
+                    BtnStroke.Thickness = 1
+                    BtnStroke.Parent = Btn
 
-            local closeImg = Instance.new("ImageLabel")
-            closeImg.Image                  = "rbxassetid://9886659671"
-            closeImg.ImageColor3            = Color3.fromRGB(110, 110, 128)
-            closeImg.AnchorPoint            = Vector2.new(0.5, 0.5)
-            closeImg.BackgroundTransparency = 1
-            closeImg.Position               = UDim2.new(0.5, 0, 0.5, 0)
-            closeImg.Size                   = UDim2.new(0.8, 0, 0.8, 0)
-            closeImg.Parent                 = closeBtn
+                    local BtnInner = Instance.new("Frame")
+                    BtnInner.BackgroundTransparency = 1
+                    BtnInner.AutomaticSize = Enum.AutomaticSize.X
+                    BtnInner.AnchorPoint = Vector2.new(0.5, 0.5)
+                    BtnInner.Position = UDim2.new(0.5, 0, 0.5, 0)
+                    BtnInner.Size = UDim2.new(0, 0, 1, 0)
+                    BtnInner.Parent = Btn
 
-            -- Hover effect on close btn
-            closeBtn.MouseEnter:Connect(function()
-                closeImg.ImageColor3 = Color3.fromRGB(210, 210, 220)
-            end)
-            closeBtn.MouseLeave:Connect(function()
-                closeImg.ImageColor3 = Color3.fromRGB(110, 110, 128)
-            end)
+                    local BtnInnerList = Instance.new("UIListLayout")
+                    BtnInnerList.FillDirection = Enum.FillDirection.Horizontal
+                    BtnInnerList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+                    BtnInnerList.VerticalAlignment = Enum.VerticalAlignment.Center
+                    BtnInnerList.Padding = UDim.new(0, 4)
+                    BtnInnerList.Parent = BtnInner
 
-            -- ── Close function ────────────────────────────────────────────
-            function NotifyHandle:Close()
-                if closed then return false end
-                closed = true
+                    local btnIconId = getIconId(btnCfg.Icon or "")
+                    if btnIconId ~= "" then
+                        local BtnIcon = Instance.new("ImageLabel")
+                        BtnIcon.BackgroundTransparency = 1
+                        BtnIcon.Size = UDim2.new(0, 11, 0, 11)
+                        BtnIcon.Image = btnIconId
+                        BtnIcon.ImageColor3 = isPrimary and Color3.fromRGB(220,220,230) or Color3.fromRGB(160,160,175)
+                        BtnIcon.ScaleType = Enum.ScaleType.Fit
+                        BtnIcon.LayoutOrder = 0
+                        BtnIcon.Parent = BtnInner
+                    end
 
-                TweenService:Create(card, TweenInfo.new(
-                    0.35,
-                    Enum.EasingStyle.Quint,
-                    Enum.EasingDirection.In
-                ), { Position = UDim2.new(0, 340, 0, 0) }):Play()
+                    local BtnLabel = Instance.new("TextLabel")
+                    BtnLabel.Font = Enum.Font.GothamBold
+                    BtnLabel.Text = btnCfg.Name or ("Btn" .. idx)
+                    BtnLabel.TextSize = 11
+                    BtnLabel.TextColor3 = isPrimary and Color3.fromRGB(220,220,230) or Color3.fromRGB(160,160,175)
+                    BtnLabel.BackgroundTransparency = 1
+                    BtnLabel.AutomaticSize = Enum.AutomaticSize.X
+                    BtnLabel.Size = UDim2.new(0, 0, 1, 0)
+                    BtnLabel.LayoutOrder = 1
+                    BtnLabel.Parent = BtnInner
 
-                TweenService:Create(container, TweenInfo.new(
-                    0.45,
-                    Enum.EasingStyle.Quint,
-                    Enum.EasingDirection.Out
-                ), { Size = UDim2.new(1, 0, 0, -8) }):Play()
+                    Btn.Parent = BtnRow
 
-                task.wait(0.45)
-                if container and container.Parent then
-                    container:Destroy()
+                    Btn.MouseButton1Click:Connect(function()
+                        if btnCfg.Callback then pcall(btnCfg.Callback) end
+                        NotifyFunction:Close()
+                    end)
+                end
+
+                -- [FIX] Jika tidak ada content, resize langsung di sini
+                if NotifyConfig.Content == "" then
+                    task.defer(function()
+                        task.wait()
+                        if not NotifyFrame or not NotifyFrame.Parent then return end
+                        NotifyFrame.Size = UDim2.new(1, 0, 0, btnAreaY + 28 + 12)
+                        BtnRow.Position = UDim2.new(0, 12, 0, btnAreaY)
+                    end)
                 end
             end
 
-            closeBtn.Activated:Connect(function()
-                NotifyHandle:Close()
-            end)
+            local CloseBtn = Instance.new("TextButton")
+            CloseBtn.Text = ""
+            CloseBtn.AnchorPoint = Vector2.new(1, 0)
+            CloseBtn.BackgroundTransparency = 1
+            CloseBtn.Position = UDim2.new(1, -6, 0, 6)
+            CloseBtn.Size = UDim2.new(0, 18, 0, 18)
+            CloseBtn.Parent = NotifyFrameReal
 
-            -- ── Slide in ──────────────────────────────────────────────────
-            TweenService:Create(card, TweenInfo.new(
-                0.45,
-                Enum.EasingStyle.Quint,
-                Enum.EasingDirection.Out
-            ), { Position = UDim2.new(0, 0, 0, 0) }):Play()
+            local CloseImg = Instance.new("ImageLabel")
+            CloseImg.Image = "rbxassetid://9886659671"
+            CloseImg.ImageColor3 = Color3.fromRGB(120, 120, 135)
+            CloseImg.AnchorPoint = Vector2.new(0.5, 0.5)
+            CloseImg.BackgroundTransparency = 1
+            CloseImg.Position = UDim2.new(0.5, 0, 0.5, 0)
+            CloseImg.Size = UDim2.new(1, 0, 1, 0)
+            CloseImg.Parent = CloseBtn
 
-            -- ── Duration countdown ────────────────────────────────────────
-            local delay = tonumber(cfg.Delay) or 0
+            local waitbruh = false
+            function NotifyFunction:Close()
+                if waitbruh then return false end
+                waitbruh = true
+                TweenService:Create(NotifyFrameReal, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+                    Position = UDim2.new(0, 320, 0, 0)
+                }):Play()
+                task.wait(0.3)
+                NotifyFrame:Destroy()
+            end
 
-            if delay > 0 then
-                -- Animate duration fill
-                task.spawn(function()
-                    task.wait(0.45) -- wait for slide-in
-                    TweenService:Create(durationFill, TweenInfo.new(
-                        delay,
-                        Enum.EasingStyle.Linear,
-                        Enum.EasingDirection.InOut
-                    ), { Size = UDim2.new(0, 0, 1, 0) }):Play()
-                end)
+            CloseBtn.Activated:Connect(function() NotifyFunction:Close() end)
 
-                task.wait(delay + 0.45)
-                NotifyHandle:Close()
+            TweenService:Create(NotifyFrameReal, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0, 0, 0, 0)
+            }):Play()
+
+            local delay = tonumber(NotifyConfig.Delay) or 0
+            if not hasButtons then
+                task.wait(delay)
+                NotifyFunction:Close()
+            elseif delay > 0 then
+                task.wait(delay)
+                NotifyFunction:Close()
             end
         end)
 
-        return NotifyHandle
+        return NotifyFunction
     end
 
-    -- ─── Shorthand ───────────────────────────────────────────────────────────
-
-    ---@param msg     string   Body content
-    ---@param delay   number   Auto-dismiss seconds (0 = no auto-dismiss)
-    ---@param color   Color3   Accent color
-    ---@param title   string   Title text
-    ---@param desc    string   Small subtitle beside title
     function NotifyModule:Nt(msg, delay, color, title, desc)
         return self:MakeNotify({
             Title       = title or "VelarisUI",
-            Description = desc  or "Notification",
-            Content     = msg   or "",
+            Description = desc or "Notification",
+            Content     = msg or "Content",
+            -- [FIX] Pastikan parameter 'color' divalidasi di dalam MakeNotify
             Color       = color or Color3.fromRGB(0, 208, 255),
             Delay       = delay or 4,
         })
