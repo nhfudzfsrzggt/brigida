@@ -71,7 +71,7 @@ local CoreGui = game:GetService("CoreGui")
 local viewport = workspace.CurrentCamera.ViewportSize
 
 -- Init Notify module
-local _NotifyInst = NotifyFactory(TweenService, CoreGui, getIconId)
+local _NotifyInst = NotifyFactory(TweenService, CoreGui, getIconId, GuiConfig and GuiConfig.Color or nil)
 
 local function isMobileDevice()
     return UserInputService.TouchEnabled
