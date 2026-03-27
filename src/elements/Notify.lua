@@ -1,4 +1,4 @@
--- // VelarisUI | Notify.lua | SpeedHubX Style
+-- // VelarisUI | Notify.lua | SpeedHubX Style |
 
 local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
 
@@ -27,7 +27,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
             if typeof(defaultColor) == "Color3" then
                 NotifyConfig.Color = defaultColor
             else
-                NotifyConfig.Color = Color3.fromRGB(250, 7, 7)
+                NotifyConfig.Color = Color3.fromRGB(0, 170, 210)
             end
         end
 
@@ -197,17 +197,27 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
 
             local closeBtn = Create("TextButton", {
                 Font                   = Enum.Font.SourceSans,
-                Text                   = "X",
-                TextColor3             = Color3.fromRGB(255, 255, 255),
+                Text                   = "",
+                TextColor3             = Color3.fromRGB(0, 0, 0),
                 TextSize               = 14,
                 AnchorPoint            = Vector2.new(1, 0.5),
                 BackgroundColor3       = Color3.fromRGB(255, 255, 255),
                 BackgroundTransparency = 0.999,
                 BorderSizePixel        = 0,
-                Position               = UDim2.new(1, -5, 0.5, 0),
-                Size                   = UDim2.new(0, 20, 0, 20),
+                Position               = UDim2.new(1, -8, 0.5, 0),
+                Size                   = UDim2.new(0, 25, 0, 25),
                 Name                   = "CloseBtn",
             }, Top)
+
+            Create("ImageLabel", {
+                Image                  = "rbxassetid://9886659671",
+                AnchorPoint            = Vector2.new(0.5, 0.5),
+                BackgroundColor3       = Color3.fromRGB(255, 255, 255),
+                BackgroundTransparency = 0.999,
+                BorderSizePixel        = 0,
+                Position               = UDim2.new(0.49, 0, 0.5, 0),
+                Size                   = UDim2.new(1, -8, 1, -8),
+            }, closeBtn)
 
             local hasButtons = #NotifyConfig.Buttons > 0
 
