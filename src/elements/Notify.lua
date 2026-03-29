@@ -2,6 +2,8 @@
 
 local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
 
+    local TextService = game:GetService("TextService")
+
     local function Create(Name, Properties, Parent)
         local inst = Instance.new(Name)
         for i, v in pairs(Properties) do
@@ -127,7 +129,6 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
                 Name                   = "DropShadow",
             }, shadowHolder)
 
-            -- ─── Top bar (tinggi 30px) ────────────────────────────────────────
             local Top = Create("Frame", {
                 BackgroundColor3       = Color3.fromRGB(0, 0, 0),
                 BackgroundTransparency = 0.999,
@@ -165,7 +166,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
                 BackgroundColor3       = Color3.fromRGB(255, 255, 255),
                 BackgroundTransparency = 0.999,
                 BorderSizePixel        = 0,
-                Size                   = UDim2.new(1, -50, 1, 0), -- kasih ruang untuk close btn
+                Size                   = UDim2.new(1, 0, 1, 0),
                 Position               = UDim2.new(0, titleOffsetX, 0, 0),
                 Name                   = "TitleLabel",
             }, Top)
@@ -176,20 +177,17 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
             }, titleLabel)
 
             if NotifyConfig.Description ~= "" then
-                -- FIX: pakai TextBounds setelah render dengan task.wait()
-                -- Atau, letakkan di baris baru di bawah title (lebih reliable)
                 local descLabel = Create("TextLabel", {
                     Font                   = Enum.Font.GothamBold,
                     Text                   = NotifyConfig.Description,
                     TextColor3             = NotifyConfig.Color,
-                    TextSize               = 11,
+                    TextSize               = 12,
                     TextXAlignment         = Enum.TextXAlignment.Left,
                     BackgroundColor3       = Color3.fromRGB(255, 255, 255),
                     BackgroundTransparency = 0.999,
                     BorderSizePixel        = 0,
-                    -- Tampilkan sejajar dengan title, tapi gunakan offset tetap
-                    Size                   = UDim2.new(1, -(titleOffsetX + 80), 1, 0),
-                    Position               = UDim2.new(0, titleOffsetX + 80, 0, 0),
+                    Size                   = UDim2.new(1, 0, 1, 0),
+                    Position               = UDim2.new(0, titleOffsetX + titleLabel.TextBounds.X + 10, 0, 0),
                     Name                   = "DescLabel",
                 }, Top)
 
@@ -223,67 +221,54 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
                 Size                   = UDim2.new(1, -8, 1, -8),
             }, closeBtn)
 
-            -- ─── Content text ─────────────────────────────────────────────────
-            -- FIX: Tunggu 1 frame agar AbsoluteSize sudah ter-resolve
-            task.wait()
+            local hasButtons = #NotifyConfig.Buttons > 0
 
-            local PADDING_TOP    = 8   -- jarak dari bawah Top bar
-            local PADDING_SIDE   = 10
-            local PADDING_BOTTOM = 10
-            local TOP_H          = 30  -- tinggi Top frame
-            local FRAME_W        = 240 -- lebar notifyFrameReal dikurangi padding (260 - 2*10)
+            -- Lebar frame real (260) dikurangi padding kiri+kanan (10+10)
+            local FRAME_WIDTH   = 240
+            local CONTENT_FONT  = Enum.Font.GothamBold
+            local CONTENT_SIZE  = 11
+
+            -- Hitung tinggi teks pakai TextService supaya akurat walau panjang
+            local textBounds = TextService:GetTextSize(
+                NotifyConfig.Content,
+                CONTENT_SIZE,
+                CONTENT_FONT,
+                Vector2.new(FRAME_WIDTH, math.huge)
+            )
+
+            local contentH = math.max(textBounds.Y, CONTENT_SIZE)
 
             local textLabel = Create("TextLabel", {
-                Font                   = Enum.Font.GothamBold,
+                Font                   = CONTENT_FONT,
                 Text                   = NotifyConfig.Content,
                 TextColor3             = Color3.fromRGB(150, 150, 150),
-                TextSize               = 11,
+                TextSize               = CONTENT_SIZE,
                 TextXAlignment         = Enum.TextXAlignment.Left,
                 TextYAlignment         = Enum.TextYAlignment.Top,
-                TextWrapped            = true,   -- FIX: set di awal sebelum ukur
+                TextWrapped            = true,
                 BackgroundColor3       = Color3.fromRGB(255, 255, 255),
                 BackgroundTransparency = 0.999,
                 BorderSizePixel        = 0,
-                -- FIX: posisi Y = TOP_H + PADDING_TOP agar tidak overlap
-                Position               = UDim2.new(0, PADDING_SIDE, 0, TOP_H + PADDING_TOP),
-                -- FIX: Size pakai UDim2 scale+offset yang fixed, bukan bergantung TextBounds
-                Size                   = UDim2.new(1, -(PADDING_SIDE * 2), 0, 9999), -- sementara tinggi besar
+                -- posisi Y = 30 (Top bar) + 6 (gap)
+                Position               = UDim2.new(0, 10, 0, 36),
+                Size                   = UDim2.new(1, -20, 0, contentH),
                 Name                   = "ContentText",
             }, notifyFrameReal)
 
-            -- FIX: Tunggu 1 frame lagi agar TextBounds ter-update setelah TextWrapped
-            task.wait()
+            -- Total tinggi frame: 30 (top bar) + 6 (gap atas) + contentH + 10 (gap bawah)
+            local totalFrameH = 30 + 6 + contentH + 10
+            if totalFrameH < 52 then totalFrameH = 52 end
 
-            -- Sekarang TextBounds.Y akurat
-            local contentHeight = math.max(textLabel.TextBounds.Y, 0)
-
-            -- Resize textLabel ke tinggi yang pas
-            textLabel.Size = UDim2.new(1, -(PADDING_SIDE * 2), 0, contentHeight)
-
-            -- Hitung total tinggi frame
-            local hasContent = NotifyConfig.Content ~= ""
-            local totalH
-
-            if hasContent then
-                totalH = TOP_H + PADDING_TOP + contentHeight + PADDING_BOTTOM
-            else
-                totalH = TOP_H + 10
-            end
-
-            totalH = math.max(totalH, 50) -- minimum height
-
-            -- ─── Buttons ──────────────────────────────────────────────────────
-            local hasButtons = #NotifyConfig.Buttons > 0
+            notifyFrame.Size = UDim2.new(1, 0, 0, totalFrameH)
 
             if hasButtons then
-                local BTN_ROW_H = 28
-                local BTN_GAP   = 6
+                local frameH = totalFrameH
 
                 local btnRow = Create("Frame", {
                     BackgroundTransparency = 1,
                     BorderSizePixel        = 0,
-                    Position               = UDim2.new(0, PADDING_SIDE, 0, totalH),
-                    Size                   = UDim2.new(1, -(PADDING_SIDE * 2), 0, BTN_ROW_H),
+                    Position               = UDim2.new(0, 10, 0, frameH - 4),
+                    Size                   = UDim2.new(1, -20, 0, 28),
                     Name                   = "BtnRow",
                 }, notifyFrameReal)
 
@@ -291,10 +276,10 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
                     FillDirection       = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Left,
                     VerticalAlignment   = Enum.VerticalAlignment.Center,
-                    Padding             = UDim.new(0, BTN_GAP),
+                    Padding             = UDim.new(0, 6),
                 }, btnRow)
 
-                totalH = totalH + BTN_ROW_H + 6
+                notifyFrame.Size = UDim2.new(1, 0, 0, frameH + 34)
 
                 for idx, btnCfg in ipairs(NotifyConfig.Buttons) do
                     local isPrimary = btnCfg.Primary == true
@@ -309,11 +294,7 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
                         BackgroundTransparency = 0.935,
                         BorderSizePixel        = 0,
                         LayoutOrder            = idx,
-                        Size                   = UDim2.new(
-                            1 / #NotifyConfig.Buttons,
-                            -((BTN_GAP * (#NotifyConfig.Buttons - 1)) / #NotifyConfig.Buttons),
-                            1, 0
-                        ),
+                        Size                   = UDim2.new(1 / #NotifyConfig.Buttons, -((6 * (#NotifyConfig.Buttons - 1)) / #NotifyConfig.Buttons), 1, 0),
                     }, btnRow)
 
                     Create("UICorner", { CornerRadius = UDim.new(0, 4) }, btn)
@@ -336,10 +317,6 @@ local function MakeNotifyModule(TweenService, CoreGui, getIconId, defaultColor)
                 end
             end
 
-            -- Apply final size ke notifyFrame
-            notifyFrame.Size = UDim2.new(1, 0, 0, totalH)
-
-            -- ─── Close function ───────────────────────────────────────────────
             function NotifyFunction:Close()
                 if isClosing then return false end
                 isClosing = true
