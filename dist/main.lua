@@ -1,9 +1,10 @@
-
--- // VilarisUi | Version : 0.2.2 | Fixed Animation Title & Footer | Main.lua
+-- // VilarisUi | Version : 0.3.0 | Added: Separator, SubPage, MultiColumn, PageSearch
+-- // Original by VelarisUI team | Features added & integrated
 
 local HttpService = game:GetService("HttpService") 
 local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local RunService  = game:GetService("RunService")
 
 local BASE = "https://raw.githubusercontent.com/nhfudzfsrzggt/brigida/refs/heads/main/"
 local function load(path) return loadstring(game:HttpGet(BASE .. path))() end
@@ -23,42 +24,23 @@ local lucideIcons  = load("src/elements/icon/lucide.lua")
 local solarIcons   = load("src/elements/icon/solar.lua")
 
 local Icons = {}
-for name, id in pairs(defaultIcons) do
-    Icons[name] = id
-end
-for name, id in pairs(lucideIcons) do
-    Icons["lucide:" .. name] = id
-end
-for name, id in pairs(solarIcons) do
-    Icons["solar:" .. name] = id
-end
+for name, id in pairs(defaultIcons) do Icons[name] = id end
+for name, id in pairs(lucideIcons)  do Icons["lucide:" .. name] = id end
+for name, id in pairs(solarIcons)   do Icons["solar:" .. name]  = id end
 
 local function getIconId(iconName)
-    if not iconName or iconName == "" then
-        return ""
-    end
-    if iconName:match("^%d+$") then
-        return "rbxassetid://" .. iconName
-    end
-    if Icons[iconName] then
-        return Icons[iconName]
-    end
-    if iconName:match("^https?://") then
-        return iconName
-    end
+    if not iconName or iconName == "" then return "" end
+    if iconName:match("^%d+$") then return "rbxassetid://" .. iconName end
+    if Icons[iconName] then return Icons[iconName] end
+    if iconName:match("^https?://") then return iconName end
     return ""
 end
 
 local function getColor(colorInput)
-    if typeof(colorInput) == "Color3" then
-        return colorInput
-    end
+    if typeof(colorInput) == "Color3" then return colorInput end
     if type(colorInput) == "string" then
-        if ColorModule[colorInput] then
-            return ColorModule[colorInput]
-        else
-            return ColorModule["Default"] or Color3.fromRGB(0, 208, 255)
-        end
+        if ColorModule[colorInput] then return ColorModule[colorInput] end
+        return ColorModule["Default"] or Color3.fromRGB(0, 208, 255)
     end
     return ColorModule["Default"] or Color3.fromRGB(0, 208, 255)
 end
@@ -66,20 +48,18 @@ end
 local Elements = {}
 
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local Mouse = LocalPlayer:GetMouse()
-local CoreGui = game:GetService("CoreGui")
-local viewport = workspace.CurrentCamera.ViewportSize
+local TweenService     = game:GetService("TweenService")
+local Mouse            = LocalPlayer:GetMouse()
+local CoreGui          = game:GetService("CoreGui")
+local viewport         = workspace.CurrentCamera.ViewportSize
 
--- Init Notify module
-local _NotifyInst = NotifyFactory(TweenService, CoreGui, getIconId, GuiConfig and GuiConfig.Color or nil)
+local _NotifyInst = NotifyFactory(TweenService, CoreGui, getIconId, nil)
 
 local function isMobileDevice()
     return UserInputService.TouchEnabled
         and not UserInputService.KeyboardEnabled
         and not UserInputService.MouseEnabled
 end
-
 local isMobile = isMobileDevice()
 
 local function safeSize(pxWidth, pxHeight)
@@ -95,63 +75,41 @@ end
 local function MakeDraggable(topbarobject, object, GuiConfig)
     local function CustomPos(topbarobject, object)
         local Dragging, DragInput, DragStart, StartPosition
-
         local function UpdatePos(input)
             local Delta = input.Position - DragStart
             local pos = UDim2.new(
-                StartPosition.X.Scale,
-                StartPosition.X.Offset + Delta.X,
-                StartPosition.Y.Scale,
-                StartPosition.Y.Offset + Delta.Y
+                StartPosition.X.Scale, StartPosition.X.Offset + Delta.X,
+                StartPosition.Y.Scale, StartPosition.Y.Offset + Delta.Y
             )
-            local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Position = pos })
-            Tween:Play()
+            TweenService:Create(object, TweenInfo.new(0.2), { Position = pos }):Play()
         end
-
         topbarobject.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
                 DragStart = input.Position
                 StartPosition = object.Position
                 input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        Dragging = false
-                    end
+                    if input.UserInputState == Enum.UserInputState.End then Dragging = false end
                 end)
             end
         end)
-
         topbarobject.InputChanged:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                 DragInput = input
             end
         end)
-
         UserInputService.InputChanged:Connect(function(input)
-            if input == DragInput and Dragging then
-                UpdatePos(input)
-            end
+            if input == DragInput and Dragging then UpdatePos(input) end
         end)
     end
 
     local function CustomSize(object)
         local Dragging, DragInput, DragStart, StartSize
-        local minSizeX, minSizeY
-        local defSizeX, defSizeY
-
         local cfgW = (GuiConfig and GuiConfig.Size and GuiConfig.Size.X.Offset) or 640
         local cfgH = (GuiConfig and GuiConfig.Size and GuiConfig.Size.Y.Offset) or 400
-
-        if isMobile then
-            minSizeX, minSizeY = 100, 100
-            defSizeX = math.min(cfgW, 470)
-            defSizeY = math.min(cfgH, 270)
-        else
-            minSizeX, minSizeY = 100, 100
-            defSizeX = cfgW
-            defSizeY = cfgH
-        end
-
+        local minSizeX, minSizeY = 100, 100
+        local defSizeX = isMobile and math.min(cfgW, 470) or cfgW
+        local defSizeY = isMobile and math.min(cfgH, 270) or cfgH
         object.Size = UDim2.new(0, defSizeX, 0, defSizeY)
 
         local changesizeobject = Instance.new("Frame")
@@ -164,37 +122,25 @@ local function MakeDraggable(topbarobject, object, GuiConfig)
 
         local function UpdateSize(input)
             local Delta = input.Position - DragStart
-            local newWidth = StartSize.X.Offset + Delta.X
-            local newHeight = StartSize.Y.Offset + Delta.Y
-            newWidth = math.max(newWidth, minSizeX)
-            newHeight = math.max(newHeight, minSizeY)
-            local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Size = UDim2.new(0, newWidth, 0, newHeight) })
-            Tween:Play()
+            local nW = math.max(StartSize.X.Offset + Delta.X, minSizeX)
+            local nH = math.max(StartSize.Y.Offset + Delta.Y, minSizeY)
+            TweenService:Create(object, TweenInfo.new(0.2), { Size = UDim2.new(0, nW, 0, nH) }):Play()
         end
-
         changesizeobject.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                Dragging = true
-                DragStart = input.Position
-                StartSize = object.Size
+                Dragging = true; DragStart = input.Position; StartSize = object.Size
                 input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        Dragging = false
-                    end
+                    if input.UserInputState == Enum.UserInputState.End then Dragging = false end
                 end)
             end
         end)
-
         changesizeobject.InputChanged:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                 DragInput = input
             end
         end)
-
         UserInputService.InputChanged:Connect(function(input)
-            if input == DragInput and Dragging then
-                UpdateSize(input)
-            end
+            if input == DragInput and Dragging then UpdateSize(input) end
         end)
     end
 
@@ -208,28 +154,23 @@ function CircleClick(Button, X, Y)
         local Circle = Instance.new("ImageLabel")
         Circle.Image = "rbxassetid://266543268"
         Circle.ImageColor3 = Color3.fromRGB(80, 80, 80)
-        Circle.ImageTransparency = 0.8999999761581421
+        Circle.ImageTransparency = 0.9
         Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         Circle.BackgroundTransparency = 1
         Circle.ZIndex = 10
         Circle.Name = "Circle"
         Circle.Parent = Button
-
         local NewX = X - Circle.AbsolutePosition.X
         local NewY = Y - Circle.AbsolutePosition.Y
         Circle.Position = UDim2.new(0, NewX, 0, NewY)
-        local Size = 0
-        if Button.AbsoluteSize.X > Button.AbsoluteSize.Y then
-            Size = Button.AbsoluteSize.X * 1.5
-        elseif Button.AbsoluteSize.X < Button.AbsoluteSize.Y then
-            Size = Button.AbsoluteSize.Y * 1.5
-        elseif Button.AbsoluteSize.X == Button.AbsoluteSize.Y then
-            Size = Button.AbsoluteSize.X * 1.5
-        end
-
+        local Size = Button.AbsoluteSize.X > Button.AbsoluteSize.Y
+            and Button.AbsoluteSize.X * 1.5 or Button.AbsoluteSize.Y * 1.5
         local Time = 0.5
-        Circle:TweenSizeAndPosition(UDim2.new(0, Size, 0, Size), UDim2.new(0.5, -Size / 2, 0.5, -Size / 2), "Out", "Quad",
-            Time, false, nil)
+        Circle:TweenSizeAndPosition(
+            UDim2.new(0, Size, 0, Size),
+            UDim2.new(0.5, -Size/2, 0.5, -Size/2),
+            "Out", "Quad", Time, false, nil
+        )
         for i = 1, 10 do
             Circle.ImageTransparency = Circle.ImageTransparency + 0.01
             wait(Time / 10)
@@ -241,13 +182,6 @@ end
 -- ╔══════════════════════════════════════════════════════════════════╗
 -- ║   FLOATING COLOR PICKER                                         ║
 -- ╚══════════════════════════════════════════════════════════════════╝
-
-local _CPGui          = nil
-local _CPPanel        = nil
-local _CPPanelButtons = nil
-local _CPPanelRefs    = nil
-local _CPActive       = nil
-
 local _ColorpickerModule = nil
 local function _InitColorpicker(AccentColor, MainDropShadow)
     if _ColorpickerModule then return end
@@ -260,10 +194,43 @@ end
 local function _MakeColorPicker(Config, SectionAdd, CountItem, AccentColor, MainDropShadow)
     _InitColorpicker(AccentColor, MainDropShadow)
     if not _ColorpickerModule then
-        warn("[VelarisUI] Colorpicker.lua gagal dimuat dari server")
+        warn("[VelarisUI] Colorpicker.lua gagal dimuat")
         return {}
     end
     return _ColorpickerModule.MakeColorPicker(Config, SectionAdd, CountItem, AccentColor, MainDropShadow)
+end
+
+-- ╔══════════════════════════════════════════════════════════════════╗
+-- ║   HELPER: BUAT KOLOM SCROLL (dipakai SubPage & MultiColumn)     ║
+-- ╚══════════════════════════════════════════════════════════════════╝
+local function _makeColumnScroll(parent, anchorX, posXScale, posXOffset, accentColor)
+    local s = Instance.new("ScrollingFrame")
+    s.BackgroundTransparency     = 1
+    s.BorderSizePixel            = 0
+    s.AnchorPoint                = Vector2.new(anchorX, 0)
+    s.Position                   = UDim2.new(posXScale, posXOffset, 0, 4)
+    s.Size                       = UDim2.new(0.5, -8, 1, -8)
+    s.CanvasSize                 = UDim2.new(0, 0, 0, 0)
+    s.AutomaticCanvasSize        = Enum.AutomaticSize.Y
+    s.ScrollBarThickness         = 2
+    s.ScrollBarImageColor3       = accentColor or Color3.fromRGB(80, 80, 90)
+    s.ScrollBarImageTransparency = 0.4
+    s.ZIndex                     = 4
+    s.Parent                     = parent
+
+    local ul = Instance.new("UIListLayout")
+    ul.Padding   = UDim.new(0, 8)
+    ul.SortOrder = Enum.SortOrder.LayoutOrder
+    ul.Parent    = s
+
+    local up = Instance.new("UIPadding")
+    up.PaddingTop    = UDim.new(0, 4)
+    up.PaddingBottom = UDim.new(0, 10)
+    up.PaddingLeft   = UDim.new(0, 3)
+    up.PaddingRight  = UDim.new(0, 3)
+    up.Parent        = s
+
+    return s
 end
 
 local Chloex = {}
@@ -275,7 +242,6 @@ end
 function Nt(msg, delay, color, title, desc)
     return _NotifyInst:Nt(msg, delay, color, title, desc)
 end
-
 Notify = Nt
 
 function Chloex:Dialog(DialogConfig)
@@ -302,7 +268,6 @@ function Chloex:Window(GuiConfig)
     GuiConfig.Config.AutoSave     = GuiConfig.Config.AutoSave ~= nil and GuiConfig.Config.AutoSave or false
     GuiConfig.Config.AutoLoad     = GuiConfig.Config.AutoLoad ~= nil and GuiConfig.Config.AutoLoad or false
 
-    -- DiscordSet defaults
     GuiConfig.DiscordSet        = GuiConfig.DiscordSet or {}
     GuiConfig.DiscordSet.Enable = GuiConfig.DiscordSet.Enable ~= nil and GuiConfig.DiscordSet.Enable or false
     GuiConfig.DiscordSet.Title  = GuiConfig.DiscordSet.Title or "DISCORD"
@@ -355,10 +320,7 @@ function Chloex:Window(GuiConfig)
     end
 
     function GuiFunc:SaveConfig(name)
-        if not writefile then
-            warn("[VelarisUI] writefile tidak tersedia")
-            return false
-        end
+        if not writefile then warn("[VelarisUI] writefile tidak tersedia") return false end
         _checkFolders()
         _ConfigData._version = GuiConfig.Version
         local ok, err = pcall(function()
@@ -369,23 +331,16 @@ function Chloex:Window(GuiConfig)
     end
 
     function GuiFunc:LoadConfig(name)
-        if not isfile or not readfile then
-            warn("[VelarisUI] isfile/readfile tidak tersedia")
-            return false
-        end
+        if not isfile or not readfile then warn("[VelarisUI] isfile/readfile tidak tersedia") return false end
         _checkFolders()
         local f = _cfgFile(name)
         if not isfile(f) then return false end
-        local ok, result = pcall(function()
-            return HttpService:JSONDecode(readfile(f))
-        end)
+        local ok, result = pcall(function() return HttpService:JSONDecode(readfile(f)) end)
         if not (ok and type(result) == "table") then return false end
         _ConfigData = result
         for key, elem in pairs(_ConfigElements) do
             local val = _ConfigData[key]
-            if val ~= nil and elem.Set then
-                pcall(function() elem:Set(val) end)
-            end
+            if val ~= nil and elem.Set then pcall(function() elem:Set(val) end) end
         end
         return true
     end
@@ -393,10 +348,7 @@ function Chloex:Window(GuiConfig)
     function GuiFunc:DeleteConfig(name)
         if not isfile or not delfile then return false end
         local f = _cfgFile(name)
-        if isfile(f) then
-            pcall(delfile, f)
-            return true
-        end
+        if isfile(f) then pcall(delfile, f) return true end
         return false
     end
 
@@ -417,14 +369,10 @@ function Chloex:Window(GuiConfig)
         _ConfigData = {}
         for key, elem in pairs(_ConfigElements) do
             if elem.Set then
-                if elem.Type == "Toggle" then
-                    pcall(function() elem:Set(false) end)
-                elseif elem.Type == "Slider" then
-                    pcall(function() elem:Set(elem.Default or 0) end)
-                elseif elem.Type == "Dropdown" then
-                    pcall(function() elem:Set(elem.Default or (elem.Multi and {} or nil)) end)
-                elseif elem.Type == "Input" then
-                    pcall(function() elem:Set("") end)
+                if elem.Type == "Toggle" then pcall(function() elem:Set(false) end)
+                elseif elem.Type == "Slider" then pcall(function() elem:Set(elem.Default or 0) end)
+                elseif elem.Type == "Dropdown" then pcall(function() elem:Set(elem.Default or (elem.Multi and {} or nil)) end)
+                elseif elem.Type == "Input" then pcall(function() elem:Set("") end)
                 end
             end
         end
@@ -433,8 +381,10 @@ function Chloex:Window(GuiConfig)
 
     GuiFunc.ConfigData     = _ConfigData
     GuiFunc.ConfigElements = _ConfigElements
-    -- ══════════════════════════════════════════════════════════════
 
+    -- ══════════════════════════════════════════════════════════════
+    -- GUI UTAMA
+    -- ══════════════════════════════════════════════════════════════
     local Chloeex           = Instance.new("ScreenGui")
     local DropShadowHolder  = Instance.new("Frame")
     local DropShadow        = Instance.new("ImageLabel")
@@ -560,45 +510,28 @@ function Chloex:Window(GuiConfig)
     })
     ThemeGradient.Parent = ThemeImage
 
-    -- ── Background Video ──────────────────────────────────────────────
+    -- Background Video
     if GuiConfig.BackgroundVideo and GuiConfig.BackgroundVideo ~= "" then
         task.spawn(function()
             local videoInput = GuiConfig.BackgroundVideo
-            local videoId    = nil
-
-            local isAssetId = videoInput:match("^%d+$")
-                or videoInput:match("^rbxassetid://")
-
+            local videoId = nil
+            local isAssetId = videoInput:match("^%d+$") or videoInput:match("^rbxassetid://")
             if isAssetId then
-                if videoInput:match("^%d+$") then
-                    videoId = "rbxassetid://" .. videoInput
-                else
-                    videoId = videoInput
-                end
+                videoId = videoInput:match("^%d+$") and ("rbxassetid://" .. videoInput) or videoInput
             else
                 local fileName = "VelarisUI_bgvideo.webm"
-
                 if writefile and getcustomasset and isfile then
                     if not isfile(fileName) then
-                        local ok, err = pcall(function()
-                            writefile(fileName, game:HttpGet(videoInput))
-                        end)
-                        if not ok then
-                            return
-                        end
+                        local ok = pcall(function() writefile(fileName, game:HttpGet(videoInput)) end)
+                        if not ok then return end
                     end
                     local ok2, id = pcall(getcustomasset, fileName)
-                    if ok2 and id then
-                        videoId = id
-                    else
-                        return
-                    end
+                    if ok2 and id then videoId = id else return end
                 else
                     warn("[VelarisUI] BackgroundVideo: writefile/getcustomasset tidak tersedia")
                     return
                 end
             end
-
             local VideoWrapper = Instance.new("Frame")
             VideoWrapper.Name = "VideoWrapper"
             VideoWrapper.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -619,7 +552,6 @@ function Chloex:Window(GuiConfig)
             BgVideo.BackgroundTransparency = 1
             BgVideo.BorderSizePixel = 0
             BgVideo.Size = UDim2.fromScale(1, 1)
-            BgVideo.Position = UDim2.fromScale(0, 0)
             BgVideo.ZIndex = 0
             BgVideo.Parent = VideoWrapper
 
@@ -632,25 +564,14 @@ function Chloex:Window(GuiConfig)
             VideoOverlay.ZIndex = 0
             VideoOverlay.Parent = VideoWrapper
 
-            BgVideo.Loaded:Connect(function()
-                BgVideo:Play()
-            end)
+            BgVideo.Loaded:Connect(function() BgVideo:Play() end)
 
-            function GuiFunc:SetBackgroundVideoVolume(Vol)
-                BgVideo.Volume = math.clamp(Vol, 0, 10)
-            end
-            function GuiFunc:PauseBackgroundVideo()
-                BgVideo:Pause()
-            end
-            function GuiFunc:PlayBackgroundVideo()
-                BgVideo:Play()
-            end
-            function GuiFunc:SetBackgroundVideoOverlay(Trans)
-                VideoOverlay.BackgroundTransparency = math.clamp(Trans, 0, 1)
-            end
+            function GuiFunc:SetBackgroundVideoVolume(Vol) BgVideo.Volume = math.clamp(Vol, 0, 10) end
+            function GuiFunc:PauseBackgroundVideo() BgVideo:Pause() end
+            function GuiFunc:PlayBackgroundVideo() BgVideo:Play() end
+            function GuiFunc:SetBackgroundVideoOverlay(Trans) VideoOverlay.BackgroundTransparency = math.clamp(Trans, 0, 1) end
         end)
     end
-    -- ─────────────────────────────────────────────────────────────────
 
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Top.BackgroundTransparency = 0.999
@@ -702,35 +623,22 @@ function Chloex:Window(GuiConfig)
         task.spawn(function()
             local function typeOut(text, charDelay)
                 TextLabel.Text = ""
-                for i = 1, #text do
-                    TextLabel.Text = string.sub(text, 1, i)
-                    task.wait(charDelay)
-                end
+                for i = 1, #text do TextLabel.Text = string.sub(text, 1, i) task.wait(charDelay) end
             end
-
             local function typeErase(charDelay)
                 local current = TextLabel.Text
-                for i = #current, 1, -1 do
-                    TextLabel.Text = string.sub(current, 1, i - 1)
-                    task.wait(charDelay)
-                end
+                for i = #current, 1, -1 do TextLabel.Text = string.sub(current, 1, i-1) task.wait(charDelay) end
                 TextLabel.Text = ""
             end
-
             local titleText  = GuiConfig.Title
             local footerText = GuiConfig.Footer
             local charDelay  = GuiConfig.TypeDelay or 0.07
             local pauseTime  = GuiConfig.TypePause or 2.5
-
             while true do
-                typeOut(titleText, charDelay)
-                task.wait(pauseTime)
-                typeErase(charDelay)
-                task.wait(0.15)
-                typeOut(footerText, charDelay)
-                task.wait(pauseTime)
-                typeErase(charDelay)
-                task.wait(0.15)
+                typeOut(titleText, charDelay) task.wait(pauseTime)
+                typeErase(charDelay) task.wait(0.15)
+                typeOut(footerText, charDelay) task.wait(pauseTime)
+                typeErase(charDelay) task.wait(0.15)
             end
         end)
     else
@@ -779,7 +687,6 @@ function Chloex:Window(GuiConfig)
         TextLabel1.Size = UDim2.new(1, -(titleWidth + 104), 1, 0)
         UpdateTagPosition()
     end
-
     TextLabel:GetPropertyChangedSignal("TextBounds"):Connect(UpdateFooterPosition)
     UpdateFooterPosition()
 
@@ -878,12 +785,7 @@ function Chloex:Window(GuiConfig)
     local LayersFolder     = Instance.new("Folder")
     local LayersPageLayout = Instance.new("UIPageLayout")
 
-    local topOffset
-    if GuiConfig.Content and GuiConfig.Content ~= "" then
-        topOffset = 38 + 25 + 10
-    else
-        topOffset = 50
-    end
+    local topOffset = (GuiConfig.Content and GuiConfig.Content ~= "") and (38 + 25 + 10) or 50
 
     LayersTab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     LayersTab.BackgroundTransparency = 0.999
@@ -911,15 +813,12 @@ function Chloex:Window(GuiConfig)
     ScrollTab.Name = "ScrollTab"
 
     local searchOffset = 0
-
     if GuiConfig.Search then
         searchOffset = 34
         SearchModule(GuiConfig, LayersTab, LayersFolder, LayersPageLayout, TweenService, searchOffset)
     end
 
-    -- ╔══════════════════════════════════════════════════════════════════╗
-    -- ║  DISCORD BUTTON                                                 ║
-    -- ╚══════════════════════════════════════════════════════════════════╝
+    -- Discord Button
     local ds = GuiConfig.DiscordSet
     local DISCORD_H      = 28
     local DISCORD_MARGIN = 3
@@ -930,25 +829,25 @@ function Chloex:Window(GuiConfig)
         if resolvedIcon == "" then resolvedIcon = "rbxassetid://7072725342" end
 
         local DiscordCard = Instance.new("TextButton")
-        DiscordCard.Name                   = "DiscordCard"
-        DiscordCard.AnchorPoint            = Vector2.new(0, 1)
-        DiscordCard.Position               = UDim2.new(0, 3, 1, -DISCORD_MARGIN)
-        DiscordCard.Size                   = UDim2.new(1, -18, 0, DISCORD_H)
-        DiscordCard.BackgroundColor3       = Color3.fromRGB(22, 22, 28)
+        DiscordCard.Name = "DiscordCard"
+        DiscordCard.AnchorPoint = Vector2.new(0, 1)
+        DiscordCard.Position = UDim2.new(0, 3, 1, -DISCORD_MARGIN)
+        DiscordCard.Size = UDim2.new(1, -18, 0, DISCORD_H)
+        DiscordCard.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
         DiscordCard.BackgroundTransparency = 0
-        DiscordCard.BorderSizePixel        = 0
-        DiscordCard.ClipsDescendants       = false
-        DiscordCard.ZIndex                 = 100
-        DiscordCard.Text                   = ""
-        DiscordCard.Parent                 = LayersTab
+        DiscordCard.BorderSizePixel = 0
+        DiscordCard.ClipsDescendants = false
+        DiscordCard.ZIndex = 100
+        DiscordCard.Text = ""
+        DiscordCard.Parent = LayersTab
         Instance.new("UICorner", DiscordCard).CornerRadius = UDim.new(0, 5)
 
         local CardStroke = Instance.new("UIStroke")
-        CardStroke.Color           = GuiConfig.Color
-        CardStroke.Thickness       = 0.8
-        CardStroke.Transparency    = 0.5
+        CardStroke.Color = GuiConfig.Color
+        CardStroke.Thickness = 0.8
+        CardStroke.Transparency = 0.5
         CardStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        CardStroke.Parent          = DiscordCard
+        CardStroke.Parent = DiscordCard
 
         task.spawn(function()
             local t = 0
@@ -962,40 +861,40 @@ function Chloex:Window(GuiConfig)
 
         local DIcon = Instance.new("ImageLabel")
         DIcon.BackgroundTransparency = 1
-        DIcon.AnchorPoint   = Vector2.new(0, 0.5)
-        DIcon.Position      = UDim2.new(0, 5, 0.5, 0)
-        DIcon.Size          = UDim2.new(0, 18, 0, 18)
-        DIcon.Image         = resolvedIcon
-        DIcon.ImageColor3   = Color3.fromRGB(255, 255, 255)
-        DIcon.ScaleType     = Enum.ScaleType.Fit
-        DIcon.ZIndex        = 101
-        DIcon.Parent        = DiscordCard
+        DIcon.AnchorPoint = Vector2.new(0, 0.5)
+        DIcon.Position = UDim2.new(0, 5, 0.5, 0)
+        DIcon.Size = UDim2.new(0, 18, 0, 18)
+        DIcon.Image = resolvedIcon
+        DIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        DIcon.ScaleType = Enum.ScaleType.Fit
+        DIcon.ZIndex = 101
+        DIcon.Parent = DiscordCard
 
         local DTitle = Instance.new("TextLabel")
-        DTitle.Font                 = Enum.Font.GothamBold
-        DTitle.Text                 = string.upper(ds.Title)
-        DTitle.TextColor3           = Color3.fromRGB(255, 255, 255)
-        DTitle.TextSize             = 10
-        DTitle.TextXAlignment       = Enum.TextXAlignment.Left
+        DTitle.Font = Enum.Font.GothamBold
+        DTitle.Text = string.upper(ds.Title)
+        DTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        DTitle.TextSize = 10
+        DTitle.TextXAlignment = Enum.TextXAlignment.Left
         DTitle.BackgroundTransparency = 1
-        DTitle.AnchorPoint          = Vector2.new(0, 1)
-        DTitle.Position             = UDim2.new(0, 28, 0.5, -1)
-        DTitle.Size                 = UDim2.new(1, -32, 0, 11)
-        DTitle.ZIndex               = 101
-        DTitle.Parent               = DiscordCard
+        DTitle.AnchorPoint = Vector2.new(0, 1)
+        DTitle.Position = UDim2.new(0, 28, 0.5, -1)
+        DTitle.Size = UDim2.new(1, -32, 0, 11)
+        DTitle.ZIndex = 101
+        DTitle.Parent = DiscordCard
 
         local DSub = Instance.new("TextLabel")
-        DSub.Font                 = Enum.Font.GothamBold
-        DSub.Text                 = "JOIN DISCORD"
-        DSub.TextColor3           = Color3.fromRGB(30, 200, 255)
-        DSub.TextSize             = 8
-        DSub.TextXAlignment       = Enum.TextXAlignment.Left
+        DSub.Font = Enum.Font.GothamBold
+        DSub.Text = "JOIN DISCORD"
+        DSub.TextColor3 = Color3.fromRGB(30, 200, 255)
+        DSub.TextSize = 8
+        DSub.TextXAlignment = Enum.TextXAlignment.Left
         DSub.BackgroundTransparency = 1
-        DSub.AnchorPoint          = Vector2.new(0, 0)
-        DSub.Position             = UDim2.new(0, 28, 0.5, 1)
-        DSub.Size                 = UDim2.new(1, -32, 0, 10)
-        DSub.ZIndex               = 101
-        DSub.Parent               = DiscordCard
+        DSub.AnchorPoint = Vector2.new(0, 0)
+        DSub.Position = UDim2.new(0, 28, 0.5, 1)
+        DSub.Size = UDim2.new(1, -32, 0, 10)
+        DSub.ZIndex = 101
+        DSub.Parent = DiscordCard
 
         local GradTitle = Instance.new("UIGradient")
         GradTitle.Color = ColorSequence.new({
@@ -1006,13 +905,11 @@ function Chloex:Window(GuiConfig)
             ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 255, 255)),
         })
         GradTitle.Rotation = 0
-        GradTitle.Offset   = Vector2.new(-1, 0)
-        GradTitle.Parent   = DTitle
+        GradTitle.Offset = Vector2.new(-1, 0)
+        GradTitle.Parent = DTitle
 
         task.spawn(function()
-            local dir   = 1
-            local pos   = -1.0
-            local speed = 0.8
+            local dir, pos, speed = 1, -1.0, 0.8
             while DiscordCard and DiscordCard.Parent do
                 local dt = task.wait(0.03)
                 pos = pos + speed * dir * dt
@@ -1027,17 +924,15 @@ function Chloex:Window(GuiConfig)
             if _copied then return end
             _copied = true
             pcall(function() setclipboard(ds.Link) end)
-            local origText  = DSub.Text
-            local origColor = DSub.TextColor3
-            DSub.Text       = "LINK COPIED!"
+            local origText, origColor = DSub.Text, DSub.TextColor3
+            DSub.Text = "LINK COPIED!"
             DSub.TextColor3 = Color3.fromRGB(180, 180, 180)
             task.wait(1.5)
-            DSub.Text       = origText
+            DSub.Text = origText
             DSub.TextColor3 = origColor
             _copied = false
         end)
     end
-    -- ══════════════════════════════════════════════════════════════════
 
     if GuiConfig.ShowUser then
         ScrollTab.Position = UDim2.new(0, 0, 0, searchOffset)
@@ -1046,7 +941,6 @@ function Chloex:Window(GuiConfig)
         ScrollTab.Position = UDim2.new(0, 0, 0, searchOffset)
         ScrollTab.Size = UDim2.new(1, 0, 1, -(searchOffset + discordBottomOffset))
     end
-
     ScrollTab.Parent = LayersTab
 
     UIListLayout.Padding = UDim.new(0, 2)
@@ -1087,10 +981,7 @@ function Chloex:Window(GuiConfig)
         PlayerAvatar.Size = UDim2.new(0, 26, 0, 26)
         PlayerAvatar.Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=150&h=150"
         PlayerAvatar.Parent = PlayerFooter
-
-        local AvatarCorner = Instance.new("UICorner")
-        AvatarCorner.CornerRadius = UDim.new(1, 0)
-        AvatarCorner.Parent = PlayerAvatar
+        Instance.new("UICorner", PlayerAvatar).CornerRadius = UDim.new(1, 0)
 
         local AvatarStroke = Instance.new("UIStroke")
         AvatarStroke.Color = GuiConfig.Color
@@ -1101,14 +992,9 @@ function Chloex:Window(GuiConfig)
         local PlayerName = Instance.new("TextLabel")
         PlayerName.Name = "PlayerName"
         PlayerName.Font = Enum.Font.GothamBold
-
         local displayName = LocalPlayer.DisplayName
-        local shortName = displayName
-        if #displayName > 3 then
-            shortName = string.sub(displayName, 1, 3) .. "***"
-        end
+        local shortName = #displayName > 3 and (string.sub(displayName, 1, 3) .. "***") or displayName
         PlayerName.Text = "Welcome, " .. shortName
-
         PlayerName.TextColor3 = Color3.fromRGB(180, 180, 180)
         PlayerName.TextSize = 11
         PlayerName.TextXAlignment = Enum.TextXAlignment.Left
@@ -1179,13 +1065,34 @@ function Chloex:Window(GuiConfig)
     LayersPageLayout.EasingStyle = Enum.EasingStyle.Quad
 
     function GuiFunc:DestroyGui()
-        if CoreGui:FindFirstChild("VelarisUI") then
-            Chloeex:Destroy()
-        end
+        if CoreGui:FindFirstChild("VelarisUI") then Chloeex:Destroy() end
     end
 
     function GuiFunc:SetToggleKey(keyCode)
         GuiConfig.Keybind = keyCode
+    end
+
+    -- ══════════════════════════════════════════════════════════════
+    -- ✦ FITUR BARU 1: SEPARATOR
+    -- ══════════════════════════════════════════════════════════════
+    function GuiFunc:Separator()
+        local line = Instance.new("Frame")
+        line.Name                   = "Separator"
+        line.BackgroundColor3       = Color3.fromRGB(255, 255, 255)
+        line.BackgroundTransparency = 0.82
+        line.BorderSizePixel        = 0
+        line.Size                   = UDim2.new(1, -14, 0, 1)
+        line.Parent                 = ScrollTab
+
+        local grad = Instance.new("UIGradient")
+        grad.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.2, 0),
+            NumberSequenceKeypoint.new(0.8, 0),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        grad.Parent = line
+        return line
     end
 
     function GuiFunc:Tag(TagConfig)
@@ -1194,20 +1101,15 @@ function Chloex:Window(GuiConfig)
         TagConfig.Icon  = TagConfig.Icon or ""
 
         local function resolveColor(c)
-            if typeof(c) == "Color3" then
-                return c
+            if typeof(c) == "Color3" then return c
             elseif type(c) == "string" then
-                if c:sub(1,1) == "#" then
-                    return Color3.fromHex(c)
-                else
-                    return getColor(c)
-                end
+                if c:sub(1,1) == "#" then return Color3.fromHex(c)
+                else return getColor(c) end
             end
             return GuiConfig.Color
         end
 
         local tagColor = resolveColor(TagConfig.Color)
-
         local TagFrame = Instance.new("Frame")
         TagFrame.BackgroundColor3 = tagColor
         TagFrame.BackgroundTransparency = 0
@@ -1218,9 +1120,7 @@ function Chloex:Window(GuiConfig)
         TagFrame.ClipsDescendants = false
         TagFrame.Parent = TagContainer
 
-        local TagCorner = Instance.new("UICorner")
-        TagCorner.CornerRadius = UDim.new(1, 0)
-        TagCorner.Parent = TagFrame
+        Instance.new("UICorner", TagFrame).CornerRadius = UDim.new(1, 0)
 
         local TagStroke = Instance.new("UIStroke")
         TagStroke.Color = tagColor
@@ -1278,44 +1178,26 @@ function Chloex:Window(GuiConfig)
         task.defer(UpdateTagPosition)
 
         local TagApi = {}
-
-        function TagApi:SetTitle(newTitle)
-            TagLabel.Text = tostring(newTitle or "")
-            task.defer(UpdateTagPosition)
-        end
-
-        function TagApi:SetIcon(iconName)
-            applyIcon(iconName)
-            task.defer(UpdateTagPosition)
-        end
-
+        function TagApi:SetTitle(newTitle) TagLabel.Text = tostring(newTitle or "") task.defer(UpdateTagPosition) end
+        function TagApi:SetIcon(iconName) applyIcon(iconName) task.defer(UpdateTagPosition) end
         function TagApi:SetColor(colorInput)
             local newColor = resolveColor(colorInput)
             TweenService:Create(TagFrame, TweenInfo.new(0.2), { BackgroundColor3 = newColor }):Play()
             TweenService:Create(TagStroke, TweenInfo.new(0.2), { Color = newColor }):Play()
         end
-
-        function TagApi:Destroy()
-            TagFrame:Destroy()
-            task.defer(UpdateTagPosition)
-        end
-
+        function TagApi:Destroy() TagFrame:Destroy() task.defer(UpdateTagPosition) end
         TagApi.Frame = TagFrame
         return TagApi
     end
 
     local _lastPos = nil
-
     local function AnimateClose(callback)
         _lastPos = DropShadowHolder.Position
         DropShadowHolder.Visible = false
         if callback then callback() end
     end
-
     local function AnimateOpen()
-        if _lastPos then
-            DropShadowHolder.Position = _lastPos
-        end
+        if _lastPos then DropShadowHolder.Position = _lastPos end
         DropShadowHolder.Visible = true
     end
 
@@ -1330,22 +1212,16 @@ function Chloex:Window(GuiConfig)
             Title = "Window",
             Content = "Do you want to close this window?\nYou will not be able to open it again",
             Buttons = {
-                {
-                    Name = "Yes",
-                    Callback = function()
-                        AnimateClose(function()
-                            if Chloeex then Chloeex:Destroy() end
-                            if GuiFunc._toggleGui then
-                                pcall(function() GuiFunc._toggleGui:Destroy() end)
-                                GuiFunc._toggleGui = nil
-                            end
-                        end)
-                    end
-                },
-                {
-                    Name = "Cancel",
-                    Callback = function() end
-                }
+                { Name = "Yes", Callback = function()
+                    AnimateClose(function()
+                        if Chloeex then Chloeex:Destroy() end
+                        if GuiFunc._toggleGui then
+                            pcall(function() GuiFunc._toggleGui:Destroy() end)
+                            GuiFunc._toggleGui = nil
+                        end
+                    end)
+                end },
+                { Name = "Cancel", Callback = function() end }
             }
         })
     end)
@@ -1355,12 +1231,10 @@ function Chloex:Window(GuiConfig)
             pcall(function() GuiFunc._toggleGui:Destroy() end)
             GuiFunc._toggleGui = nil
         end
-
         local ScreenGui = Instance.new("ScreenGui")
         ScreenGui.Parent = game:GetService("CoreGui")
         ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         ScreenGui.Name = "ToggleUIButton"
-
         GuiFunc._toggleGui = ScreenGui
 
         local MainButton = Instance.new("ImageLabel")
@@ -1371,10 +1245,7 @@ function Chloex:Window(GuiConfig)
         MainButton.BackgroundTransparency = 0.1
         MainButton.Image = "rbxassetid://" .. GuiConfig.Image
         MainButton.ScaleType = Enum.ScaleType.Fit
-
-        local UICornerBtn = Instance.new("UICorner")
-        UICornerBtn.CornerRadius = UDim.new(0, 8)
-        UICornerBtn.Parent = MainButton
+        Instance.new("UICorner", MainButton).CornerRadius = UDim.new(0, 8)
 
         local Button = Instance.new("TextButton")
         Button.Parent = MainButton
@@ -1388,10 +1259,8 @@ function Chloex:Window(GuiConfig)
                     AnimateClose(function()
                         DropShadowHolder.Visible = false
                         DropShadowHolder.Position = UDim2.new(
-                            DropShadowHolder.Position.X.Scale,
-                            DropShadowHolder.Position.X.Offset,
-                            DropShadowHolder.Position.Y.Scale,
-                            DropShadowHolder.Position.Y.Offset + 30
+                            DropShadowHolder.Position.X.Scale, DropShadowHolder.Position.X.Offset,
+                            DropShadowHolder.Position.Y.Scale, DropShadowHolder.Position.Y.Offset + 30
                         )
                     end)
                 else
@@ -1400,9 +1269,7 @@ function Chloex:Window(GuiConfig)
             end
         end)
 
-        local dragging = false
-        local dragStart, startPos
-
+        local dragging, dragStart, startPos = false, nil, nil
         local function update(input)
             local delta = input.Position - dragStart
             MainButton.Position = UDim2.new(
@@ -1410,20 +1277,14 @@ function Chloex:Window(GuiConfig)
                 startPos.Y.Scale, startPos.Y.Offset + delta.Y
             )
         end
-
         Button.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                dragStart = input.Position
-                startPos = MainButton.Position
+                dragging = true; dragStart = input.Position; startPos = MainButton.Position
                 input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragging = false
-                    end
+                    if input.UserInputState == Enum.UserInputState.End then dragging = false end
                 end)
             end
         end)
-
         game:GetService("UserInputService").InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 update(input)
@@ -1434,7 +1295,6 @@ function Chloex:Window(GuiConfig)
     GuiFunc:ToggleUI()
 
     GuiConfig.Keybind = GuiConfig.Keybind or Enum.KeyCode.RightShift
-
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.KeyCode == GuiConfig.Keybind then
@@ -1442,10 +1302,8 @@ function Chloex:Window(GuiConfig)
                 AnimateClose(function()
                     DropShadowHolder.Visible = false
                     DropShadowHolder.Position = UDim2.new(
-                        DropShadowHolder.Position.X.Scale,
-                        DropShadowHolder.Position.X.Offset,
-                        DropShadowHolder.Position.Y.Scale,
-                        DropShadowHolder.Position.Y.Offset + 30
+                        DropShadowHolder.Position.X.Scale, DropShadowHolder.Position.X.Offset,
+                        DropShadowHolder.Position.Y.Scale, DropShadowHolder.Position.Y.Offset + 30
                     )
                 end)
             else
@@ -1571,44 +1429,480 @@ function Chloex:Window(GuiConfig)
     DropPageLayout.Name = "DropPageLayout"
     DropPageLayout.Parent = DropdownFolder
 
-    local Tabs = TabsModule(
-        GuiConfig,
-        LayersFolder,
-        LayersPageLayout,
-        _G.ScrollTab,
-        NameTab,
-        MoreBlur,
-        DropdownFolder,
-        DropdownSelect,
-        DropPageLayout,
-        Elements,
-        ElementsModule,
-        KeybindModule,
-        Mouse,
-        TweenService,
-        getIconId,
-        CircleClick,
-        function() end,
-        {}
-    )
-
-    for k, v in pairs(Tabs) do
-        GuiFunc[k] = v
+    -- ══════════════════════════════════════════════════════════════
+    -- ✦ FIX: Buat wrapper CreateColorpickerElement untuk Tabs.lua
+    -- ══════════════════════════════════════════════════════════════
+    local function _CreateColorpickerElement(parent, cfg, ci, elems)
+        return _MakeColorPicker(cfg, parent, ci, GuiConfig.Color, DropShadowHolder)
     end
 
-    -- AutoLoad
+    local Tabs = TabsModule(
+        GuiConfig, LayersFolder, LayersPageLayout, _G.ScrollTab, NameTab,
+        MoreBlur, DropdownFolder, DropdownSelect, DropPageLayout,
+        Elements, ElementsModule, KeybindModule, Mouse, TweenService,
+        getIconId, CircleClick, function() end, {}, _CreateColorpickerElement  -- ← FIX: tambah argumen ke-19
+    )
+
+    for k, v in pairs(Tabs) do GuiFunc[k] = v end
+
     if GuiConfig.Config.AutoLoad then
-        task.defer(function()
-            GuiFunc:LoadConfig(GuiConfig.Config.AutoSaveFile)
-        end)
+        task.defer(function() GuiFunc:LoadConfig(GuiConfig.Config.AutoSaveFile) end)
     end
 
     -- ══════════════════════════════════════════════════════════════
-    -- Inject AddColorpicker + Config System Element Wrapping
+    -- Inject AddColorpicker + Config System + FITUR BARU (AddTab wrap)
     -- ══════════════════════════════════════════════════════════════
     local origAddTab = GuiFunc.AddTab
     GuiFunc.AddTab = function(self, TabConfig)
+        TabConfig = TabConfig or {}
+
+        local useColumns  = TabConfig.Columns == true
+        local useSearch   = TabConfig.Search  == true
+        TabConfig.Columns = nil
+
         local Sections = origAddTab(self, TabConfig)
+
+        local _subPages    = {}
+        local _subBarFrame = nil
+        local _tabPageRef  = nil
+
+        local function _getTabPage()
+            if _tabPageRef then return _tabPageRef end
+            local ch = LayersFolder:GetChildren()
+            for i = #ch, 1, -1 do
+                if ch[i]:IsA("Frame") then
+                    _tabPageRef = ch[i]
+                    return _tabPageRef
+                end
+            end
+            return nil
+        end
+
+        local function _ensureSubBar(tabPage)
+            if _subBarFrame then return end
+
+            _subBarFrame = Instance.new("Frame")
+            _subBarFrame.Name = "SubPageBar"
+            _subBarFrame.BackgroundTransparency = 1
+            _subBarFrame.BorderSizePixel = 0
+            _subBarFrame.Size = UDim2.new(1, -12, 0, 26)
+            _subBarFrame.Position = UDim2.new(0, 6, 0, 4)
+            _subBarFrame.ZIndex = 5
+            _subBarFrame.Parent = tabPage
+
+            local list = Instance.new("UIListLayout")
+            list.FillDirection = Enum.FillDirection.Horizontal
+            list.VerticalAlignment = Enum.VerticalAlignment.Center
+            list.Padding = UDim.new(0, 5)
+            list.SortOrder = Enum.SortOrder.LayoutOrder
+            list.Parent = _subBarFrame
+
+            for _, child in ipairs(tabPage:GetChildren()) do
+                if child ~= _subBarFrame and child:IsA("ScrollingFrame") then
+                    child.Visible = false
+                end
+            end
+        end
+
+        function Sections:AddSubPage(cfg)
+            cfg = cfg or {}
+            cfg.Title = cfg.Title or "Page"
+
+            task.defer(function()
+                local tabPage = _getTabPage()
+                if not tabPage then return end
+                _ensureSubBar(tabPage)
+
+                local btn = Instance.new("TextButton")
+                btn.Text = cfg.Title
+                btn.Font = Enum.Font.GothamBold
+                btn.TextSize = 11
+                btn.AutoButtonColor = false
+                btn.BorderSizePixel = 0
+                btn.Size = UDim2.new(0, 78, 1, 0)
+                btn.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+                btn.BackgroundTransparency = 0
+                btn.TextColor3 = Color3.fromRGB(130, 130, 145)
+                btn.ZIndex = 6
+                btn.LayoutOrder = #_subPages + 1
+                btn.Parent = _subBarFrame
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
+
+                local btnStroke = Instance.new("UIStroke")
+                btnStroke.Color = Color3.fromRGB(55, 55, 68)
+                btnStroke.Thickness = 1
+                btnStroke.Transparency = 0.5
+                btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                btnStroke.Parent = btn
+
+                local subFrame = Instance.new("Frame")
+                subFrame.Name = "SubPage_" .. cfg.Title
+                subFrame.BackgroundTransparency = 1
+                subFrame.BorderSizePixel = 0
+                subFrame.Position = UDim2.new(0, 0, 0, 32)
+                subFrame.Size = UDim2.new(1, 0, 1, -32)
+                subFrame.Visible = false
+                subFrame.ZIndex = 4
+                subFrame.Parent = tabPage
+
+                local leftCol  = _makeColumnScroll(subFrame, 0,   0,   4, GuiConfig.Color)
+                local rightCol = _makeColumnScroll(subFrame, 1, 0.5,  -4, GuiConfig.Color)
+
+                local divider = Instance.new("Frame")
+                divider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                divider.BackgroundTransparency = 0.88
+                divider.BorderSizePixel = 0
+                divider.AnchorPoint = Vector2.new(0.5, 0)
+                divider.Position = UDim2.new(0.5, 0, 0, 4)
+                divider.Size = UDim2.new(0, 1, 1, -8)
+                divider.Parent = subFrame
+
+                local Sub = {}
+                Sub._btn       = btn
+                Sub._btnStroke = btnStroke
+                Sub._frame     = subFrame
+                Sub._leftCol   = leftCol
+                Sub._rightCol  = rightCol
+
+                function Sub:SetActive(bool)
+                    for _, other in ipairs(_subPages) do
+                        if other ~= self then
+                            other._frame.Visible = false
+                            other._btn.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+                            other._btn.TextColor3 = Color3.fromRGB(130, 130, 145)
+                            other._btnStroke.Color = Color3.fromRGB(55, 55, 68)
+                            other._btnStroke.Transparency = 0.5
+                        end
+                    end
+                    self._frame.Visible = bool
+                    if bool then
+                        TweenService:Create(self._btn, TweenInfo.new(0.15), {
+                            BackgroundColor3 = Color3.fromRGB(18, 18, 24),
+                            TextColor3 = Color3.fromRGB(220, 220, 235)
+                        }):Play()
+                        TweenService:Create(self._btnStroke, TweenInfo.new(0.15), {
+                            Color = GuiConfig.Color, Transparency = 0.2
+                        }):Play()
+                    end
+                end
+
+                function Sub:AddSection(sectionCfg)
+                    sectionCfg = sectionCfg or {}
+                    local side = (sectionCfg.Side or "Left"):lower()
+                    local targetCol = (side == "right") and self._rightCol or self._leftCol
+
+                    local SectionFrame = Instance.new("Frame")
+                    SectionFrame.Name = "Section_" .. (sectionCfg.Title or "Section")
+                    SectionFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+                    SectionFrame.BackgroundTransparency = 0.1
+                    SectionFrame.BorderSizePixel = 0
+                    SectionFrame.Size = UDim2.new(1, 0, 0, 32)
+                    SectionFrame.AutomaticSize = Enum.AutomaticSize.Y
+                    SectionFrame.ZIndex = 4
+                    SectionFrame.Parent = targetCol
+
+                    Instance.new("UICorner", SectionFrame).CornerRadius = UDim.new(0, 6)
+
+                    local sfStroke = Instance.new("UIStroke")
+                    sfStroke.Color = Color3.fromRGB(255, 255, 255)
+                    sfStroke.Thickness = 1
+                    sfStroke.Transparency = 0.88
+                    sfStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                    sfStroke.Parent = SectionFrame
+
+                    local header = Instance.new("TextLabel")
+                    header.Font = Enum.Font.GothamBold
+                    header.Text = sectionCfg.Title or "Section"
+                    header.TextColor3 = GuiConfig.Color
+                    header.TextSize = 12
+                    header.TextXAlignment = Enum.TextXAlignment.Left
+                    header.BackgroundTransparency = 1
+                    header.BorderSizePixel = 0
+                    header.Size = UDim2.new(1, -12, 0, 18)
+                    header.Position = UDim2.new(0, 8, 0, 6)
+                    header.ZIndex = 5
+                    header.Parent = SectionFrame
+
+                    local hline = Instance.new("Frame")
+                    hline.BackgroundColor3 = GuiConfig.Color
+                    hline.BackgroundTransparency = 0.75
+                    hline.BorderSizePixel = 0
+                    hline.Size = UDim2.new(1, -16, 0, 1)
+                    hline.Position = UDim2.new(0, 8, 0, 26)
+                    hline.ZIndex = 5
+                    hline.Parent = SectionFrame
+
+                    local contentFrame = Instance.new("Frame")
+                    contentFrame.Name = "Content"
+                    contentFrame.BackgroundTransparency = 1
+                    contentFrame.BorderSizePixel = 0
+                    contentFrame.Position = UDim2.new(0, 8, 0, 32)
+                    contentFrame.Size = UDim2.new(1, -16, 0, 0)
+                    contentFrame.AutomaticSize = Enum.AutomaticSize.Y
+                    contentFrame.ZIndex = 5
+                    contentFrame.Parent = SectionFrame
+
+                    local contentLayout = Instance.new("UIListLayout")
+                    contentLayout.Padding = UDim.new(0, 6)
+                    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                    contentLayout.Parent = contentFrame
+
+                    local contentPad = Instance.new("UIPadding")
+                    contentPad.PaddingBottom = UDim.new(0, 8)
+                    contentPad.Parent = SectionFrame
+
+                    local dummyItems = Sections:AddSection(sectionCfg)
+
+                    task.defer(function()
+                        for _, child in ipairs(tabPage:GetChildren()) do
+                            if child:IsA("ScrollingFrame") and child ~= leftCol and child ~= rightCol then
+                                local ch2 = child:GetChildren()
+                                for j = #ch2, 1, -1 do
+                                    if ch2[j]:IsA("Frame") then
+                                        ch2[j].Parent = targetCol
+                                        SectionFrame:Destroy()
+                                        break
+                                    end
+                                end
+                                break
+                            end
+                        end
+                    end)
+
+                    return dummyItems
+                end
+
+                table.insert(_subPages, Sub)
+
+                btn.MouseButton1Click:Connect(function()
+                    Sub:SetActive(true)
+                end)
+
+                if #_subPages == 1 then
+                    Sub:SetActive(true)
+                end
+
+                cfg._resolved = Sub
+            end)
+
+            local placeholder = {}
+            setmetatable(placeholder, {
+                __index = function(t, k)
+                    return function(...) end
+                end
+            })
+            return placeholder
+        end
+
+        if useSearch then
+            task.defer(function()
+                local tabPage = _getTabPage()
+                if not tabPage then return end
+
+                local sectionScroll = nil
+                for _, child in ipairs(tabPage:GetChildren()) do
+                    if child:IsA("ScrollingFrame") then
+                        sectionScroll = child
+                        break
+                    end
+                end
+                if not sectionScroll then return end
+
+                sectionScroll.Position = UDim2.new(
+                    sectionScroll.Position.X.Scale, sectionScroll.Position.X.Offset,
+                    sectionScroll.Position.Y.Scale, sectionScroll.Position.Y.Offset + 36
+                )
+                sectionScroll.Size = UDim2.new(
+                    sectionScroll.Size.X.Scale, sectionScroll.Size.X.Offset,
+                    sectionScroll.Size.Y.Scale, sectionScroll.Size.Y.Offset - 36
+                )
+
+                local searchBox = Instance.new("TextBox")
+                searchBox.Name = "PageSearchBox"
+                searchBox.PlaceholderText = "  🔍  Cari..."
+                searchBox.Text = ""
+                searchBox.Font = Enum.Font.Gotham
+                searchBox.TextSize = 12
+                searchBox.TextColor3 = Color3.fromRGB(205, 205, 215)
+                searchBox.PlaceholderColor3 = Color3.fromRGB(95, 95, 108)
+                searchBox.TextXAlignment = Enum.TextXAlignment.Left
+                searchBox.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+                searchBox.BorderSizePixel = 0
+                searchBox.ClearTextOnFocus = false
+                searchBox.Size = UDim2.new(1, -12, 0, 26)
+                searchBox.Position = UDim2.new(0, 6, 0, 4)
+                searchBox.ZIndex = 6
+                searchBox.Parent = tabPage
+
+                Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
+
+                local sbStroke = Instance.new("UIStroke")
+                sbStroke.Color = Color3.fromRGB(60, 60, 75)
+                sbStroke.Thickness = 1
+                sbStroke.Transparency = 0.4
+                sbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                sbStroke.Parent = searchBox
+
+                local sbPad = Instance.new("UIPadding")
+                sbPad.PaddingLeft = UDim.new(0, 8)
+                sbPad.Parent = searchBox
+
+                local accentColor = GuiConfig.Color
+                local searchItems = {}
+
+                local function refreshSearchItems()
+                    searchItems = {}
+                    for _, desc in ipairs(sectionScroll:GetDescendants()) do
+                        if desc:IsA("TextLabel") and desc.TextSize <= 14 and desc.Text ~= "" then
+                            table.insert(searchItems, {
+                                label  = desc,
+                                origC  = desc.TextColor3,
+                                origT  = desc.TextTransparency
+                            })
+                        end
+                    end
+                end
+
+                sectionScroll.DescendantAdded:Connect(function(d)
+                    if d:IsA("TextLabel") then task.defer(refreshSearchItems) end
+                end)
+                task.defer(refreshSearchItems)
+
+                local function doSearch(query)
+                    query = query:lower()
+                    for _, item in ipairs(searchItems) do
+                        if not item.label or not item.label.Parent then continue end
+                        if query == "" then
+                            item.label.TextColor3       = item.origC
+                            item.label.TextTransparency = item.origT
+                        else
+                            local matched = item.label.Text:lower():find(query, 1, true)
+                            if matched then
+                                TweenService:Create(item.label, TweenInfo.new(0.1), {
+                                    TextColor3 = accentColor, TextTransparency = 0
+                                }):Play()
+                            else
+                                TweenService:Create(item.label, TweenInfo.new(0.1), {
+                                    TextColor3 = Color3.fromRGB(70, 70, 80),
+                                    TextTransparency = 0.5
+                                }):Play()
+                            end
+                        end
+                    end
+                end
+
+                local renderConn = nil
+
+                searchBox.Focused:Connect(function()
+                    TweenService:Create(sbStroke, TweenInfo.new(0.2), {
+                        Color = accentColor, Transparency = 0.2
+                    }):Play()
+                    if renderConn then renderConn:Disconnect() end
+                    renderConn = RunService.RenderStepped:Connect(function()
+                        doSearch(searchBox.Text)
+                    end)
+                end)
+
+                searchBox.FocusLost:Connect(function()
+                    TweenService:Create(sbStroke, TweenInfo.new(0.2), {
+                        Color = Color3.fromRGB(60, 60, 75), Transparency = 0.4
+                    }):Play()
+                    if renderConn then renderConn:Disconnect() renderConn = nil end
+                    if searchBox.Text == "" then doSearch("") end
+                end)
+
+                searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+                    doSearch(searchBox.Text)
+                end)
+            end)
+        end
+
+        if useColumns then
+            local leftCol, rightCol
+
+            task.defer(function()
+                local tabPage = _getTabPage()
+                if not tabPage then return end
+
+                for _, child in ipairs(tabPage:GetChildren()) do
+                    if child:IsA("ScrollingFrame") then
+                        child.Visible = false
+                        break
+                    end
+                end
+
+                leftCol  = _makeColumnScroll(tabPage, 0,   0,  4, GuiConfig.Color)
+                rightCol = _makeColumnScroll(tabPage, 1, 0.5, -4, GuiConfig.Color)
+
+                local divider = Instance.new("Frame")
+                divider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                divider.BackgroundTransparency = 0.88
+                divider.BorderSizePixel = 0
+                divider.AnchorPoint = Vector2.new(0.5, 0)
+                divider.Position = UDim2.new(0.5, 0, 0, 4)
+                divider.Size = UDim2.new(0, 1, 1, -8)
+                divider.Parent = tabPage
+            end)
+
+            local origAddSection = Sections.AddSection
+            Sections.AddSection = function(self2, SectionConfig)
+                SectionConfig = SectionConfig or {}
+                local col = (SectionConfig.Column or "Left"):lower()
+                SectionConfig.Column = nil
+
+                local Items = origAddSection(self2, SectionConfig)
+
+                task.defer(function()
+                    if not leftCol or not rightCol then return end
+                    local target = (col == "right") and rightCol or leftCol
+                    local tabPage = _getTabPage()
+                    if not tabPage then return end
+                    for _, child in ipairs(tabPage:GetChildren()) do
+                        if child:IsA("ScrollingFrame") and child ~= leftCol and child ~= rightCol then
+                            local ch = child:GetChildren()
+                            for i = #ch, 1, -1 do
+                                if ch[i]:IsA("Frame") then
+                                    ch[i].Parent   = target
+                                    ch[i].Size     = UDim2.new(1, 0, 0, ch[i].Size.Y.Offset)
+                                    ch[i].Position = UDim2.new(0, 0, 0, 0)
+                                    break
+                                end
+                            end
+                            break
+                        end
+                    end
+                end)
+
+                local _itemCount = 0
+
+                function Items:AddColorpicker(Config)
+                    local sa = rawget(self, "_sectionAdd") or (type(self) == "table" and self._sectionAdd)
+                    local ci = _itemCount
+                    if not sa then
+                        local origCreate = ElementsModule.CreateToggle
+                        local probeFrame = nil
+                        ElementsModule.CreateToggle = function(self_em, parent, cfg, ci2, ...)
+                            probeFrame = parent
+                            ElementsModule.CreateToggle = origCreate
+                            return { Set = function() end, GetValue = function() return false end, Value = false, IgnoreConfig = false, Class = "Toggle" }
+                        end
+                        pcall(function() Items:AddToggle({ Title = "__probe__", Default = false, Callback = function() end }) end)
+                        ElementsModule.CreateToggle = origCreate
+                        sa = probeFrame
+                    end
+                    if not sa then return {} end
+                    local api = _MakeColorPicker(Config, sa, ci, GuiConfig.Color, DropShadowHolder)
+                    _itemCount = _itemCount + 1
+                    return api
+                end
+                Items.AddColorPicker = Items.AddColorpicker
+
+                return Items
+            end
+
+            return Sections
+        end
+
         local origAddSection = Sections.AddSection
         Sections.AddSection = function(self2, SectionConfig)
             local Items = origAddSection(self2, SectionConfig)
@@ -1618,39 +1912,29 @@ function Chloex:Window(GuiConfig)
             function Items:AddColorpicker(Config)
                 local sa = rawget(self, "_sectionAdd") or (type(self) == "table" and self._sectionAdd)
                 local ci = (type(self) == "table" and rawget(self, "_getCountItem") and self._getCountItem()) or _itemCount
-
                 if not sa then
-                    local origToggle = Items.AddToggle
-                    if origToggle then
-                        local origCreate = ElementsModule.CreateToggle
-                        local probeFrame = nil
-                        ElementsModule.CreateToggle = function(self_em, parent, cfg, ci2, ...)
-                            probeFrame = parent
-                            ElementsModule.CreateToggle = origCreate
-                            return { Set = function() end, GetValue = function() return false end,
-                                     Value = false, IgnoreConfig = false, Class = "Toggle" }
-                        end
-                        pcall(function()
-                            Items:AddToggle({ Title = "__probe__", Default = false, Callback = function() end })
-                        end)
+                    local origCreate = ElementsModule.CreateToggle
+                    local probeFrame = nil
+                    ElementsModule.CreateToggle = function(self_em, parent, cfg, ci2, ...)
+                        probeFrame = parent
                         ElementsModule.CreateToggle = origCreate
-                        sa = probeFrame
-                        if sa then
-                            for _, child in ipairs(sa:GetChildren()) do
-                                if child:IsA("Frame") and child:FindFirstChild("ToggleTitle") then
-                                    local tt = child:FindFirstChild("ToggleTitle")
-                                    if tt and tt.Text == "__probe__" then
-                                        child:Destroy()
-                                        break
-                                    end
-                                end
+                        return { Set = function() end, GetValue = function() return false end, Value = false, IgnoreConfig = false, Class = "Toggle" }
+                    end
+                    pcall(function()
+                        Items:AddToggle({ Title = "__probe__", Default = false, Callback = function() end })
+                    end)
+                    ElementsModule.CreateToggle = origCreate
+                    sa = probeFrame
+                    if sa then
+                        for _, child in ipairs(sa:GetChildren()) do
+                            if child:IsA("Frame") and child:FindFirstChild("ToggleTitle") then
+                                local tt = child:FindFirstChild("ToggleTitle")
+                                if tt and tt.Text == "__probe__" then child:Destroy() break end
                             end
                         end
                     end
                 end
-
                 if not sa then return {} end
-
                 local api = _MakeColorPicker(Config, sa, ci, GuiConfig.Color, DropShadowHolder)
                 _itemCount = _itemCount + 1
                 return api
@@ -1661,23 +1945,18 @@ function Chloex:Window(GuiConfig)
             local function _wrapElem(elem, Cfg, elemType, defaultVal)
                 if not elem then return elem end
                 if not Cfg.Flag or Cfg.Flag == "" then return elem end
-
                 local key = tostring(Cfg.Flag)
                 elem.Type    = elem.Type or elemType
                 elem.Default = defaultVal
                 elem.Flag    = key
                 local saved = _ConfigData[key]
-                if saved ~= nil and elem.Set then
-                    pcall(function() elem:Set(saved) end)
-                end
+                if saved ~= nil and elem.Set then pcall(function() elem:Set(saved) end) end
                 local origSet = elem.Set
                 if origSet then
                     elem.Set = function(self_e, val)
                         origSet(self_e, val)
                         _ConfigData[key] = val
-                        if GuiConfig.Config.AutoSave then
-                            GuiFunc:SaveConfig(GuiConfig.Config.AutoSaveFile)
-                        end
+                        if GuiConfig.Config.AutoSave then GuiFunc:SaveConfig(GuiConfig.Config.AutoSaveFile) end
                     end
                 end
                 _ConfigElements[key] = elem
@@ -1738,11 +2017,12 @@ function Chloex:Window(GuiConfig)
 
             return Items
         end
+
         return Sections
     end
 
     -- ══════════════════════════════════════════════════════════════
-    -- GuiFunc:Notify (window-level notify dengan accent color)
+    -- GuiFunc:Notify
     -- ══════════════════════════════════════════════════════════════
     function GuiFunc:Notify(Config)
         Config = Config or {}
@@ -1880,25 +2160,15 @@ function Chloex:Window(GuiConfig)
                 Btn.Size = UDim2.new(0, 0, 1, 0)
                 Btn.BorderSizePixel = 0
                 Btn.LayoutOrder = idx
-
                 local isPrimary = btnCfg.Primary == true or idx == 1
-                if isPrimary then
-                    Btn.BackgroundColor3 = GuiConfig.Color
-                    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                else
-                    Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-                    Btn.TextColor3 = Color3.fromRGB(180, 180, 195)
-                end
-
+                Btn.BackgroundColor3 = isPrimary and GuiConfig.Color or Color3.fromRGB(40, 40, 50)
+                Btn.TextColor3 = isPrimary and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 195)
                 Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
-
                 local BtnPad = Instance.new("UIPadding")
                 BtnPad.PaddingLeft  = UDim.new(0, 10)
                 BtnPad.PaddingRight = UDim.new(0, 10)
                 BtnPad.Parent = Btn
-
                 Btn.Parent = BtnRow
-
                 Btn.MouseButton1Click:Connect(function()
                     if btnCfg.Callback then pcall(btnCfg.Callback) end
                     Card:Destroy()
@@ -1938,16 +2208,12 @@ function Chloex:Window(GuiConfig)
 
         task.defer(function()
             task.wait()
-            if Card and Card.Parent then
-                Card.ClipsDescendants = true
-            end
+            if Card and Card.Parent then Card.ClipsDescendants = true end
         end)
     end
-    -- ══════════════════════════════════════════════════════════════
 
     return GuiFunc
 end
 
 VelarisUI = Chloex
-
 return Chloex
