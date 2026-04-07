@@ -1,8 +1,4 @@
--- // vilarisUi | Elements.lua
--- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
--- Upgrade: CreateToggle & CreateCheckbox support cfg.Icon di dalam knob/checkbox
--- Upgrade: CreateParagraph support Thumbnail (header besar) + Image (inline kecil)
--- Fix: Flag wajib ada untuk config save — tanpa Flag element tetap jalan tapi tidak disimpan
+-- // vilarisUi | Elements.lua | NEw
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -424,6 +420,9 @@ function Elements:CreateParagraph(parent, config, countItem)
     cfg.VideoId     = cfg.VideoId     or nil
     cfg.AutoPlay    = cfg.AutoPlay    or false
     cfg.Volume      = cfg.Volume      or 1
+    -- VideoType: "rbx" (VideoFrame rbxassetid) atau "webm" (VideoFrame URL / .webm)
+    -- Auto-detect dari cfg.VideoId kalau tidak di-set manual
+    cfg.VideoType   = cfg.VideoType   or nil  -- akan di-resolve setelah VideoId diketahui
 
     -- MediaType size (ImageSize lama dipakai untuk MediaType = "Image")
     cfg.ImageSize   = cfg.ImageSize   or cfg.MediaHeight or 160
@@ -582,21 +581,36 @@ function Elements:CreateParagraph(parent, config, countItem)
         ThumbnailImg.Parent                 = MediaContainer
 
         if cfg.MediaType == "Video" then
+            -- ── Auto-detect VideoType ────────────────────────────
+            local _vid = cfg.VideoId or ""
+            local _isWebm = cfg.VideoType == "webm"
+                or (cfg.VideoType == nil and (
+                    _vid:match("%.webm$") or
+                    _vid:match("%.webm%?") or
+                    _vid:match("^https?://") and not _vid:match("^rbxassetid://")
+                ))
+            -- ────────────────────────────────────────────────────
+
             VideoObject = Instance.new("VideoFrame")
             VideoObject.Name                   = "VideoFrame"
             VideoObject.Size                   = UDim2.new(1, 0, 1, 0)
             VideoObject.BackgroundTransparency = 1
-            VideoObject.Video                  = cfg.VideoId or ""
-            VideoObject.Volume                 = 1
-            local SoundBooster = Instance.new("Sound")
-            SoundBooster.Name        = "SoundBooster"
-            SoundBooster.SoundId     = cfg.VideoId or ""
-            SoundBooster.Volume      = math.clamp((_rawVol or 1) / 100, 0, 10)
-            SoundBooster.Looped      = true
-            SoundBooster.RollOffMaxDistance = 0
-            SoundBooster.Parent      = MediaContainer
+            VideoObject.Video                  = _vid
+            VideoObject.Volume                 = _isWebm and math.clamp((_rawVol or 1) / 100, 0, 10) or 1
             VideoObject.Visible                = false
             VideoObject.Parent                 = MediaContainer
+
+            -- SoundBooster hanya untuk rbx (webm sudah ada audio di VideoFrame)
+            local SoundBooster
+            if not _isWebm then
+                SoundBooster = Instance.new("Sound")
+                SoundBooster.Name        = "SoundBooster"
+                SoundBooster.SoundId     = _vid
+                SoundBooster.Volume      = math.clamp((_rawVol or 1) / 100, 0, 10)
+                SoundBooster.Looped      = true
+                SoundBooster.RollOffMaxDistance = 0
+                SoundBooster.Parent      = MediaContainer
+            end
 
             PlayBgRef = Instance.new("Frame")
             PlayBgRef.Name                   = "PlayBg"
@@ -664,6 +678,8 @@ function Elements:CreateParagraph(parent, config, countItem)
                     if sb then sb:Play() end
                 end
             end)
+            -- simpan flag webm agar StartVideo/StopVideo tahu
+            VideoObject:SetAttribute("_isWebm", _isWebm)
         end
     end
 
@@ -851,13 +867,17 @@ function Elements:CreateParagraph(parent, config, countItem)
         if not VideoObject then return end
         if IsPlaying then return end
         IsPlaying = true
+        local _webm = VideoObject:GetAttribute("_isWebm")
         if ThumbnailImg then ThumbnailImg.Visible = false end
         VideoObject.Visible = true
         local resumePos = VideoObject.TimePosition
         VideoObject:Play()
         if resumePos > 0 then VideoObject.TimePosition = resumePos end
-        local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
-        if sb then sb.TimePosition = resumePos; sb:Play() end
+        -- SoundBooster hanya untuk rbx
+        if not _webm then
+            local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
+            if sb then sb.TimePosition = resumePos; sb:Play() end
+        end
         if PlayBgRef then TweenService:Create(PlayBgRef, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play() end
         if PlayOverlay then PlayOverlay.Visible = false end
     end
@@ -866,19 +886,37 @@ function Elements:CreateParagraph(parent, config, countItem)
         if not VideoObject then return end
         if not IsPlaying then return end
         IsPlaying = false
+        local _webm = VideoObject:GetAttribute("_isWebm")
         VideoObject:Pause()
-        local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
-        if sb then sb:Pause() end
+        if not _webm then
+            local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
+            if sb then sb:Pause() end
+        end
         if PlayBgRef then PlayBgRef.BackgroundTransparency = 1 end
         if PlayOverlay then PlayOverlay.Visible = false end
     end
 
-    function ParagraphFunc:SetMedia(mediaType, mediaId, videoId)
+    function ParagraphFunc:SetMedia(mediaType, mediaId, videoId, videoType)
         if not ThumbnailImg then return end
         if IsPlaying then ParagraphFunc:StopVideo() end
         ThumbnailImg.Image = mediaId or ""
         ThumbnailImg.Visible = (mediaId ~= nil and mediaId ~= "")
-        if VideoObject then VideoObject.Video = videoId or "" end
+        if VideoObject then
+            local _vid = videoId or ""
+            VideoObject.Video = _vid
+            local _isWebm = videoType == "webm"
+                or (videoType == nil and (
+                    _vid:match("%.webm$") or
+                    _vid:match("%.webm%?") or
+                    (_vid:match("^https?://") and not _vid:match("^rbxassetid://"))
+                ))
+            VideoObject:SetAttribute("_isWebm", _isWebm)
+            -- update SoundBooster SoundId kalau rbx
+            if not _isWebm then
+                local sb = MediaContainer and MediaContainer:FindFirstChild("SoundBooster")
+                if sb then sb.SoundId = _vid end
+            end
+        end
         cfg.MediaType = mediaType; cfg.MediaId = mediaId; cfg.VideoId = videoId
     end
 
@@ -2951,8 +2989,25 @@ function Elements:CreateDivider(parent, countItem)
     return Divider
 end
 
-function Elements:CreateSubSection(parent, title, countItem)
-    title = title or "Sub Section"
+function Elements:CreateSubSection(parent, title, countItem, config)
+    local cfg = config or {}
+    title = title or cfg.Title or "Sub Section"
+
+    local _alignMap = {
+        Left   = Enum.TextXAlignment.Left,
+        Center = Enum.TextXAlignment.Center,
+        Right  = Enum.TextXAlignment.Right,
+    }
+    local _align = _alignMap[cfg.TextXAlignment] or Enum.TextXAlignment.Left
+
+    local _anchorX = 0
+    local _posX    = 10
+    if _align == Enum.TextXAlignment.Center then
+        _anchorX = 0.5; _posX = 0
+    elseif _align == Enum.TextXAlignment.Right then
+        _anchorX = 1;   _posX = -10
+    end
+
     local SubSection = Instance.new("Frame")
     SubSection.Name = "SubSection"
     SubSection.BackgroundTransparency = 1
@@ -2967,17 +3022,40 @@ function Elements:CreateSubSection(parent, title, countItem)
     Background.Parent = SubSection
     Instance.new("UICorner", Background).CornerRadius = UDim.new(0, 6)
     local Label = Instance.new("TextLabel")
-    Label.AnchorPoint = Vector2.new(0, 0.5)
-    Label.Position = UDim2.new(0, 10, 0.5, 0)
+    Label.AnchorPoint = Vector2.new(_anchorX, 0.5)
+    Label.Position = UDim2.new(_anchorX, _posX, 0.5, 0)
     Label.Size = UDim2.new(1, -20, 1, 0)
     Label.BackgroundTransparency = 1
     Label.Font = Enum.Font.GothamBold
     Label.Text = "── [ " .. title .. " ] ──"
     Label.TextColor3 = Color3.fromRGB(230, 230, 230)
     Label.TextSize = 12
-    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextXAlignment = _align
     Label.Parent = SubSection
-    return SubSection
+
+    local SubSectionFunc = {}
+    function SubSectionFunc:SetTitle(text)
+        Label.Text = "── [ " .. tostring(text or "") .. " ] ──"
+    end
+    function SubSectionFunc:SetAlignment(alignStr)
+        local a = _alignMap[alignStr] or Enum.TextXAlignment.Left
+        Label.TextXAlignment = a
+        if a == Enum.TextXAlignment.Center then
+            Label.AnchorPoint = Vector2.new(0.5, 0.5)
+            Label.Position    = UDim2.new(0.5, 0, 0.5, 0)
+        elseif a == Enum.TextXAlignment.Right then
+            Label.AnchorPoint = Vector2.new(1, 0.5)
+            Label.Position    = UDim2.new(1, -10, 0.5, 0)
+        else
+            Label.AnchorPoint = Vector2.new(0, 0.5)
+            Label.Position    = UDim2.new(0, 10, 0.5, 0)
+        end
+    end
+    function SubSectionFunc:SetVisible(state) SubSection.Visible = state == true end
+    function SubSectionFunc:GetVisible() return SubSection.Visible end
+    function SubSectionFunc:Destroy() SubSection:Destroy() end
+
+    return SubSectionFunc
 end
 
 return Elements
