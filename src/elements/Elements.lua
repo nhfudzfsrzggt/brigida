@@ -1,4 +1,8 @@
--- // vilarisUi | Elements.lua | NEw
+-- // vilarisUi | Elements.lua
+-- Upgrade: CreateToggle kini support drag horizontal + scroll guard (Wind UI style)
+-- Upgrade: CreateToggle & CreateCheckbox support cfg.Icon di dalam knob/checkbox
+-- Upgrade: CreateParagraph support Thumbnail (header besar) + Image (inline kecil)
+-- Fix: Flag wajib ada untuk config save — tanpa Flag element tetap jalan tapi tidak disimpan
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -1234,7 +1238,9 @@ function Elements:CreateButton(parent, config, countItem)
     cfg.Content     = cfg.Content     or ""
     cfg.Callback    = cfg.Callback    or function() end
     cfg.SubTitle    = cfg.SubTitle    or nil
+    cfg.SubContent  = cfg.SubContent  or ""
     cfg.SubCallback = cfg.SubCallback or function() end
+    cfg.SubIcon     = cfg.SubIcon     or nil
     cfg.Badge       = cfg.Badge       or nil
     cfg.Version     = (cfg.Icon and cfg.Icon ~= "") and "V2" or (cfg.Version or "V1")
     cfg.Locked      = cfg.Locked      or false
@@ -1353,38 +1359,142 @@ function Elements:CreateButton(parent, config, countItem)
             DualRow.Position = UDim2.new(0, 8, 0, infoH + 4)
             DualRow.Size = UDim2.new(1, -16, 0, 30)
             DualRow.Parent = Button
-            MainBtnV2 = Instance.new("TextButton")
-            MainBtnV2.Font = Enum.Font.GothamBold
-            MainBtnV2.Text = cfg.Title
-            MainBtnV2.TextSize = 12
-            MainBtnV2.TextColor3 = Color3.fromRGB(255, 255, 255)
-            MainBtnV2.TextTransparency = 0.3
-            MainBtnV2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            MainBtnV2.BackgroundTransparency = 0.935
-            MainBtnV2.Size = UDim2.new(0.5, -3, 1, 0)
-            MainBtnV2.Position = UDim2.new(0, 0, 0, 0)
-            MainBtnV2.AutoButtonColor = false
+            -- ── helper buat isi satu tombol dual ─────────────
+            local function _makeDualBtn(parent, text, content, iconId, isSolid, posX, sizeW)
+                local hasC = content and content ~= ""
+                local hasI = iconId and iconId ~= ""
+                local btn  = Instance.new("TextButton")
+                btn.Font               = Enum.Font.GothamBold
+                btn.Text               = ""   -- teks pakai Label di dalam
+                btn.BackgroundColor3   = isSolid and GuiConfig.Color or Color3.fromRGB(255, 255, 255)
+                btn.BackgroundTransparency = isSolid and 0.1 or 0.92
+                btn.Size               = UDim2.new(sizeW, (sizeW == 1 and -16 or -3), 1, 0)
+                btn.Position           = UDim2.new(posX, posX == 0 and 0 or 3, 0, 0)
+                btn.AutoButtonColor    = false
+                btn.ClipsDescendants   = true
+                btn.Parent             = parent
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
+
+                if not isSolid then
+                    local st = Instance.new("UIStroke")
+                    st.Color        = Color3.fromRGB(255, 255, 255)
+                    st.Thickness    = 1
+                    st.Transparency = 0.75
+                    st.Name         = "BtnStroke"
+                    st.Parent       = btn
+                    btn.MouseEnter:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundTransparency = 0.82 }):Play()
+                        TweenService:Create(st,  TweenInfo.new(0.15), { Transparency = 0.5 }):Play()
+                    end)
+                    btn.MouseLeave:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundTransparency = 0.92 }):Play()
+                        TweenService:Create(st,  TweenInfo.new(0.15), { Transparency = 0.75 }):Play()
+                    end)
+                else
+                    btn.MouseEnter:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundTransparency = 0 }):Play()
+                    end)
+                    btn.MouseLeave:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundTransparency = 0.1 }):Play()
+                    end)
+                end
+
+                -- icon di kiri (dalam tombol)
+                local iconW = 0
+                if hasI then
+                    iconW = 18
+                    local ic = Instance.new("ImageLabel")
+                    ic.Name               = "BtnIcon"
+                    ic.Size               = UDim2.new(0, 14, 0, 14)
+                    ic.AnchorPoint        = Vector2.new(0, 0.5)
+                    ic.Position           = UDim2.new(0, 8, 0.5, hasC and -7 or 0)
+                    ic.BackgroundTransparency = 1
+                    ic.ScaleType          = Enum.ScaleType.Fit
+                    ic.Image              = GetIconId(iconId)
+                    ic.ImageColor3        = isSolid and Color3.fromRGB(255,255,255) or Color3.fromRGB(210,210,210)
+                    ic.ZIndex             = 2
+                    ic.Parent             = btn
+                end
+
+                -- title label
+                local lbl = Instance.new("TextLabel")
+                lbl.Name               = "BtnLabel"
+                lbl.BackgroundTransparency = 1
+                lbl.Font               = Enum.Font.GothamBold
+                lbl.Text               = text
+                lbl.TextSize           = 12
+                lbl.TextColor3         = isSolid and Color3.fromRGB(255,255,255) or Color3.fromRGB(220,220,220)
+                lbl.TextTransparency   = isSolid and 0 or 0.05
+                lbl.TextXAlignment     = hasI and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center
+                lbl.TextYAlignment     = hasC and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
+                lbl.Size               = UDim2.new(1, -(iconW + 10 + (hasI and 4 or 0)), hasC and 0 or 1, hasC and 14 or 0)
+                lbl.Position           = UDim2.new(0, iconW + 8, hasC and 0 or 0, hasC and 8 or 0)
+                lbl.ZIndex             = 2
+                lbl.Parent             = btn
+
+                -- content label (opsional)
+                if hasC then
+                    local clbl = Instance.new("TextLabel")
+                    clbl.Name               = "BtnContent"
+                    clbl.BackgroundTransparency = 1
+                    clbl.Font               = Enum.Font.GothamBold
+                    clbl.Text               = content
+                    clbl.TextSize           = 10
+                    clbl.TextColor3         = Color3.fromRGB(255,255,255)
+                    clbl.TextTransparency   = isSolid and 0.25 or 0.45
+                    clbl.TextXAlignment     = hasI and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center
+                    clbl.TextYAlignment     = Enum.TextYAlignment.Top
+                    clbl.Size               = UDim2.new(1, -(iconW + 10 + (hasI and 4 or 0)), 0, 12)
+                    clbl.Position           = UDim2.new(0, iconW + 8, 0, 24)
+                    clbl.TextWrapped        = false
+                    clbl.ZIndex             = 2
+                    clbl.Parent             = btn
+
+                    -- update icon posisi ke tengah antara title+content
+                    if hasI then
+                        local ic2 = btn:FindFirstChild("BtnIcon")
+                        if ic2 then ic2.Position = UDim2.new(0, 8, 0.5, 0) end
+                    end
+                end
+
+                return btn, lbl
+            end
+
+            -- tinggi DualRow naik kalau ada content
+            local _mainHasC = cfg.Content ~= ""
+            local _subHasC  = cfg.SubContent ~= ""
+            local _dualRowH = (_mainHasC or _subHasC) and 44 or 30
+            DualRow.Size    = UDim2.new(1, -16, 0, _dualRowH)
+            -- update Button & DualDivider total height
+            local _newTotal = infoH + _dualRowH + 8
+            Button.Size = UDim2.new(1, 0, 0, _newTotal)
+
+            local _hasBothBtns = cfg.SubTitle ~= nil
+            MainBtnV2, _ = _makeDualBtn(
+                DualRow,
+                cfg.Title,
+                cfg.Content,
+                cfg.Icon,
+                true,   -- solid
+                0,
+                _hasBothBtns and 0.5 or 1
+            )
             MainBtnV2.Name = "MainBtnV2"
-            MainBtnV2.Parent = DualRow
-            Instance.new("UICorner", MainBtnV2).CornerRadius = UDim.new(0, 5)
             MainBtnV2.MouseButton1Click:Connect(function()
-                AnimateButtonClick(MainBtnV2)
+                AnimateButtonClick(MainBtnV2, GuiConfig.Color)
                 SafeCall(cfg.Callback)
             end)
-            SubBtnV2 = Instance.new("TextButton")
-            SubBtnV2.Font = Enum.Font.GothamBold
-            SubBtnV2.Text = cfg.SubTitle
-            SubBtnV2.TextSize = 12
-            SubBtnV2.TextColor3 = Color3.fromRGB(255, 255, 255)
-            SubBtnV2.TextTransparency = 0.3
-            SubBtnV2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            SubBtnV2.BackgroundTransparency = 0.935
-            SubBtnV2.Size = UDim2.new(0.5, -3, 1, 0)
-            SubBtnV2.Position = UDim2.new(0.5, 3, 0, 0)
-            SubBtnV2.AutoButtonColor = false
+
+            SubBtnV2, _ = _makeDualBtn(
+                DualRow,
+                cfg.SubTitle,
+                cfg.SubContent,
+                cfg.SubIcon,
+                false,  -- ghost
+                0.5,
+                0.5
+            )
             SubBtnV2.Name = "SubBtnV2"
-            SubBtnV2.Parent = DualRow
-            Instance.new("UICorner", SubBtnV2).CornerRadius = UDim.new(0, 5)
             SubBtnV2.MouseButton1Click:Connect(function()
                 AnimateButtonClick(SubBtnV2)
                 SafeCall(cfg.SubCallback)
@@ -1429,16 +1539,43 @@ function Elements:CreateButton(parent, config, countItem)
         function ButtonFunc:FireSub() SafeCall(cfg.SubCallback) end
         function ButtonFunc:SetTitle(text)
             TitleLabel.Text = tostring(text or "")
-            if MainBtnV2 then MainBtnV2.Text = tostring(text or "") end
+            if MainBtnV2 then
+                local lbl = MainBtnV2:FindFirstChild("BtnLabel")
+                if lbl then lbl.Text = tostring(text or "") end
+            end
             cfg.Title = tostring(text or "")
         end
         function ButtonFunc:SetSubTitle(text)
-            if SubBtnV2 then SubBtnV2.Text = tostring(text or "") end
+            if SubBtnV2 then
+                local lbl = SubBtnV2:FindFirstChild("BtnLabel")
+                if lbl then lbl.Text = tostring(text or "") end
+            end
             cfg.SubTitle = tostring(text or "")
         end
         function ButtonFunc:SetContent(text)
             if ContentLabel then ContentLabel.Text = tostring(text or "") end
+            if MainBtnV2 then
+                local clbl = MainBtnV2:FindFirstChild("BtnContent")
+                if clbl then clbl.Text = tostring(text or "") end
+            end
             cfg.Content = tostring(text or "")
+        end
+        function ButtonFunc:SetSubContent(text)
+            if SubBtnV2 then
+                local clbl = SubBtnV2:FindFirstChild("BtnContent")
+                if clbl then clbl.Text = tostring(text or "") end
+            end
+            cfg.SubContent = tostring(text or "")
+        end
+        function ButtonFunc:SetIcon(iconId)
+            local ic = MainBtnV2 and MainBtnV2:FindFirstChild("BtnIcon")
+            if ic then ic.Image = GetIconId(iconId or "") end
+            cfg.Icon = iconId
+        end
+        function ButtonFunc:SetSubIcon(iconId)
+            local ic = SubBtnV2 and SubBtnV2:FindFirstChild("BtnIcon")
+            if ic then ic.Image = GetIconId(iconId or "") end
+            cfg.SubIcon = iconId
         end
         function ButtonFunc:SetCallback(fn)    cfg.Callback    = typeof(fn) == "function" and fn or function() end end
         function ButtonFunc:SetSubCallback(fn) cfg.SubCallback = typeof(fn) == "function" and fn or function() end end
