@@ -191,11 +191,10 @@ Sec.SectionTabbox = Tabs.Section:AddSection({
     Title = "Tabbox Section",
 })
 
-local Test1  = Sec.SectionTabbox:AddTabbox({ Title = "Test1",     Icon = "lucide:cpu" })
-local Test2  = Sec.SectionTabbox:AddTabbox({ Title = "Test2",     Icon = "lucide:cpu" })
-local Test3  = Sec.SectionTabbox:AddTabbox({ Title = "Test3",     Icon = "lucide:cpu" })
-local Test4  = Sec.SectionTabbox:AddTabbox({ Title = "Test4",     Icon = "lucide:cpu" })
-local Test5  = Sec.SectionTabbox:AddTabbox({ Title = "Test5",     Icon = "lucide:cpu" })
+local Test1  = Sec.SectionTabbox:AddTabbox({ Title = "Icon",     Icon = "lucide:cpu" })
+local Test2  = Sec.SectionTabbox:AddTabbox({ Icon = "lucide:cpu", Desc = "No Title"})
+local Test3  = Sec.SectionTabbox:AddTabbox({ Title = "Desc",     Icon = "lucide:cpu", Desc = "Test 3 Description" })
+local Test4  = Sec.SectionTabbox:AddTabbox({ Title = "Title" })
 
 Sec.Badge = Tabs.Badge:AddSection({
     Title = "Badge Section",
@@ -261,6 +260,21 @@ Sec.Button:AddButton({
     Callback = function()
         print("This is an example button")
         Nt("Example clicked!", 2)
+    end
+})
+
+Sec.Button:AddButton({
+    Title = "Example ",
+    Version = "V2",
+    Callback = function()
+        print("Example ON")
+        Nt("Example enabled!", 2)
+    end,
+
+    SubTitle = "Example Off",
+    SubCallback = function()
+        print("Example OFF")
+        Nt("Example disabled!", 2)
     end
 })
 
@@ -358,6 +372,28 @@ Sec.Toggle:AddToggle({
         else
             Nt("Example disabled!", 2)
         end
+    end
+})
+
+Sec.Toggle:AddToggle({
+    Title = "Example Icon",
+    Type   = "Toggle",
+    Icon = "lucide:bird",
+    Default = false,
+    Callback = function(value)
+        if value then
+        else
+        end
+    end
+})
+
+Sec.Toggle:AddToggle({
+    Title    = "Type Checkbox Icon",
+    Type     = "Checkbox",   -- tampilan checkbox
+    Icon     = "lucide:bird",
+    Default  = false,
+    Callback = function(value)
+        print("Checked:", value)
     end
 })
 
@@ -545,6 +581,42 @@ Sec.Slider:AddSlider({
     end
 })
 
+Sec.Slider:AddSlider({
+    Title    = "Brightness",
+    Min      = 0,
+    Max      = 100,
+    Default  = 70,
+    Tooltip  = true,   -- ← aktifkan tooltip
+    Locked  = true,
+    Callback = function(value)
+        print("Brightness:", value)
+    end,
+})
+
+Sec.Slider:AddSlider({
+    Title    = "Size",
+    Min      = 1,
+    Max      = 50,
+    Default  = 20,
+    IconFrom = "lucide:sun",  -- icon kecil di kiri
+    IconTo   = "lucide:sun",  -- icon besar di kanan
+    Tooltip  = true,
+    Callback = function(value)
+        print("Size:", value)
+    end,
+})
+
+Sec.Slider:AddSlider({
+    Title        = "Walkspeed",
+    Min          = 1,
+    Max          = 100,
+    Default      = 16,
+    ScrollParent = MyScrollingFrame,  -- ← referensi langsung
+    Callback     = function(value)
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
+    end,
+})
+
 Sec.Paragraph = Tabs.Paragraph:AddSection({
     Title = "Paragraph Section",
     Open = true
@@ -628,19 +700,4 @@ Sec.Colorpicker:AddColorpicker({
     Callback = function(color)
         print("Warna dipilih:", color)
     end
-})
-
-VelarisUI:AddConfigSection(Tabs.Config, {
-    Name = "My Config",
-    Icon = "lucide:settings-2",
-})
-
-local Notif = VelarisUI:MakeNotify({
-    Title       = "My Script",
-    Description = "Success",
-    Content     = "Script telah diload dengan sukses!",
-    Color       = "Default",
-    Time        = 0.5,
-    Delay       = 5,
-    Icon        = "lucide:check"  -- opsional, tampil di panel kiri
 })
