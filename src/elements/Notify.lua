@@ -482,6 +482,24 @@ local function MakeNotifyModule(NeverLose, TweenService, CoreGui)
         })
     end
 
+    -- ============================================================
+    --  Method lama "Nt" — dipertahankan agar backward compatible
+    --  Signature asli: Nt(Title, Description, Content, Icon, Time, Delay, Buttons, Type, Color)
+    -- ============================================================
+    function NotifyModule:Nt(Title, Description, Content, Icon, Time, Delay, Buttons, Type, Color)
+        return self:MakeNotify({
+            Title       = Title,
+            Description = Description,
+            Content     = Content,
+            Icon        = Icon,
+            Time        = Time,
+            Delay       = Delay,
+            Buttons     = Buttons,
+            Type        = Type,
+            Color       = Color,
+        })
+    end
+
     return NotifyModule
 end
 
