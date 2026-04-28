@@ -1,6 +1,7 @@
 local color = {
 	-- Default
 	["Default"] = Color3.fromRGB(0, 170, 210),
+	["DefaultV2"] = Color3.fromRGB(0, 200, 255),
 	
 	-- Basic
 	["Light"] = Color3.fromRGB(230, 230, 230),
